@@ -1,6 +1,6 @@
 import { io } from 'socket.io-client'
 
-const SOCKET_URL = 'https://quartio-production.up.railway.app'
+const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'https://quartio-production.up.railway.app'
 
 let socket = null
 

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'https://quartio-production.up.railway.app/api',
+  baseURL: import.meta.env.VITE_API_URL ?? 'https://quartio-production.up.railway.app/api',
   headers: { 'Content-Type': 'application/json' },
 });
 
