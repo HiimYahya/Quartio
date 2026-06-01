@@ -2,12 +2,25 @@ version: "3.9"
 
 services:
 
+  # ── Backoffice admin ─────────────────────────────────────────────────────────
+  backoffice:
+    build:
+      context: ./Backoffice
+      args:
+        VITE_API_URL: https://quartio-production.up.railway.app/api
+    container_name: quartio_backoffice
+    ports:
+      - "5174:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
   # ── Frontend utilisateur ────────────────────────────────────────────────────
   frontoffice:
     build:
       context: ./Frontoffice
       args:
-        VITE_API_URL: http://localhost:3000/api
+        VITE_API_URL: https://quartio-production.up.railway.app/api
     container_name: quartio_frontoffice
     ports:
       - "5173:80"
