@@ -1,3 +1,4 @@
+const toNum = require('../utils/toNum');
 const pool = require('../config/db');
 const { driver } = require('../config/neo4j');
 const { getPagination, paginate } = require('../utils/pagination');
@@ -147,7 +148,7 @@ exports.getHabitants = async (req, res, next) => {
          RETURN u.pg_id AS pg_id`,
         { pg_id: parseInt(id) }
       );
-      pgIds = neo4jResult.records.map((r) => r.get('pg_id').toNumber());
+      pgIds = neo4jResult.records.map((r) => toNum(r.get('pg_id')));
     } finally {
       await session.close();
     }

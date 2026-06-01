@@ -1,3 +1,4 @@
+const toNum = require('../utils/toNum');
 const pool       = require('../config/db');
 const { driver } = require('../config/neo4j');
 const { getPagination, paginate } = require('../utils/pagination');
@@ -193,8 +194,8 @@ exports.getResultats = async (req, res, next) => {
         { vid: voteId }
       );
       votes = result.records.map((r) => ({
-        id_option: r.get('option_id').toNumber(),
-        nb_votes:  r.get('nb').toNumber(),
+        id_option: toNum(r.get('option_id')),
+        nb_votes:  toNum(r.get('nb')),
       }));
     } finally {
       await session.close();

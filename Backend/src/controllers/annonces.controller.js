@@ -1,3 +1,4 @@
+const toNum = require('../utils/toNum');
 const pool            = require('../config/db');
 const { driver }      = require('../config/neo4j');
 const Annonce         = require('../models/mongo/annonce.model');
@@ -113,7 +114,7 @@ exports.getContrat = async (req, res, next) => {
         `MATCH (a:Annonce {mongo_id: $mid})-[:GENERE]->(c:Contrat) RETURN c.pg_id AS pg_id`,
         { mid: req.params.id }
       );
-      if (result.records.length > 0) contratId = result.records[0].get('pg_id').toNumber();
+      if (result.records.length > 0) contratId = toNum(result.records[0].get('pg_id'));
     } finally {
       await session.close();
     }

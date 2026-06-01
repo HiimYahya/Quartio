@@ -1,3 +1,4 @@
+const toNum = require('../utils/toNum');
 const pool            = require('../config/db');
 const { driver }      = require('../config/neo4j');
 const Evenement       = require('../models/mongo/evenement.model');
@@ -119,7 +120,7 @@ exports.participer = async (req, res, next) => {
           `MATCH (u:Utilisateur)-[:PARTICIPE]->(e:Evenement {mongo_id: $mid}) RETURN count(u) AS nb`,
           { mid }
         );
-        count = result.records[0].get('nb').toNumber();
+        count = toNum(result.records[0].get('nb'));
       } finally {
         await session.close();
       }
@@ -186,7 +187,7 @@ exports.getParticipants = async (req, res, next) => {
         { mid: req.params.id }
       );
       participants = result.records.map((r) => ({
-        pg_id:  r.get('pg_id').toNumber(),
+        pg_id:  toNum(r.get('pg_id')),
         statut: r.get('statut'),
       }));
     } finally {

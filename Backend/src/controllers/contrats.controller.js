@@ -2,6 +2,7 @@ const pool                   = require('../config/db');
 const { driver }             = require('../config/neo4j');
 const { getPagination, paginate } = require('../utils/pagination');
 const { createNotification } = require('../utils/notify');
+const toNum                  = require('../utils/toNum');
 
 // GET /api/contrats  → mes contrats via Neo4j [:SIGNE]
 exports.getMes = async (req, res, next) => {
@@ -16,7 +17,7 @@ exports.getMes = async (req, res, next) => {
          RETURN c.pg_id AS pg_id`,
         { uid: req.user.id }
       );
-      contratIds = result.records.map((r) => r.get('pg_id').toNumber());
+      contratIds = result.records.map((r) => toNum(r.get('pg_id')));
     } finally {
       await session.close();
     }
