@@ -13,5 +13,6 @@ router.post('/',   auth, validate(createSchema), ctrl.create);
 
 router.put('/:id/signer', auth, ctrl.signer);
 router.put('/:id/statut', auth, role('admin'), validate(statutSchema), ctrl.updateStatut);
+router.delete('/:id',     auth, role('admin'), ctrl.remove);
 
 module.exports = router;

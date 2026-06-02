@@ -7,10 +7,18 @@ const STATUT_COLORS = {
   archivee: 'bg-purple-100 text-purple-600',
 }
 
+const EMPTY_FORM = { titre: '', description: '', type: 'offre', est_payant: false, cout_points: 0, categorie: '', id_quartier: '' }
+
 export default function AnnoncesPage() {
-  const [items,   setItems]   = useState([])
-  const [loading, setLoading] = useState(true)
-  const [filter,  setFilter]  = useState('all')
+  const [items,      setItems]      = useState([])
+  const [quartiers,  setQuartiers]  = useState([])
+  const [loading,    setLoading]    = useState(true)
+  const [filter,     setFilter]     = useState('all')
+  const [confirm,    setConfirm]    = useState(null)
+  const [showCreate, setShowCreate] = useState(false)
+  const [form,       setForm]       = useState(EMPTY_FORM)
+  const [saving,     setSaving]     = useState(false)
+  const [formError,  setFormError]  = useState(null)
 
   const load = () => {
     api.get('/annonces')
@@ -18,13 +26,50 @@ export default function AnnoncesPage() {
       .catch(() => setItems([]))
       .finally(() => setLoading(false))
   }
-  useEffect(() => { load() }, [])
+
+  useEffect(() => {
+    load()
+    api.get('/quartiers').then(({ data }) => setQuartiers(data.data ?? data.quartiers ?? [])).catch(() => {})
+  }, [])
 
   const handleStatut = async (id, statut) => {
     try {
       await api.put(`/annonces/${id}`, { statut })
       setItems((v) => v.map((x) => (x.id ?? x._id) === id ? { ...x, statut } : x))
     } catch {}
+  }
+
+  const handleDelete = async (id) => {
+    try {
+      await api.delete(`/annonces/${id}`)
+      setItems((v) => v.filter((x) => (x.id ?? x._id) !== id))
+    } catch {}
+    setConfirm(null)
+  }
+
+  const handleCreate = async (e) => {
+    e.preventDefault()
+    setSaving(true)
+    setFormError(null)
+    try {
+      const payload = {
+        titre:       form.titre,
+        description: form.description || null,
+        type:        form.type || null,
+        est_payant:  form.est_payant,
+        cout_points: form.est_payant ? Number(form.cout_points) : 0,
+        categorie:   form.categorie || null,
+        id_quartier: Number(form.id_quartier),
+      }
+      const { data } = await api.post('/annonces', payload)
+      setItems((v) => [data.data ?? data.annonce ?? data, ...v])
+      setShowCreate(false)
+      setForm(EMPTY_FORM)
+    } catch (err) {
+      setFormError(err.response?.data?.error ?? 'Erreur lors de la création')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const filtered = filter === 'all' ? items : items.filter((i) => i.statut === filter)
@@ -40,7 +85,11 @@ export default function AnnoncesPage() {
             {s === 'all' ? 'Toutes' : s.charAt(0).toUpperCase() + s.slice(1)}
           </button>
         ))}
-        <span className="ml-auto text-sm text-slate-400">{filtered.length} annonce(s)</span>
+        <span className="text-sm text-slate-400">{filtered.length} annonce(s)</span>
+        <button onClick={() => { setShowCreate(true); setFormError(null); setForm(EMPTY_FORM) }}
+          className="ml-auto bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition">
+          + Nouvelle annonce
+        </button>
       </div>
 
       {loading ? (
@@ -84,9 +133,12 @@ export default function AnnoncesPage() {
                         <option value="archivee">Archivée</option>
                       </select>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 flex gap-3">
                       <button onClick={() => handleStatut(id, 'archivee')} className="text-xs text-slate-400 hover:text-slate-600 hover:underline">
                         Archiver
+                      </button>
+                      <button onClick={() => setConfirm({ id, titre: a.titre })} className="text-xs text-red-500 hover:underline">
+                        Supprimer
                       </button>
                     </td>
                   </tr>
@@ -94,6 +146,95 @@ export default function AnnoncesPage() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Modal création */}
+      {showCreate && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-xl max-h-[90vh] overflow-y-auto">
+            <h3 className="font-semibold text-slate-800 mb-4">Nouvelle annonce</h3>
+            {formError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-3">{formError}</p>}
+            <form onSubmit={handleCreate} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Titre *</label>
+                <input required value={form.titre} onChange={(e) => setForm((f) => ({ ...f, titre: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Description</label>
+                <textarea rows={3} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Type</label>
+                  <select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="offre">Offre</option>
+                    <option value="demande">Demande</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Catégorie</label>
+                  <input value={form.categorie} onChange={(e) => setForm((f) => ({ ...f, categorie: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Quartier *</label>
+                <select required value={form.id_quartier} onChange={(e) => setForm((f) => ({ ...f, id_quartier: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <option value="">Sélectionner…</option>
+                  {quartiers.map((q) => <option key={q.id_quartier} value={q.id_quartier}>{q.nom}</option>)}
+                </select>
+              </div>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                  <input type="checkbox" checked={form.est_payant} onChange={(e) => setForm((f) => ({ ...f, est_payant: e.target.checked }))}
+                    className="rounded" />
+                  Payant
+                </label>
+                {form.est_payant && (
+                  <div className="flex items-center gap-2">
+                    <input type="number" min={0} value={form.cout_points} onChange={(e) => setForm((f) => ({ ...f, cout_points: e.target.value }))}
+                      className="w-24 border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    <span className="text-xs text-slate-500">pts</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowCreate(false)}
+                  className="flex-1 border border-slate-300 text-slate-700 py-2 rounded-lg text-sm hover:bg-slate-50 transition">
+                  Annuler
+                </button>
+                <button type="submit" disabled={saving}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-sm transition disabled:opacity-60">
+                  {saving ? 'Création…' : 'Créer'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal suppression */}
+      {confirm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <h3 className="font-semibold text-slate-800 mb-2">Confirmer la suppression</h3>
+            <p className="text-sm text-slate-500 mb-5">Supprimer <strong>{confirm.titre}</strong> ? Cette action est irréversible.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirm(null)}
+                className="flex-1 border border-slate-300 text-slate-700 py-2 rounded-lg text-sm hover:bg-slate-50 transition">
+                Annuler
+              </button>
+              <button onClick={() => handleDelete(confirm.id)}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg text-sm transition">
+                Supprimer
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

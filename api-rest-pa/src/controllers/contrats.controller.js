@@ -193,3 +193,15 @@ exports.updateStatut = async (req, res, next) => {
     res.json(result.rows[0]);
   } catch (err) { next(err); }
 };
+
+// DELETE /api/contrats/:id  (admin)
+exports.remove = async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      'DELETE FROM contrat WHERE id_contrat=$1 RETURNING id_contrat',
+      [req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Contrat non trouvé' });
+    res.json({ message: 'Contrat supprimé' });
+  } catch (err) { next(err); }
+};
