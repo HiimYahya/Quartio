@@ -109,10 +109,8 @@ function DrawingLayer({ isDrawing, onComplete }) {
     dblclick(e) {
       if (!isDrawing) return
       e.originalEvent.preventDefault()
-      // Les 2 clicks précédant ce dblclick ont chacun appelé commit() et modifié
-      // l'état (ajout ou déplacement). On appelle undo() deux fois pour revenir
-      // exactement à l'état d'avant ces 2 clicks parasites.
-      undo()
+      // Le click précédant ce dblclick a appelé commit() et modifié l'état.
+      // On appelle undo() une fois pour revenir à l'état avant ce click parasite.
       undo()
       const finalPts = pointsRef.current
       reset()
