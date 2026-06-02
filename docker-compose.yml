@@ -7,7 +7,7 @@ services:
     build:
       context: ./Backoffice
       args:
-        VITE_API_URL: https://quartio-production.up.railway.app/api
+        VITE_API_URL: http://localhost:3000/api
     container_name: quartio_backoffice
     ports:
       - "5174:80"
@@ -20,7 +20,7 @@ services:
     build:
       context: ./Frontoffice
       args:
-        VITE_API_URL: https://quartio-production.up.railway.app/api
+        VITE_API_URL: http://localhost:3000/api
     container_name: quartio_frontoffice
     ports:
       - "5173:80"
@@ -30,12 +30,12 @@ services:
 
   # ── API Backend ─────────────────────────────────────────────────────────────
   api:
-    build: ./Backend
+    build: ./api-rest-pa
     container_name: quartio_api
     ports:
       - "3000:3000"
     env_file:
-      - ./Backend/.env
+      - ./api-rest-pa/.env
     environment:
       - DB_HOST=db
       - MONGO_URI=mongodb://mongo:27017/pa_db
@@ -61,7 +61,7 @@ services:
       - "5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
-      - ./Backend/sql:/docker-entrypoint-initdb.d
+      - ./api-rest-pa/sql:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
