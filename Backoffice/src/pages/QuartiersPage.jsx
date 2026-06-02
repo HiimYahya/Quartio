@@ -19,42 +19,56 @@ const COLORS = ['#4f46e5', '#0891b2', '#059669', '#d97706', '#dc2626']
 
 // ─── Couche de dessin ────────────────────────────────────────────────────────
 //
-// Gestion des refs :
-//   pointsRef      — tableau des points synchrone (ref = valeur toujours à jour
-//                    dans les handlers Leaflet, contrairement au state React)
-//   selectedIdxRef — index du point sélectionné (ref pour la même raison :
-//                    on le lit dans les handlers click/keydown qui sont hors
-//                    du cycle React)
+// Pourquoi une pile d'historique (historyRef) ?
+//   Chaque clic (ajout OU déplacement) sauvegarde l'état AVANT l'opération.
+//   Quand dblclick arrive, on appelle undo() deux fois pour annuler exactement
+//   les 2 clicks parasites qui ont précédé le dblclick, quel que soit leur type.
+//
+//   L'ancienne approche slice(0,-2) était fausse dès qu'un déplacement avait eu
+//   lieu : un déplacement ne change pas le nombre de points, donc slice(0,-2)
+//   retirait 2 points là où 1 seul avait été ajouté → forme finale incorrecte.
 //
 // Pourquoi stopPropagation sur les CircleMarkers ?
-//   Un clic sur un CircleMarker remonte automatiquement jusqu'à la carte
-//   (bubbling Leaflet). Sans stopPropagation, le handler click de la carte
-//   se déclenche aussi, ce qui déplacerait ET ajouterait un point simultanément.
-//
-// Pourquoi slice(0,-2) dans dblclick ?
-//   Un double-clic envoie click → click → dblclick dans cet ordre.
-//   Les 2 clicks ont déjà ajouté/déplacé des points avant que dblclick arrive.
-//   On retire les 2 derniers pour retrouver l'état voulu.
+//   Le clic sur un CircleMarker remonte (bubbling Leaflet) jusqu'à la carte.
+//   Sans stopPropagation, le handler click de la carte se déclenche aussi, ce
+//   qui déplacerait ET ajouterait un point simultanément.
 function DrawingLayer({ isDrawing, onComplete }) {
   const pointsRef      = useRef([])
+  const historyRef     = useRef([])   // pile : chaque entrée = état avant l'opération
   const selectedIdxRef = useRef(null)
   const [pts,         setPts]         = useState([])
   const [selectedIdx, setSelectedIdx] = useState(null)
 
-  // Synchronise le state (pour le rendu) ET le ref (pour les handlers)
   const setSelection = (idx) => {
     selectedIdxRef.current = idx
     setSelectedIdx(idx)
   }
 
+  // Enregistre l'état courant dans l'historique, puis applique le nouvel état
+  const commit = (newPts) => {
+    historyRef.current = [...historyRef.current, [...pointsRef.current]]
+    pointsRef.current  = newPts
+    setPts([...newPts])
+  }
+
+  // Annule la dernière opération (restaure l'état précédent depuis la pile)
+  const undo = () => {
+    if (historyRef.current.length === 0) return
+    const prev = historyRef.current[historyRef.current.length - 1]
+    historyRef.current = historyRef.current.slice(0, -1)
+    pointsRef.current  = prev
+    setPts([...prev])
+  }
+
   const reset = () => {
-    pointsRef.current = []
+    pointsRef.current  = []
+    historyRef.current = []
     setPts([])
     setSelection(null)
   }
 
-  // Clavier : Backspace/Delete supprime le dernier point (ou le point sélectionné)
-  //           Escape désélectionne
+  // Clavier : Backspace/Delete → annule la dernière opération (ou supprime le point sélectionné)
+  //           Escape → désélectionne
   useEffect(() => {
     if (!isDrawing) return
     const onKey = (e) => {
@@ -64,13 +78,10 @@ function DrawingLayer({ isDrawing, onComplete }) {
         e.preventDefault()
         if (selectedIdxRef.current !== null) {
           const next = pointsRef.current.filter((_, i) => i !== selectedIdxRef.current)
-          pointsRef.current = next
-          setPts([...next])
+          commit(next)
           setSelection(null)
-        } else if (pointsRef.current.length > 0) {
-          const next = pointsRef.current.slice(0, -1)
-          pointsRef.current = next
-          setPts([...next])
+        } else {
+          undo()
         }
       }
     }
@@ -85,29 +96,30 @@ function DrawingLayer({ isDrawing, onComplete }) {
     click(e) {
       if (!isDrawing) return
       if (selectedIdxRef.current !== null) {
-        // Déplace le point sélectionné vers l'endroit cliqué
+        // Déplace le point sélectionné — commit() sauvegarde l'état avant le déplacement
         const next = [...pointsRef.current]
         next[selectedIdxRef.current] = [e.latlng.lat, e.latlng.lng]
-        pointsRef.current = next
-        setPts([...next])
+        commit(next)
         setSelection(null)
       } else {
-        // Ajoute un nouveau point
-        const next = [...pointsRef.current, [e.latlng.lat, e.latlng.lng]]
-        pointsRef.current = next
-        setPts([...next])
+        // Ajoute un nouveau point — commit() sauvegarde l'état avant l'ajout
+        commit([...pointsRef.current, [e.latlng.lat, e.latlng.lng]])
       }
     },
     dblclick(e) {
       if (!isDrawing) return
       e.originalEvent.preventDefault()
-      // Retire les 2 points parasites ajoutés par les 2 clicks précédant le dblclick
-      const cleaned = pointsRef.current.slice(0, -2)
+      // Les 2 clicks précédant ce dblclick ont chacun appelé commit() et modifié
+      // l'état (ajout ou déplacement). On appelle undo() deux fois pour revenir
+      // exactement à l'état d'avant ces 2 clicks parasites.
+      undo()
+      undo()
+      const finalPts = pointsRef.current
       reset()
-      if (cleaned.length < 3) return
+      if (finalPts.length < 3) return
       const ring = [
-        ...cleaned.map(([lat, lng]) => [lng, lat]),
-        [cleaned[0][1], cleaned[0][0]],
+        ...finalPts.map(([lat, lng]) => [lng, lat]),
+        [finalPts[0][1], finalPts[0][0]],
       ]
       onComplete(JSON.stringify({
         type: 'Feature',
