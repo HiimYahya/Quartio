@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { useEffect, useRef, useState } from 'react'
 import {
   MapContainer, TileLayer, Polygon, Polyline,
@@ -17,39 +18,97 @@ L.Icon.Default.mergeOptions({
 const COLORS = ['#4f46e5', '#0891b2', '#059669', '#d97706', '#dc2626']
 
 // ─── Couche de dessin ────────────────────────────────────────────────────────
-// Pourquoi ref + state ?
-//   - pointsRef : mis à jour SYNCHRONEMENT à chaque clic Leaflet.
-//     Garanti que lors du dblclick, on lit les vraies valeurs courantes.
-//   - pts (state) : déclenche le re-render pour afficher CircleMarkers/Polyline.
 //
-// Pourquoi slice(0, -2) dans dblclick ?
+// Gestion des refs :
+//   pointsRef      — tableau des points synchrone (ref = valeur toujours à jour
+//                    dans les handlers Leaflet, contrairement au state React)
+//   selectedIdxRef — index du point sélectionné (ref pour la même raison :
+//                    on le lit dans les handlers click/keydown qui sont hors
+//                    du cycle React)
+//
+// Pourquoi stopPropagation sur les CircleMarkers ?
+//   Un clic sur un CircleMarker remonte automatiquement jusqu'à la carte
+//   (bubbling Leaflet). Sans stopPropagation, le handler click de la carte
+//   se déclenche aussi, ce qui déplacerait ET ajouterait un point simultanément.
+//
+// Pourquoi slice(0,-2) dans dblclick ?
 //   Un double-clic envoie click → click → dblclick dans cet ordre.
-//   Les 2 clicks ajoutent 2 points parasites au même endroit avant que dblclick
-//   ne se déclenche. On les retire avec slice(0, -2).
+//   Les 2 clicks ont déjà ajouté/déplacé des points avant que dblclick arrive.
+//   On retire les 2 derniers pour retrouver l'état voulu.
 function DrawingLayer({ isDrawing, onComplete }) {
-  const pointsRef = useRef([])
-  const [pts, setPts] = useState([])
+  const pointsRef      = useRef([])
+  const selectedIdxRef = useRef(null)
+  const [pts,         setPts]         = useState([])
+  const [selectedIdx, setSelectedIdx] = useState(null)
 
-  const addPoint = (latlng) => {
-    const p = [latlng.lat, latlng.lng]
-    pointsRef.current = [...pointsRef.current, p]
-    setPts([...pointsRef.current])
+  // Synchronise le state (pour le rendu) ET le ref (pour les handlers)
+  const setSelection = (idx) => {
+    selectedIdxRef.current = idx
+    setSelectedIdx(idx)
   }
 
-  const reset = () => { pointsRef.current = []; setPts([]) }
+  const reset = () => {
+    pointsRef.current = []
+    setPts([])
+    setSelection(null)
+  }
+
+  // Clavier : Backspace/Delete supprime le dernier point (ou le point sélectionné)
+  //           Escape désélectionne
+  useEffect(() => {
+    if (!isDrawing) return
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        setSelection(null)
+      } else if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault()
+        if (selectedIdxRef.current !== null) {
+          const next = pointsRef.current.filter((_, i) => i !== selectedIdxRef.current)
+          pointsRef.current = next
+          setPts([...next])
+          setSelection(null)
+        } else if (pointsRef.current.length > 0) {
+          const next = pointsRef.current.slice(0, -1)
+          pointsRef.current = next
+          setPts([...next])
+        }
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isDrawing])
+
+  // Reset quand on quitte le mode dessin
+  useEffect(() => { if (!isDrawing) reset() }, [isDrawing])
 
   useMapEvents({
     click(e) {
       if (!isDrawing) return
-      addPoint(e.latlng)
+      if (selectedIdxRef.current !== null) {
+        // Déplace le point sélectionné vers l'endroit cliqué
+        const next = [...pointsRef.current]
+        next[selectedIdxRef.current] = [e.latlng.lat, e.latlng.lng]
+        pointsRef.current = next
+        setPts([...next])
+        setSelection(null)
+      } else {
+        // Ajoute un nouveau point
+        const next = [...pointsRef.current, [e.latlng.lat, e.latlng.lng]]
+        pointsRef.current = next
+        setPts([...next])
+      }
     },
     dblclick(e) {
       if (!isDrawing) return
       e.originalEvent.preventDefault()
+      // Retire les 2 points parasites ajoutés par les 2 clicks précédant le dblclick
       const cleaned = pointsRef.current.slice(0, -2)
       reset()
       if (cleaned.length < 3) return
-      const ring = [...cleaned.map(([lat, lng]) => [lng, lat]), [cleaned[0][1], cleaned[0][0]]]
+      const ring = [
+        ...cleaned.map(([lat, lng]) => [lng, lat]),
+        [cleaned[0][1], cleaned[0][0]],
+      ]
       onComplete(JSON.stringify({
         type: 'Feature',
         geometry: { type: 'Polygon', coordinates: [ring] },
@@ -58,16 +117,35 @@ function DrawingLayer({ isDrawing, onComplete }) {
   })
 
   if (!isDrawing || pts.length === 0) return null
+
   return (
     <>
       <Polyline positions={pts} pathOptions={{ color: '#4f46e5', weight: 2, dashArray: '6' }} />
       {pts.length >= 3 && (
         <Polygon positions={pts} pathOptions={{ color: '#4f46e5', fillOpacity: 0.15, dashArray: '6' }} />
       )}
-      {pts.map((p, i) => (
-        <CircleMarker key={i} center={p} radius={5}
-          pathOptions={{ color: '#4f46e5', fillColor: '#fff', fillOpacity: 1, weight: 2 }} />
-      ))}
+      {pts.map((p, i) => {
+        const isSelected = selectedIdx === i
+        return (
+          <CircleMarker key={i} center={p}
+            radius={isSelected ? 9 : 5}
+            pathOptions={{
+              color:       isSelected ? '#f59e0b' : '#4f46e5',
+              fillColor:   isSelected ? '#fbbf24' : '#fff',
+              fillOpacity: 1,
+              weight:      2,
+            }}
+            eventHandlers={{
+              click(e) {
+                // Bloque la propagation vers la carte pour éviter d'ajouter/déplacer
+                // un point au même endroit que le clic sur le marqueur
+                L.DomEvent.stopPropagation(e)
+                setSelection(selectedIdxRef.current === i ? null : i)
+              },
+            }}
+          />
+        )
+      })}
     </>
   )
 }
@@ -82,9 +160,6 @@ const parseGeo = (g) => {
 }
 
 // ─── Détection de chevauchement ───────────────────────────────────────────────
-// Compare le nouveau polygone GeoJSON avec chaque quartier existant.
-// Exclut le quartier en cours de modification (editTarget).
-// Retourne la liste des quartiers qui se chevauchent.
 const detectOverlap = (geoStr, quartiers, excludeId = null) => {
   try {
     const newPoly = JSON.parse(geoStr)
@@ -97,23 +172,35 @@ const detectOverlap = (geoStr, quartiers, excludeId = null) => {
   } catch { return [] }
 }
 
+// ─── Modal portail ────────────────────────────────────────────────────────────
+// Rendu via createPortal directement dans document.body.
+// Sans ça, la modal se retrouve dans le contexte de stacking de Leaflet
+// (z-index ~400–700) et passe derrière la carte malgré son z-index élevé.
+function Modal({ children }) {
+  return createPortal(
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4"
+      style={{ zIndex: 9999 }}>
+      {children}
+    </div>,
+    document.body,
+  )
+}
+
 // ─── Page principale ──────────────────────────────────────────────────────────
 export default function QuartiersPage() {
-  const [quartiers,     setQuartiers]     = useState([])
-  const [loading,       setLoading]       = useState(true)
-  const [selected,      setSelected]      = useState(null)
-  const [confirm,       setConfirm]       = useState(null)
+  const [quartiers,    setQuartiers]    = useState([])
+  const [loading,      setLoading]      = useState(true)
+  const [selected,     setSelected]     = useState(null)
+  const [confirm,      setConfirm]      = useState(null)
 
-  const [showForm,      setShowForm]      = useState(false)
-  const [editTarget,    setEditTarget]    = useState(null)
-  const [form,          setForm]          = useState({ nom: '', geometrie: '' })
-  const [drawMode,      setDrawMode]      = useState(false)
-  const [submitting,    setSubmitting]    = useState(false)
-  const [error,         setError]         = useState(null)
-
-  // IDs des quartiers en conflit de chevauchement (pour les mettre en rouge)
-  const [overlapIds,    setOverlapIds]    = useState([])
-  const [overlapError,  setOverlapError]  = useState(null)
+  const [showForm,     setShowForm]     = useState(false)
+  const [editTarget,   setEditTarget]   = useState(null)
+  const [form,         setForm]         = useState({ nom: '', geometrie: '' })
+  const [drawMode,     setDrawMode]     = useState(false)
+  const [submitting,   setSubmitting]   = useState(false)
+  const [error,        setError]        = useState(null)
+  const [overlapIds,   setOverlapIds]   = useState([])
+  const [overlapError, setOverlapError] = useState(null)
 
   const load = () => {
     api.get('/quartiers')
@@ -130,9 +217,7 @@ export default function QuartiersPage() {
     setError(null); setOverlapIds([]); setOverlapError(null)
   }
 
-  const openCreate = () => {
-    resetForm(); setShowForm(true)
-  }
+  const openCreate = () => { resetForm(); setShowForm(true) }
 
   const openEdit = (q) => {
     resetForm()
@@ -141,28 +226,21 @@ export default function QuartiersPage() {
     setShowForm(true)
   }
 
-  // Appelé par DrawingLayer quand l'utilisateur double-clique pour fermer le polygone
   const handleDrawComplete = (geo) => {
     setDrawMode(false)
     const conflicts = detectOverlap(geo, quartiers, editTarget?.id_quartier)
     if (conflicts.length > 0) {
-      // Highlight les quartiers en conflit sur la carte
       setOverlapIds(conflicts.map((q) => q.id_quartier))
-      setOverlapError(
-        `Zone invalide — chevauchement avec : ${conflicts.map((q) => q.nom).join(', ')}. Recommencez le dessin.`
-      )
-      return // ne pas enregistrer le polygone
+      setOverlapError(`Chevauchement avec : ${conflicts.map((q) => q.nom).join(', ')}. Recommencez le dessin.`)
+      return
     }
-    setOverlapIds([])
-    setOverlapError(null)
+    setOverlapIds([]); setOverlapError(null)
     setForm((f) => ({ ...f, geometrie: geo }))
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.nom.trim()) return
-
-    // Double-vérification côté client avant d'envoyer
     if (form.geometrie) {
       const conflicts = detectOverlap(form.geometrie, quartiers, editTarget?.id_quartier)
       if (conflicts.length > 0) {
@@ -171,7 +249,6 @@ export default function QuartiersPage() {
         return
       }
     }
-
     setError(null); setSubmitting(true)
     try {
       const payload = { nom: form.nom.trim(), geometrie: form.geometrie || null }
@@ -182,7 +259,6 @@ export default function QuartiersPage() {
       }
       resetForm(); load()
     } catch (err) {
-      // L'API renvoie aussi une erreur 409 si chevauchement (protection backend)
       setError(err.response?.data?.error ?? 'Erreur lors de la sauvegarde')
     } finally {
       setSubmitting(false)
@@ -211,7 +287,6 @@ export default function QuartiersPage() {
           </button>
         )}
 
-        {/* Formulaire */}
         {showForm && (
           <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 space-y-3">
             <h3 className="font-semibold text-slate-800 text-sm">
@@ -232,7 +307,6 @@ export default function QuartiersPage() {
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-2">Zone géographique</label>
 
-                {/* Erreur de chevauchement — affichée juste après le dessin */}
                 {overlapError && (
                   <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-2 text-xs text-red-700 space-y-1">
                     <p className="font-semibold">⚠️ Chevauchement détecté</p>
@@ -242,15 +316,16 @@ export default function QuartiersPage() {
 
                 {!drawMode ? (
                   <div className="space-y-2">
-                    <button type="button" onClick={() => { setDrawMode(true); setOverlapError(null); setOverlapIds([]) }}
+                    <button type="button"
+                      onClick={() => { setDrawMode(true); setOverlapError(null); setOverlapIds([]) }}
                       className="w-full flex items-center justify-center gap-2 border border-dashed border-indigo-300 text-indigo-600 hover:bg-indigo-50 rounded-lg py-2.5 text-sm transition">
-                      <span>✏️</span>
-                      {form.geometrie ? 'Redessiner la zone' : 'Dessiner la zone sur la carte'}
+                      ✏️ {form.geometrie ? 'Redessiner la zone' : 'Dessiner la zone sur la carte'}
                     </button>
                     {form.geometrie && !overlapError && (
                       <div className="flex items-center justify-between bg-green-50 rounded-lg px-3 py-2">
                         <span className="text-xs text-green-700 font-medium">✓ Zone définie — aucun chevauchement</span>
-                        <button type="button" onClick={() => { setForm((f) => ({ ...f, geometrie: '' })); setOverlapIds([]) }}
+                        <button type="button"
+                          onClick={() => { setForm((f) => ({ ...f, geometrie: '' })); setOverlapIds([]) }}
                           className="text-xs text-red-400 hover:text-red-600">Effacer</button>
                       </div>
                     )}
@@ -259,9 +334,12 @@ export default function QuartiersPage() {
                   <div className="space-y-2">
                     <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2 text-xs text-indigo-700 space-y-1">
                       <p className="font-semibold">Mode dessin actif</p>
-                      <p>• Cliquez pour placer des points</p>
-                      <p>• Double-cliquez pour fermer le polygone</p>
-                      <p>• Les zones rouges ne sont pas disponibles</p>
+                      <p>• Clic → poser un point</p>
+                      <p>• Clic sur un point → le sélectionner <span className="opacity-60">(devient orange)</span></p>
+                      <p>• Clic sur la carte → déplacer le point sélectionné</p>
+                      <p>• ⌫ Backspace → supprimer le dernier point</p>
+                      <p>• Échap → désélectionner</p>
+                      <p>• Double-clic → fermer le polygone</p>
                     </div>
                     <button type="button" onClick={() => { setDrawMode(false); setOverlapIds([]) }}
                       className="w-full text-xs text-slate-500 hover:text-slate-700 py-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 transition">
@@ -293,32 +371,34 @@ export default function QuartiersPage() {
             <div className="text-center py-8 bg-white rounded-xl border border-slate-100">
               <p className="text-slate-400 text-sm">Aucun quartier défini.</p>
             </div>
-          ) : quartiers.map((q, i) => (
-            <div key={q.id_quartier}
-              onClick={() => setSelected(selected?.id_quartier === q.id_quartier ? null : q)}
-              className={`bg-white rounded-xl border p-3 flex items-center gap-3 cursor-pointer transition ${
-                overlapIds.includes(q.id_quartier)
-                  ? 'border-red-300 bg-red-50'
-                  : selected?.id_quartier === q.id_quartier
-                  ? 'border-indigo-300 bg-indigo-50'
+          ) : quartiers.map((q, i) => {
+            const isConflict = overlapIds.includes(q.id_quartier)
+            const isActive   = selected?.id_quartier === q.id_quartier
+            return (
+              <div key={q.id_quartier}
+                onClick={() => setSelected(isActive ? null : q)}
+                className={`bg-white rounded-xl border p-3 flex items-center gap-3 cursor-pointer transition ${
+                  isConflict ? 'border-red-300 bg-red-50'
+                  : isActive  ? 'border-indigo-300 bg-indigo-50'
                   : 'border-slate-100 hover:border-slate-200'
-              }`}>
-              <span className="w-3 h-3 rounded-full shrink-0"
-                style={{ background: overlapIds.includes(q.id_quartier) ? '#dc2626' : COLORS[i % COLORS.length] }} />
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-slate-800 text-sm truncate">{q.nom}</p>
-                <p className={`text-xs ${overlapIds.includes(q.id_quartier) ? 'text-red-500' : 'text-slate-400'}`}>
-                  {overlapIds.includes(q.id_quartier) ? '⚠️ En conflit' : q.geometrie ? '✓ Zone définie' : 'Aucune zone'}
-                </p>
+                }`}>
+                <span className="w-3 h-3 rounded-full shrink-0"
+                  style={{ background: isConflict ? '#dc2626' : COLORS[i % COLORS.length] }} />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-slate-800 text-sm truncate">{q.nom}</p>
+                  <p className={`text-xs ${isConflict ? 'text-red-500' : 'text-slate-400'}`}>
+                    {isConflict ? '⚠️ En conflit' : q.geometrie ? '✓ Zone définie' : 'Aucune zone'}
+                  </p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button onClick={(e) => { e.stopPropagation(); openEdit(q) }}
+                    className="text-xs text-indigo-600 hover:underline">Modifier</button>
+                  <button onClick={(e) => { e.stopPropagation(); setConfirm(q) }}
+                    className="text-xs text-red-500 hover:underline">Supprimer</button>
+                </div>
               </div>
-              <div className="flex gap-2 shrink-0">
-                <button onClick={(e) => { e.stopPropagation(); openEdit(q) }}
-                  className="text-xs text-indigo-600 hover:underline">Modifier</button>
-                <button onClick={(e) => { e.stopPropagation(); setConfirm(q) }}
-                  className="text-xs text-red-500 hover:underline">Supprimer</button>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 
@@ -336,22 +416,23 @@ export default function QuartiersPage() {
           />
 
           {quartiers.map((q, i) => {
-            const coords = parseGeo(q.geometrie)
+            const coords     = parseGeo(q.geometrie)
             if (!coords) return null
-            const isSelected  = selected?.id_quartier === q.id_quartier
-            const isConflict  = overlapIds.includes(q.id_quartier)
-            const isEditing   = editTarget?.id_quartier === q.id_quartier
-
+            const isConflict = overlapIds.includes(q.id_quartier)
+            const isActive   = selected?.id_quartier === q.id_quartier
+            const isEditing  = editTarget?.id_quartier === q.id_quartier
             return (
               <Polygon key={q.id_quartier} positions={coords}
                 pathOptions={{
                   color:       isConflict ? '#dc2626' : isEditing ? '#94a3b8' : COLORS[i % COLORS.length],
-                  fillOpacity: isConflict ? 0.35 : isSelected ? 0.3 : 0.1,
-                  weight:      isConflict ? 3 : isSelected ? 3 : 2,
+                  fillOpacity: isConflict ? 0.35 : isActive ? 0.3 : 0.1,
+                  weight:      isConflict || isActive ? 3 : 2,
                   dashArray:   isEditing ? '6' : undefined,
                 }}>
                 <Tooltip sticky>
-                  {q.nom}{isConflict ? ' ⚠️ En conflit' : ''}{isEditing ? ' (en cours de modification)' : ''}
+                  {q.nom}
+                  {isConflict ? ' ⚠️ En conflit' : ''}
+                  {isEditing ? ' (modification en cours)' : ''}
                 </Tooltip>
               </Polygon>
             )
@@ -361,20 +442,26 @@ export default function QuartiersPage() {
         </MapContainer>
       </div>
 
-      {/* ── Modal suppression ─────────────────────────────────────────────── */}
+      {/* ── Modal suppression — rendue via portal pour passer au-dessus de Leaflet ── */}
       {confirm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+        <Modal>
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
             <h3 className="font-semibold text-slate-800 mb-2">Supprimer le quartier</h3>
-            <p className="text-sm text-slate-500 mb-5">Supprimer <strong>{confirm.nom}</strong> ? Cette action est irréversible.</p>
+            <p className="text-sm text-slate-500 mb-5">
+              Supprimer <strong>{confirm.nom}</strong> ? Cette action est irréversible.
+            </p>
             <div className="flex gap-3">
               <button onClick={() => setConfirm(null)}
-                className="flex-1 border border-slate-300 text-slate-700 py-2 rounded-lg text-sm hover:bg-slate-50 transition">Annuler</button>
+                className="flex-1 border border-slate-300 text-slate-700 py-2 rounded-lg text-sm hover:bg-slate-50 transition">
+                Annuler
+              </button>
               <button onClick={() => handleDelete(confirm.id_quartier)}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg text-sm transition">Supprimer</button>
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg text-sm transition">
+                Supprimer
+              </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   )
