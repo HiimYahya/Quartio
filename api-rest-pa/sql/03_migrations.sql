@@ -2,6 +2,13 @@
 -- MIGRATION 03 — Refresh tokens + Notifications
 -- ============================================================
 
+-- MIGRATION 04 — Colonnes contrat pour le flux payant
+ALTER TABLE contrat ADD COLUMN IF NOT EXISTS id_vendeur      INTEGER REFERENCES utilisateur(id_utilisateur) ON DELETE SET NULL;
+ALTER TABLE contrat ADD COLUMN IF NOT EXISTS id_acheteur     INTEGER REFERENCES utilisateur(id_utilisateur) ON DELETE SET NULL;
+ALTER TABLE contrat ADD COLUMN IF NOT EXISTS id_annonce_mongo VARCHAR(50);
+ALTER TABLE contrat ADD COLUMN IF NOT EXISTS signe_vendeur   BOOLEAN DEFAULT FALSE;
+ALTER TABLE contrat ADD COLUMN IF NOT EXISTS signe_acheteur  BOOLEAN DEFAULT FALSE;
+
 -- REFRESH_TOKEN — pour le renouvellement du JWT sans re-login
 CREATE TABLE IF NOT EXISTS refresh_token (
   id_token       SERIAL PRIMARY KEY,

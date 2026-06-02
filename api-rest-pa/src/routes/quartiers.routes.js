@@ -7,18 +7,169 @@ const role     = require('../middlewares/role.middleware');
 const validate = require('../middlewares/validate.middleware');
 const { createSchema, updateSchema } = require('../validators/quartier.validator');
 
-// Lecture publique
-router.get('/',    ctrl.getAll);
-router.get('/:id', ctrl.getById);
+/**
+ * @swagger
+ * /api/quartiers:
+ *   get:
+ *     summary: Liste tous les quartiers
+ *     tags: [Quartiers]
+ *     security: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 20 }
+ *     responses:
+ *       200:
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/PaginatedResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: array
+ *                       items: { $ref: '#/components/schemas/Quartier' }
+ *   post:
+ *     summary: Créer un quartier (admin)
+ *     description: |
+ *       Crée dans PostgreSQL et Neo4j.
+ *       Si une géométrie est fournie, vérifie l'absence de chevauchement via Turf.js.
+ *     tags: [Quartiers]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/QuartierCreate' }
+ *     responses:
+ *       201:
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Quartier' }
+ *       409: { description: Chevauchement avec un quartier existant }
+ */
+router.get('/', ctrl.getAll);
+router.post('/', auth, role('admin'), validate(createSchema), ctrl.create);
 
-// Écriture — admin uniquement
-router.post('/',    auth, role('admin'), validate(createSchema), ctrl.create);
+/**
+ * @swagger
+ * /api/quartiers/{id}:
+ *   get:
+ *     summary: Détail d'un quartier
+ *     tags: [Quartiers]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Quartier' }
+ *       404: { description: Quartier non trouvé }
+ *   put:
+ *     summary: Modifier un quartier (admin)
+ *     description: Vérifie l'absence de chevauchement si la géométrie change.
+ *     tags: [Quartiers]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/QuartierCreate' }
+ *     responses:
+ *       200:
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Quartier' }
+ *       409: { description: Chevauchement détecté }
+ *   delete:
+ *     summary: Supprimer un quartier (admin)
+ *     description: Supprime dans PostgreSQL et Neo4j (DETACH DELETE).
+ *     tags: [Quartiers]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       204: { description: Supprimé }
+ */
+router.get('/:id', ctrl.getById);
 router.put('/:id',  auth, role('admin'), validate(updateSchema), ctrl.update);
 router.delete('/:id', auth, role('admin'), ctrl.remove);
 
-// Sous-ressources
-router.get('/:id/habitants',  auth, ctrl.getHabitants);
-router.get('/:id/annonces',   ctrl.getAnnonces);
+/**
+ * @swagger
+ * /api/quartiers/{id}/habitants:
+ *   get:
+ *     summary: Habitants du quartier (Neo4j [:HABITE])
+ *     tags: [Quartiers]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items: { $ref: '#/components/schemas/UtilisateurPublic' }
+ */
+router.get('/:id/habitants', auth, ctrl.getHabitants);
+
+/**
+ * @swagger
+ * /api/quartiers/{id}/annonces:
+ *   get:
+ *     summary: Annonces du quartier (Neo4j → MongoDB)
+ *     tags: [Quartiers]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items: { $ref: '#/components/schemas/Annonce' }
+ */
+router.get('/:id/annonces', ctrl.getAnnonces);
+
+/**
+ * @swagger
+ * /api/quartiers/{id}/evenements:
+ *   get:
+ *     summary: Événements du quartier (Neo4j → MongoDB)
+ *     tags: [Quartiers]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items: { $ref: '#/components/schemas/Evenement' }
+ */
 router.get('/:id/evenements', ctrl.getEvenements);
 
 module.exports = router;

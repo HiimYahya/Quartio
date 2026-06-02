@@ -14,12 +14,47 @@ export default function ProfilPage() {
   const [transactions, setTransactions] = useState([])
   const [txLoading, setTxLoading]       = useState(true)
 
+  // ── Quartier ──────────────────────────────────────────────────────────────
+  const [quartier,       setQuartier]       = useState(null)   // quartier actuel
+  const [qLoading,       setQLoading]       = useState(true)
+  const [adresse,        setAdresse]        = useState('')
+  const [detecting,      setDetecting]      = useState(false)
+  const [detectResult,   setDetectResult]   = useState(null)  // { type: 'success'|'error', message }
+
+
   useEffect(() => {
     api.get('/transactions')
       .then(({ data }) => setTransactions(data.data ?? data.transactions ?? []))
       .catch(() => setTransactions([]))
       .finally(() => setTxLoading(false))
   }, [])
+
+  // Charge le quartier actuel de l'utilisateur
+  useEffect(() => {
+    if (!user?.id) return
+    api.get(`/utilisateurs/${user.id}/quartiers`)
+      .then(({ data }) => setQuartier(data[0] ?? null))
+      .catch(() => setQuartier(null))
+      .finally(() => setQLoading(false))
+  }, [user?.id])
+
+  const handleDetect = async (e) => {
+    e.preventDefault()
+    if (!adresse.trim()) return
+    setDetecting(true)
+    setDetectResult(null)
+    try {
+      const { data } = await api.post(`/utilisateurs/${user.id}/quartier/detect`, { adresse })
+      setQuartier(data.quartier)
+      setDetectResult({ type: 'success', message: `Vous avez été assigné au quartier "${data.quartier.nom}"` })
+      setAdresse('')
+    } catch (err) {
+      const msg = err.response?.data?.error ?? 'Erreur lors de la détection'
+      setDetectResult({ type: 'error', message: msg })
+    } finally {
+      setDetecting(false)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -48,6 +83,66 @@ export default function ProfilPage() {
           <p className="text-white/50 text-xs mt-2">{t('profile.balanceHint')}</p>
         </div>
         <div className="text-6xl opacity-30">⭐</div>
+      </div>
+
+      {/* Mon quartier */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
+        <h3 className="font-semibold text-gray-800">Mon quartier</h3>
+
+        {/* Quartier actuel */}
+        {qLoading ? (
+          <p className="text-sm text-gray-400">Chargement…</p>
+        ) : quartier ? (
+          <div className="flex items-center gap-3 bg-[#f0faf5] rounded-xl px-4 py-3">
+            <span className="text-2xl">🏘️</span>
+            <div>
+              <p className="font-semibold text-[#1a4a3a]">{quartier.nom}</p>
+              <p className="text-xs text-gray-500">Votre quartier actuel</p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-500">
+            <span className="text-xl">📍</span>
+            Vous n'êtes rattaché à aucun quartier pour le moment.
+          </div>
+        )}
+
+        {/* Formulaire de détection par adresse */}
+        <form onSubmit={handleDetect} className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {quartier ? 'Changer de quartier via mon adresse' : 'Trouver mon quartier via mon adresse'}
+            </label>
+            <input
+              value={adresse}
+              onChange={(e) => { setAdresse(e.target.value); setDetectResult(null) }}
+              placeholder="Ex: 12 rue de Rivoli, Paris"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Saisissez votre adresse complète. Elle sera comparée aux zones définies sur la carte.
+            </p>
+          </div>
+
+          {/* Résultat de la détection */}
+          {detectResult && (
+            <div className={`rounded-lg px-4 py-3 text-sm ${
+              detectResult.type === 'success'
+                ? 'bg-green-50 border border-green-200 text-green-700'
+                : 'bg-red-50 border border-red-200 text-red-700'
+            }`}>
+              {detectResult.type === 'success' ? '✓ ' : '⚠️ '}{detectResult.message}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={detecting || !adresse.trim()}
+            className="w-full bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-medium py-2.5 rounded-lg transition-colors disabled:opacity-60 text-sm"
+          >
+            {detecting ? 'Recherche en cours…' : 'Trouver mon quartier'}
+          </button>
+        </form>
       </div>
 
       {/* Transactions */}

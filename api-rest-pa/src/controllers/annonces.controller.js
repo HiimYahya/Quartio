@@ -101,6 +101,79 @@ exports.remove = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// POST /api/annonces/:id/contrat  → crée un contrat depuis une annonce payante
+// L'utilisateur connecté devient l'acheteur, l'auteur de l'annonce le vendeur.
+exports.creerContrat = async (req, res, next) => {
+  try {
+    if (!validateMongoId(req.params.id, res)) return;
+    const annonce = await Annonce.findById(req.params.id);
+    if (!annonce) return res.status(404).json({ error: 'Annonce non trouvée' });
+
+    if (annonce.statut !== 'active')
+      return res.status(409).json({ error: 'Cette annonce n\'est plus disponible' });
+
+    const acheteurId = req.user.id;
+    const vendeurId  = annonce.id_utilisateur_pg;
+
+    if (acheteurId === vendeurId)
+      return res.status(409).json({ error: 'Vous ne pouvez pas accepter votre propre annonce' });
+
+    // Vérifier que l'acheteur a assez de points si l'annonce est payante
+    const cout = annonce.est_payant ? (annonce.cout_points ?? 0) : 0;
+    if (cout > 0) {
+      const { rows } = await pool.query(
+        'SELECT points_solde FROM utilisateur WHERE id_utilisateur = $1', [acheteurId]
+      );
+      if (rows[0].points_solde < cout)
+        return res.status(409).json({ error: `Points insuffisants (solde : ${rows[0].points_solde} pts, requis : ${cout} pts)` });
+    }
+
+    // Vérifier qu'un contrat n'existe pas déjà entre cet acheteur et cette annonce
+    const existing = await pool.query(
+      'SELECT id_contrat FROM contrat WHERE id_annonce_mongo = $1 AND id_acheteur = $2',
+      [req.params.id, acheteurId]
+    );
+    if (existing.rows.length > 0)
+      return res.status(409).json({ error: 'Vous avez déjà un contrat en cours pour cette annonce', id_contrat: existing.rows[0].id_contrat });
+
+    // Créer le contrat
+    const { rows } = await pool.query(
+      `INSERT INTO contrat (points_echanges, id_vendeur, id_acheteur, id_annonce_mongo)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [cout, vendeurId, acheteurId, req.params.id]
+    );
+    const contrat = rows[0];
+
+    // Relations Neo4j : les deux participants sont liés au contrat
+    const session = driver.session();
+    try {
+      await session.run(
+        `MERGE (acheteur:Utilisateur {pg_id: $aid})
+         MERGE (vendeur:Utilisateur  {pg_id: $vid})
+         MERGE (c:Contrat            {pg_id: $cid})
+         MERGE (a:Annonce            {mongo_id: $mid})
+         MERGE (acheteur)-[:SIGNE]->(c)
+         MERGE (vendeur)-[:SIGNE]->(c)
+         MERGE (a)-[:GENERE]->(c)`,
+        { aid: acheteurId, vid: vendeurId, cid: contrat.id_contrat, mid: req.params.id }
+      );
+    } finally {
+      await session.close();
+    }
+
+    // Notifier le vendeur
+    const { createNotification } = require('../utils/notify');
+    createNotification(
+      vendeurId, 'contrat',
+      'Nouvelle demande de service',
+      `Un voisin souhaite bénéficier de votre service "${annonce.titre}". Consultez le contrat #${contrat.id_contrat}.`,
+      String(contrat.id_contrat), 'contrat'
+    );
+
+    res.status(201).json(contrat);
+  } catch (err) { next(err); }
+};
+
 // GET /api/annonces/:id/contrat  → Neo4j [:GENERE] → PostgreSQL
 exports.getContrat = async (req, res, next) => {
   try {

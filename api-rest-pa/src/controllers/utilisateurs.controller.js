@@ -171,3 +171,136 @@ exports.getTransactions = async (req, res, next) => {
     res.json(result.rows);
   } catch (err) { next(err); }
 };
+
+// ─── Ray casting ─────────────────────────────────────────────────────────────
+// Détermine si un point (lat, lng) est à l'intérieur d'un polygone GeoJSON.
+//
+// Algorithme : on lance un rayon horizontal vers la droite depuis le point.
+// On compte combien de fois ce rayon coupe les arêtes du polygone.
+//   - Nombre impair  → le point est DEDANS
+//   - Nombre pair    → le point est DEHORS
+//
+// ring : tableau de [lng, lat] (format GeoJSON — attention, ordre inversé vs Leaflet)
+function pointInPolygon(lat, lng, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0]; const yi = ring[i][1]; // [lng, lat]
+    const xj = ring[j][0]; const yj = ring[j][1];
+    // Le rayon croise l'arête si :
+    //   - le point est entre les latitudes des deux sommets
+    //   - le point est à gauche du point d'intersection
+    const cross = ((yi > lat) !== (yj > lat))
+      && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi);
+    if (cross) inside = !inside;
+  }
+  return inside;
+}
+
+// GET /api/utilisateurs/:id/quartiers → récupère le/les quartier(s) de l'utilisateur
+exports.getQuartiers = async (req, res, next) => {
+  try {
+    const userId = parseInt(req.params.id);
+    if (req.user.id !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Accès refusé' });
+    }
+
+    const session = driver.session();
+    let ids = [];
+    try {
+      const result = await session.run(
+        'MATCH (u:Utilisateur {pg_id: $uid})-[:HABITE]->(q:Quartier) RETURN q.pg_id AS id',
+        { uid: userId }
+      );
+      ids = result.records.map((r) => {
+        const v = r.get('id');
+        return typeof v === 'object' ? v.toNumber() : parseInt(v);
+      });
+    } finally {
+      await session.close();
+    }
+
+    if (ids.length === 0) return res.json([]);
+
+    const rows = await pool.query(
+      'SELECT id_quartier, nom FROM quartier WHERE id_quartier = ANY($1::int[])',
+      [ids]
+    );
+    res.json(rows.rows);
+  } catch (err) { next(err); }
+};
+
+// POST /api/utilisateurs/:id/quartier/detect
+// Body : { adresse: string }
+// 1. Géocode l'adresse via Nominatim (OpenStreetMap)
+// 2. Ray casting sur tous les quartiers avec une géométrie
+// 3. Si trouvé : crée la relation HABITE dans Neo4j et retourne le quartier
+// 4. Si non trouvé : 404 avec le message approprié
+exports.detectQuartier = async (req, res, next) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const { adresse } = req.body;
+
+    if (req.user.id !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Accès refusé' });
+    }
+    if (!adresse || !adresse.trim()) {
+      return res.status(400).json({ error: 'Adresse requise' });
+    }
+
+    // ── Étape 1 : Géocodage Nominatim ────────────────────────────────────────
+    const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(adresse.trim())}&format=json&limit=1`;
+    const geoRes = await fetch(geoUrl, {
+      headers: { 'User-Agent': 'Quartio/1.0 contact@quartio.fr' },
+    });
+    const geoData = await geoRes.json();
+
+    if (!geoData.length) {
+      return res.status(422).json({ error: 'Adresse introuvable — vérifiez votre saisie' });
+    }
+
+    const lat = parseFloat(geoData[0].lat);
+    const lng = parseFloat(geoData[0].lon);
+
+    // ── Étape 2 : Récupération des quartiers avec géométrie ───────────────────
+    const { rows: quartiers } = await pool.query(
+      'SELECT id_quartier, nom, geometrie FROM quartier WHERE geometrie IS NOT NULL'
+    );
+
+    // ── Étape 3 : Ray casting ─────────────────────────────────────────────────
+    let found = null;
+    for (const q of quartiers) {
+      try {
+        const ring = JSON.parse(q.geometrie).geometry.coordinates[0]; // [[lng,lat], ...]
+        if (pointInPolygon(lat, lng, ring)) {
+          found = q;
+          break;
+        }
+      } catch { /* géométrie invalide — on ignore */ }
+    }
+
+    if (!found) {
+      return res.status(404).json({
+        error: 'Aucun quartier ne correspond à cette adresse',
+        coordinates: { lat, lng },
+      });
+    }
+
+    // ── Étape 4 : Assigne le quartier dans Neo4j (relation HABITE) ────────────
+    const session = driver.session();
+    try {
+      await session.run(
+        `MERGE (u:Utilisateur {pg_id: $uid})
+         MERGE (q:Quartier    {pg_id: $qid})
+         MERGE (u)-[:HABITE]->(q)`,
+        { uid: userId, qid: found.id_quartier }
+      );
+    } finally {
+      await session.close();
+    }
+
+    res.json({
+      quartier:    { id_quartier: found.id_quartier, nom: found.nom },
+      coordinates: { lat, lng },
+    });
+  } catch (err) { next(err); }
+};
