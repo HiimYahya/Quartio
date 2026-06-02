@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "eslint .",
+    "start": "node serve.cjs",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -18,6 +18,7 @@
     "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.16.0",
     "recharts": "^3.8.1",
+    "serve-handler": "^6.1.7",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
