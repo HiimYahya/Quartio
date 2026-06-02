@@ -1,6 +1,29 @@
-const pool = require('../config/db');
-const { driver } = require('../config/neo4j');
+const pool             = require('../config/db');
+const { driver }       = require('../config/neo4j');
 const { getPagination, paginate } = require('../utils/pagination');
+const booleanIntersects = require('@turf/boolean-intersects').default;
+
+// Vérifie si newGeoStr (JSON string) chevauche un quartier existant.
+// excludeId permet d'exclure le quartier qu'on est en train de modifier.
+async function checkOverlap(newGeoStr, excludeId = null) {
+  if (!newGeoStr) return null;
+  let newGeo;
+  try { newGeo = JSON.parse(newGeoStr); } catch { return null; }
+
+  const existing = await pool.query(
+    'SELECT id_quartier, nom, geometrie FROM quartier WHERE geometrie IS NOT NULL AND id_quartier != $1',
+    [excludeId ?? -1]
+  );
+
+  for (const row of existing.rows) {
+    try {
+      if (booleanIntersects(newGeo, JSON.parse(row.geometrie))) {
+        return row.nom; // retourne le nom du premier quartier en conflit
+      }
+    } catch { /* ignore les géométries invalides */ }
+  }
+  return null;
+}
 
 // GET /api/quartiers
 exports.getAll = async (req, res, next) => {
@@ -38,6 +61,11 @@ exports.create = async (req, res, next) => {
   try {
     const { nom, geometrie } = req.body;
 
+    const conflict = await checkOverlap(geometrie);
+    if (conflict) {
+      return res.status(409).json({ error: `Zone chevauche le quartier "${conflict}"` });
+    }
+
     const result = await pool.query(
       'INSERT INTO quartier (nom, geometrie) VALUES ($1, $2) RETURNING *',
       [nom, geometrie || null]
@@ -67,6 +95,11 @@ exports.update = async (req, res, next) => {
   try {
     const { nom, geometrie } = req.body;
     const { id } = req.params;
+
+    const conflict = await checkOverlap(geometrie, parseInt(id));
+    if (conflict) {
+      return res.status(409).json({ error: `Zone chevauche le quartier "${conflict}"` });
+    }
 
     const current = await pool.query(
       'SELECT * FROM quartier WHERE id_quartier = $1',
