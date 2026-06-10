@@ -1,6 +1,7 @@
 const pool       = require('../config/db');
 const { driver } = require('../config/neo4j');
 const { getPagination, paginate } = require('../utils/pagination');
+const { emitAlert } = require('../socket/index');
 
 // GET /api/votes?page=1&limit=20&statut=ouvert
 exports.getAll = async (req, res, next) => {
@@ -39,17 +40,24 @@ exports.getById = async (req, res, next) => {
 // POST /api/votes  (auth)
 exports.create = async (req, res, next) => {
   try {
-    const { titre, description, type, date_debut, date_fin, est_anonyme, options, id_themes } = req.body;
+    const { titre, description, type, type_vote, nb_choix_max, date_debut, date_fin, est_anonyme, options: rawOptions, id_themes } = req.body;
+
+    const typeVote = type_vote || 'choix_multiple';
 
     const voteResult = await pool.query(
-      `INSERT INTO vote (titre, description, type, date_debut, date_fin, est_anonyme)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [titre, description, type, date_debut, date_fin, est_anonyme ?? false]
+      `INSERT INTO vote (titre, description, type, type_vote, nb_choix_max, date_debut, date_fin, est_anonyme)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [titre, description, type, typeVote, nb_choix_max ?? 1, date_debut, date_fin, est_anonyme ?? false]
     );
     const vote = voteResult.rows[0];
 
+    // Pour oui_non : options fixes générées automatiquement
+    const optionsToInsert = typeVote === 'oui_non'
+      ? [{ libelle: 'Oui', ordre: 0 }, { libelle: 'Non', ordre: 1 }]
+      : (rawOptions ?? []);
+
     const insertedOptions = [];
-    for (const opt of options) {
+    for (const opt of optionsToInsert) {
       const optResult = await pool.query(
         'INSERT INTO option_vote (id_vote, libelle, ordre) VALUES ($1, $2, $3) RETURNING *',
         [vote.id_vote, opt.libelle, opt.ordre ?? 0]
@@ -77,6 +85,13 @@ exports.create = async (req, res, next) => {
     } finally {
       await session.close();
     }
+
+    // Alerte temps réel à tous les connectés
+    emitAlert('vote', {
+      id_vote: vote.id_vote,
+      titre:   vote.titre,
+      type_vote: vote.type_vote,
+    });
 
     res.status(201).json({ ...vote, options: insertedOptions });
   } catch (err) { next(err); }

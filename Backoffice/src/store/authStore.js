@@ -11,8 +11,8 @@ const useAuthStore = create((set) => ({
     set({ loading: true, error: null })
     try {
       const { data } = await api.post('/auth/login', { email, mot_de_passe })
-      if (data.utilisateur?.role !== 'admin') {
-        set({ error: 'Accès réservé aux administrateurs.', loading: false })
+      if (!['admin', 'moderateur'].includes(data.utilisateur?.role)) {
+        set({ error: 'Accès réservé aux administrateurs et modérateurs.', loading: false })
         return false
       }
       localStorage.setItem('admin_token', data.access_token)
@@ -27,7 +27,7 @@ const useAuthStore = create((set) => ({
   fetchMe: async () => {
     try {
       const { data } = await api.get('/auth/me')
-      if (data.role !== 'admin') {
+      if (!['admin', 'moderateur'].includes(data.role)) {
         localStorage.removeItem('admin_token')
         set({ admin: null, token: null })
         return

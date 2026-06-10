@@ -99,4 +99,21 @@ function emitNotification(userId, notification) {
 
 function getIo() { return io; }
 
-module.exports = { initSocket, emitNewMessage, emitNotification, getIo };
+// Émet une alerte à tous les utilisateurs en ligne (ou à une liste d'userIds ciblés)
+// type : 'incident' | 'contrat' | 'vote' | 'evenement'
+function emitAlert(type, payload, targetUserIds = null) {
+  if (!io) return;
+  const event = `alert:${type}`;
+  if (targetUserIds) {
+    // Alerte ciblée (ex: contrat en attente de signature d'un utilisateur précis)
+    targetUserIds.forEach((uid) => {
+      const sockets = onlineUsers.get(uid);
+      if (sockets) sockets.forEach((sid) => io.to(sid).emit(event, payload));
+    });
+  } else {
+    // Alerte broadcast à tous les connectés
+    io.emit(event, payload);
+  }
+}
+
+module.exports = { initSocket, emitNewMessage, emitNotification, emitAlert, getIo };

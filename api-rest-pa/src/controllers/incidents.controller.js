@@ -1,6 +1,7 @@
 const Incident        = require('../models/mongo/incident.model');
 const validateMongoId = require('../utils/validateMongoId');
 const { getPagination, paginate } = require('../utils/pagination');
+const { emitAlert }   = require('../socket/index');
 
 // GET /api/incidents?page=1&limit=20&statut=ouvert&priorite=haute  (admin)
 exports.getAll = async (req, res, next) => {
@@ -40,6 +41,17 @@ exports.create = async (req, res, next) => {
       priorite: priorite || 'normale',
       id_utilisateur_pg: req.user.id,
     });
+
+    // Alerte temps réel pour les incidents urgents
+    if (['haute', 'critique'].includes(incident.priorite)) {
+      emitAlert('incident', {
+        id:       incident._id.toString(),
+        titre:    incident.titre,
+        priorite: incident.priorite,
+        statut:   incident.statut,
+      });
+    }
+
     res.status(201).json(incident);
   } catch (err) { next(err); }
 };

@@ -59,3 +59,9 @@ CREATE TABLE IF NOT EXISTS notification (
 
 CREATE INDEX IF NOT EXISTS idx_notification_user    ON notification(id_utilisateur);
 CREATE INDEX IF NOT EXISTS idx_notification_est_lue ON notification(id_utilisateur, est_lue);
+
+-- MIGRATION 06 — Votes paramétrables + MFA
+ALTER TABLE utilisateur ADD COLUMN IF NOT EXISTS mfa_actif   BOOLEAN DEFAULT FALSE;
+ALTER TABLE vote        ADD COLUMN IF NOT EXISTS type_vote   VARCHAR(20) DEFAULT 'choix_multiple'
+  CHECK (type_vote IN ('choix_multiple', 'oui_non', 'classement'));
+ALTER TABLE vote        ADD COLUMN IF NOT EXISTS nb_choix_max INTEGER DEFAULT 1;

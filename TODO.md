@@ -397,9 +397,9 @@
 ---
 
 #### 💻 ConsolePage (`/console`) — À CRÉER (backoffice)
-- ⬜ 🔴 Interface du langage d'interrogation maison MongoDB
-- ⬜ 🔴 Éditeur de requêtes avec coloration syntaxique
-- ⬜ 🔴 Affichage des résultats en tableau JSON
+- ✅ Interface du langage d'interrogation maison MongoDB (ConsolePage backoffice)
+- ✅ Éditeur de requêtes (thème sombre, Ctrl+Entrée, Tab, exemples rapides, aide syntaxe)
+- ✅ Affichage des résultats en tableau JSON + vue AST
 - ⬜ Historique des requêtes
 
 ---
@@ -423,10 +423,11 @@ Le cahier des charges exige **3 rôles** : habitants, **modérateurs**, administ
 Le rôle `moderateur` existe en base mais n'est associé à aucune interface ni permission précise.
 
 **Ce qu'un modérateur doit pouvoir faire (à définir dans le code et les routes) :**
-- ⬜ 🔴 Accéder à une interface modérateur dans le backoffice (sous-ensemble du backoffice admin)
+- ✅ Accéder au backoffice avec le rôle `moderateur` (login + fetchMe mis à jour)
 - ⬜ 🔴 Voir et traiter les messages signalés (`SignalementsPage`)
-- ⬜ 🔴 Modifier le statut des incidents (`IncidentsPage`)
-- ⬜ 🔴 Modérer les annonces (archiver, désactiver) sans pouvoir supprimer
+- ✅ Modifier le statut des incidents (accès backoffice IncidentsPage pour modérateurs)
+- ✅ Modérer les annonces (accès backoffice AnnoncesPage pour modérateurs)
+- ✅ Sidebar filtrée par rôle : modérateur voit Incidents + Annonces uniquement
 - ⬜ 🟡 **Ne peut pas** : gérer les quartiers, changer les rôles, supprimer des comptes, accéder aux stats
 - ⬜ Middleware `role('admin', 'moderateur')` sur les routes concernées
 - ⬜ Route `/api/auth/login` backoffice : accepter aussi `role === 'moderateur'` (pas que `admin`)
@@ -452,9 +453,9 @@ Le cahier des charges dit **"zones de signature / initiales"**. Les initiales (p
 Le cahier des charges dit **"système de gestion paramétrable et extensible"**. Actuellement les votes ne supportent qu'un seul type (choix multiple). "Paramétrable" implique des configurations différentes.
 
 **Sur VotesPage et ContratDetailPage (création de vote) :**
-- ⬜ 🔴 Type de vote configurable : `choix_multiple` / `oui_non` / `classement`
-- ⬜ 🔴 Pour `oui_non` : 2 options fixes générées automatiquement (Oui / Non)
-- ⬜ 🔴 Pour `classement` : les participants ordonnent les options par préférence
+- ✅ Type de vote configurable : `choix_multiple` / `oui_non` / `classement`
+- ✅ Pour `oui_non` : options "Oui"/"Non" générées automatiquement côté backend
+- ✅ Pour `classement` : UI ↑/↓ pour ordonner les options, soumission du classement
 - ⬜ 🟡 Cible du vote : tout le quartier, ou un sous-groupe (habitants d'un quartier spécifique)
 - ⬜ 🟡 Vote à choix unique vs vote à choix multiples (paramètre `nb_choix_max`)
 - ⬜ Fermeture automatique à `date_fin` (cron côté API ou check au chargement)
@@ -468,9 +469,9 @@ Le cahier des charges dit **"système de gestion paramétrable et extensible"**.
 Le cahier des charges dit que Socket.io gère **"Chat, présences online/offline, alertes"**. Les alertes sont un canal distinct du chat.
 
 **Alertes à émettre via Socket.io (en plus des messages) :**
-- ⬜ 🔴 `alert:incident` → quand un incident priorité haute/critique est créé dans le quartier → tous les habitants connectés reçoivent une alerte
-- ⬜ 🔴 `alert:contrat` → quand un contrat attend la signature de l'utilisateur
-- ⬜ 🔴 `alert:vote` → quand un nouveau vote est ouvert dans son quartier
+- ✅ `alert:incident` → incidents haute/critique → broadcast à tous les connectés
+- ✅ `alert:contrat` → contrat en attente de signature → alerte ciblée (destinataire uniquement)
+- ✅ `alert:vote` → nouveau vote → broadcast à tous les connectés
 - ⬜ 🟡 `alert:evenement` → quand un événement est créé dans son quartier
 - ⬜ **DashboardPage** : afficher les alertes actives en haut de page (bannière rouge pour incident critique)
 - ⬜ **Sidebar** : badge rouge animé pour les alertes non lues (distinct des notifications normales)
@@ -775,16 +776,16 @@ Cela s'applique au web (pas seulement à l'app Java).
 
 > "Il est demandé de créer un langage d'interrogation maison (via lex/yacc) pour manipuler les documents MongoDB"
 
-- ⬜ 🔴 Définir la grammaire du langage (syntaxe inspirée SQL mais adaptée MongoDB)
+- ✅ Définir la grammaire du langage (syntaxe inspirée SQL mais adaptée MongoDB)
   ```
   FIND annonces WHERE statut = "active" AND cout_points > 50
   FIND evenements WHERE date_debut > "2026-01-01" LIMIT 10
   INSERT annonce { titre: "Cours piano", cout_points: 30 }
   ```
-- ⬜ 🔴 Implémenter le **lexer** (tokenisation) avec `chevrotain` ou lex/yacc en Node.js
-- ⬜ 🔴 Implémenter le **parser** (AST — arbre syntaxique abstrait)
-- ⬜ 🔴 Transpiler l'AST en requêtes MongoDB Mongoose
-- ⬜ 🔴 `POST /api/query` → endpoint qui reçoit une requête en langage maison et retourne les résultats
+- ✅ Implémenter le **lexer** (tokenisation) avec Chevrotain v10 (word boundaries)
+- ✅ Implémenter le **parser** CST (arbre syntaxique concret)
+- ✅ Transpiler l'AST en requêtes MongoDB Mongoose (filter, sort, limit, $and/$or/$in/$regex)
+- ✅ `POST /api/query` → endpoint qui reçoit une requête et retourne les résultats + AST + durée
 - ⬜ Interface dans le backoffice : console d'interrogation avec autocomplétion
 - ⬜ Tests unitaires du lexer et du parser
 

@@ -11,6 +11,7 @@ const titles = {
   '/evenements':   'Gestion des événements',
   '/annonces':     'Gestion des annonces',
   '/contrats':     'Gestion des contrats',
+  '/console':      'Console Quartio-QL',
 }
 
 export default function Layout() {

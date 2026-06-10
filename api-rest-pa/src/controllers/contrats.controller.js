@@ -2,6 +2,7 @@ const pool                   = require('../config/db');
 const { driver }             = require('../config/neo4j');
 const { getPagination, paginate } = require('../utils/pagination');
 const { createNotification } = require('../utils/notify');
+const { emitAlert }          = require('../socket/index');
 
 // GET /api/contrats  → mes contrats (vendeur ou acheteur)
 exports.getMes = async (req, res, next) => {
@@ -214,6 +215,13 @@ exports.signer = async (req, res, next) => {
         `Le contrat #${contratId} attend votre signature.`,
         String(contratId), 'contrat'
       );
+      // Alerte temps réel à l'autre partie
+      if (autreId) {
+        emitAlert('contrat', {
+          id_contrat: contratId,
+          message: `Le contrat #${contratId} attend votre signature.`,
+        }, [autreId]);
+      }
     }
 
     const { rows: final } = await pool.query('SELECT * FROM contrat WHERE id_contrat = $1', [contratId]);

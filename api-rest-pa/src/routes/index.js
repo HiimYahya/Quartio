@@ -16,5 +16,6 @@ router.use('/incidents',      require('./incidents.routes'));
 router.use('/notifications',  require('./notifications.routes'));
 router.use('/rgpd',           require('./rgpd.routes'));
 router.use('/stats',          require('./stats.routes'));
+router.use('/query',          require('./query.routes'));
 
 module.exports = router;

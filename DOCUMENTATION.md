@@ -16,7 +16,11 @@
 12. [Événements — Inscription, Swipe Neo4j, Suggestions](#12-événements--inscription-swipe-neo4j-suggestions)
 13. [Statistiques backoffice](#13-statistiques-backoffice)
 14. [SSO token Java Desktop](#14-sso-token-java-desktop)
-15. [Documentation Swagger](#15-documentation-swagger)
+15. [Alertes temps réel (Socket.io)](#15-alertes-temps-réel-socketio)
+16. [Votes paramétrables](#16-votes-paramétrables)
+17. [Rôle modérateur (backoffice)](#17-rôle-modérateur-backoffice)
+18. [Langage d'interrogation Quartio-QL](#18-langage-dinterrogation-quartio-ql)
+19. [Documentation Swagger](#19-documentation-swagger)
 
 ---
 
@@ -1343,7 +1347,173 @@ Le `sso_token` accepte les mêmes middlewares `auth` que le token normal (même 
 
 ---
 
-## 15. Documentation Swagger
+## 15. Alertes temps réel (Socket.io)
+
+### Architecture
+
+Les alertes sont un canal distinct du chat. Elles sont émises depuis les controllers backend via `emitAlert()` et reçues par le frontend via des événements Socket.io dédiés.
+
+```js
+// src/socket/index.js
+function emitAlert(type, payload, targetUserIds = null) {
+  const event = `alert:${type}`;
+  if (targetUserIds) {
+    // Alerte ciblée : uniquement aux sockets des utilisateurs listés
+    targetUserIds.forEach((uid) => {
+      const sockets = onlineUsers.get(uid);
+      if (sockets) sockets.forEach((sid) => io.to(sid).emit(event, payload));
+    });
+  } else {
+    // Broadcast à tous les connectés
+    io.emit(event, payload);
+  }
+}
+```
+
+### Événements émis
+
+| Événement | Déclencheur | Cible | Payload |
+|---|---|---|---|
+| `alert:incident` | Création incident `haute`/`critique` | Broadcast | `{ id, titre, priorite, statut }` |
+| `alert:contrat` | Signature d'une partie → autre en attente | Ciblé (signataire attendant) | `{ id_contrat, message }` |
+| `alert:vote` | Création d'un nouveau vote | Broadcast | `{ id_vote, titre, type_vote }` |
+
+### Frontend
+
+`socketStore.js` écoute les 4 événements (`alert:incident`, `alert:contrat`, `alert:vote`, `alert:evenement`) et les empile dans `alerts[]` (max 10, du plus récent au plus ancien).
+
+`AlertBanner.jsx` — bandeau affiché sous la topbar dans le Layout frontoffice :
+- Couleur contextuelle : rouge (incident), amber (contrat), indigo (vote), vert (événement)
+- Icône et label par type
+- Bouton `×` pour fermer chaque alerte individuellement
+- Disparaît automatiquement quand le tableau `alerts` est vide
+
+---
+
+## 16. Votes paramétrables
+
+### Migration SQL
+
+```sql
+ALTER TABLE vote ADD COLUMN IF NOT EXISTS type_vote VARCHAR(20) DEFAULT 'choix_multiple'
+  CHECK (type_vote IN ('choix_multiple', 'oui_non', 'classement'));
+ALTER TABLE vote ADD COLUMN IF NOT EXISTS nb_choix_max INTEGER DEFAULT 1;
+```
+
+### Types de votes
+
+| `type_vote` | Description | Comportement |
+|---|---|---|
+| `choix_multiple` | Défaut — choisir une option parmi N | Options définies par le créateur, vote par clic |
+| `oui_non` | Réponse binaire | Options "Oui"/"Non" générées automatiquement côté backend (aucune option à passer dans le payload) |
+| `classement` | Ordonner par préférence | UI ↑/↓ pour classer les options, soumission de l'ordre complet |
+
+### Backend — création
+
+```js
+// votes.controller.js
+const typeVote = type_vote || 'choix_multiple';
+const optionsToInsert = typeVote === 'oui_non'
+  ? [{ libelle: 'Oui', ordre: 0 }, { libelle: 'Non', ordre: 1 }]
+  : (rawOptions ?? []);
+```
+
+Pour `oui_non`, le frontend n'a pas besoin d'envoyer le champ `options` — le backend les génère.
+
+### Frontend — VotesPage
+
+**Formulaire de création :** 3 boutons de type, formulaire d'options masqué pour `oui_non`, note explicative pour `classement`.
+
+**Affichage :**
+- `choix_multiple` / `oui_non` : boutons cliquables avec barre de progression après vote
+- `classement` : liste ordonnée avec boutons ↑/↓, bouton "Valider mon classement", soumission via `POST /votes/:id/voter` avec `{ classement: [id1, id2, ...] }`
+- Badge de type visible sur chaque carte de vote
+
+---
+
+## 17. Rôle modérateur (backoffice)
+
+### Accès
+
+Le backoffice accepte désormais deux rôles : `admin` et `moderateur`.
+
+**`authStore.js` (backoffice) :**
+```js
+if (!['admin', 'moderateur'].includes(data.utilisateur?.role)) {
+  set({ error: 'Accès réservé aux administrateurs et modérateurs.' })
+  return false
+}
+```
+
+### Sidebar filtrée par rôle
+
+Chaque lien de la sidebar a une propriété `roles` optionnelle. Si absente, le lien est visible par tous les rôles autorisés. Si présente, seuls les rôles listés peuvent le voir.
+
+```js
+const ALL_LINKS = [
+  { to: '/dashboard',    icon: '⊞',  label: 'Dashboard' },              // visible par tous
+  { to: '/statistiques', icon: '📊', label: 'Statistiques', roles: ['admin'] },
+  { to: '/console',      icon: '💻', label: 'Console QL',   roles: ['admin'] },
+  { to: '/utilisateurs', icon: '👥', label: 'Utilisateurs', roles: ['admin'] },
+  { to: '/quartiers',    icon: '🗺️', label: 'Quartiers',    roles: ['admin'] },
+  { to: '/incidents',    icon: '⚠️', label: 'Incidents' },               // visible par tous
+  { to: '/annonces',     icon: '📋', label: 'Annonces' },                // visible par tous
+  { to: '/contrats',     icon: '📄', label: 'Contrats',     roles: ['admin'] },
+  ...
+]
+const links = ALL_LINKS.filter((l) => !l.roles || l.roles.includes(admin?.role))
+```
+
+**Ce que voit un modérateur :** Dashboard, Incidents, Annonces.
+
+**Ce que voit un admin :** tout.
+
+### Badge de rôle
+
+Un badge coloré dans la sidebar identifie le rôle connecté :
+- Indigo : `Administrateur`
+- Amber : `Modérateur`
+
+---
+
+## 18. Langage d'interrogation Quartio-QL
+
+Le langage maison d'interrogation MongoDB est documenté dans deux fichiers dédiés :
+
+- **`QUARTIO-QL.md`** — documentation technique ligne par ligne : architecture 4 couches, lexer (tokens, word boundaries), parser (règles CstParser, lookahead), transpileur (CST → filtre Mongoose, priorité AND/OR), controller (sécurité, whitelist collections), route.
+- **`QUARTIO-QL-COURS.md`** — cours d'utilisation : syntaxe des 5 commandes (FIND, COUNT, INSERT, UPDATE, DELETE), opérateurs, types de valeurs, exemples progressifs, exercices avec corrections, guide des messages d'erreur.
+
+### Fichiers
+
+```
+api-rest-pa/src/lang/
+  ├── lexer.js       — 17 tokens Chevrotain avec word boundaries
+  ├── parser.js      — CstParser avec 12 règles de grammaire
+  ├── transpiler.js  — CST → { filter, sort, limit } Mongoose
+  └── index.js       — pipeline tokenize → parse → transpile
+
+api-rest-pa/src/controllers/query.controller.js  — exécution + sécurité
+api-rest-pa/src/routes/query.routes.js           — POST /api/query (admin + moderateur)
+Backoffice/src/pages/ConsolePage.jsx             — interface console backoffice
+```
+
+### Collections accessibles
+
+`annonces`, `evenements`, `incidents`, `conversations`, `messages` (singulier et pluriel acceptés).
+
+### Sécurité
+
+| Protection | Détail |
+|---|---|
+| Authentification | JWT obligatoire, rôles `admin` ou `moderateur` |
+| Modérateurs | FIND et COUNT uniquement (pas d'INSERT/UPDATE/DELETE) |
+| UPDATE/DELETE sans WHERE | Bloqués (HTTP 400) |
+| Résultats massifs | Limite par défaut 50, plafond à 200 |
+| Injection MongoDB | Impossible — seuls identifiants et littéraux acceptés par la grammaire |
+
+---
+
+## 19. Documentation Swagger
 
 ### Accès
 
@@ -1370,7 +1540,8 @@ http://localhost:3000/api/docs/
 | Transactions | 2 |
 | Incidents | 5 |
 | Notifications | 4 |
-| **Total** | **85 endpoints** |
+| Console/QL | 1 |
+| **Total** | **86 endpoints** |
 
 ### Schémas définis
 
@@ -1390,3 +1561,4 @@ http://localhost:3000/api/docs/
 - Routes RGPD : montées sur `/api/rgpd/*` via `rgpd.routes.js`
 - Routes Stats : montées sur `/api/stats` via `stats.routes.js`
 - Route `/api/evenements/suggestions` déclarée avant `/:id` pour éviter le conflit de routing Express
+- Routes QL : montées sur `/api/query` via `query.routes.js`, accessibles admin + moderateur

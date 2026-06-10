@@ -1,20 +1,23 @@
 import { NavLink } from 'react-router-dom'
 import useAuthStore from '../../store/authStore'
 
-const links = [
+// roles: undefined = tous, sinon tableau de rôles autorisés
+const ALL_LINKS = [
   { to: '/dashboard',    icon: '⊞',  label: 'Dashboard' },
-  { to: '/statistiques', icon: '📊', label: 'Statistiques' },
-  { to: '/utilisateurs', icon: '👥', label: 'Utilisateurs' },
-  { to: '/quartiers',    icon: '🗺️', label: 'Quartiers' },
+  { to: '/statistiques', icon: '📊', label: 'Statistiques', roles: ['admin'] },
+  { to: '/console',      icon: '💻', label: 'Console QL',   roles: ['admin'] },
+  { to: '/utilisateurs', icon: '👥', label: 'Utilisateurs', roles: ['admin'] },
+  { to: '/quartiers',    icon: '🗺️', label: 'Quartiers',    roles: ['admin'] },
   { to: '/incidents',    icon: '⚠️', label: 'Incidents' },
-  { to: '/votes',        icon: '🗳️', label: 'Votes' },
-  { to: '/evenements',   icon: '📅', label: 'Événements' },
+  { to: '/votes',        icon: '🗳️', label: 'Votes',        roles: ['admin'] },
+  { to: '/evenements',   icon: '📅', label: 'Événements',   roles: ['admin'] },
   { to: '/annonces',     icon: '📋', label: 'Annonces' },
-  { to: '/contrats',     icon: '📄', label: 'Contrats' },
+  { to: '/contrats',     icon: '📄', label: 'Contrats',     roles: ['admin'] },
 ]
 
 export default function Sidebar() {
   const { admin, logout } = useAuthStore()
+  const links = ALL_LINKS.filter((l) => !l.roles || l.roles.includes(admin?.role))
 
   return (
     <aside className="w-60 bg-slate-900 flex flex-col h-full shadow-xl shrink-0">
@@ -47,6 +50,11 @@ export default function Sidebar() {
         <div className="px-3 py-2">
           <p className="text-white/80 text-xs font-medium truncate">{admin?.prenom} {admin?.nom}</p>
           <p className="text-white/40 text-xs truncate">{admin?.email}</p>
+          <span className={`mt-1 inline-block text-xs font-semibold px-2 py-0.5 rounded-full ${
+            admin?.role === 'admin' ? 'bg-indigo-500/30 text-indigo-200' : 'bg-amber-500/30 text-amber-200'
+          }`}>
+            {admin?.role === 'admin' ? 'Administrateur' : 'Modérateur'}
+          </span>
         </div>
         <button onClick={logout}
           className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-white/5 hover:text-red-400 transition-all">

@@ -15,6 +15,7 @@ import EvenementsPage  from './pages/EvenementsPage'
 import AnnoncesPage    from './pages/AnnoncesPage'
 import ContratsPage      from './pages/ContratsPage'
 import StatistiquesPage  from './pages/StatistiquesPage'
+import ConsolePage       from './pages/ConsolePage'
 
 export default function App() {
   const { token, fetchMe } = useAuthStore()
@@ -39,6 +40,7 @@ export default function App() {
             <Route path="/annonces"     element={<AnnoncesPage />} />
             <Route path="/contrats"      element={<ContratsPage />} />
             <Route path="/statistiques" element={<StatistiquesPage />} />
+            <Route path="/console"      element={<ConsolePage />} />
           </Route>
         </Route>
 
