@@ -3,6 +3,7 @@ import useAuthStore from '../../store/authStore'
 
 const links = [
   { to: '/dashboard',    icon: '⊞',  label: 'Dashboard' },
+  { to: '/statistiques', icon: '📊', label: 'Statistiques' },
   { to: '/utilisateurs', icon: '👥', label: 'Utilisateurs' },
   { to: '/quartiers',    icon: '🗺️', label: 'Quartiers' },
   { to: '/incidents',    icon: '⚠️', label: 'Incidents' },

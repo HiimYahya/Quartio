@@ -10,6 +10,8 @@ const messageSchema = new mongoose.Schema({
   id_utilisateur_pg:  { type: Number, required: true },
   // Référence MongoDB conversation
   id_conversation: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation' },
+  // IDs PG des utilisateurs ayant lu ce message
+  lu_par: [{ type: Number }],
 }, { timestamps: true });
 
 module.exports = mongoose.model('Message', messageSchema);

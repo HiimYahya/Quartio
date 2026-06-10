@@ -26,10 +26,98 @@ const { registerSchema, loginSchema } = require('../validators/auth.validator');
  *               email:        { type: string, format: email }
  *               mot_de_passe: { type: string, minLength: 8 }
  *     responses:
- *       201: { description: Compte créé }
+ *       201: { description: Compte créé — vérification email requise }
  *       409: { description: Email déjà utilisé }
  */
 router.post('/register', validate(registerSchema), ctrl.register);
+
+/**
+ * @swagger
+ * /api/auth/verify-email:
+ *   post:
+ *     summary: Vérifier l'adresse email avec le code OTP
+ *     tags: [Auth]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, code]
+ *             properties:
+ *               email: { type: string }
+ *               code:  { type: string, minLength: 6, maxLength: 6 }
+ *     responses:
+ *       200: { description: Email vérifié }
+ *       400: { description: Code invalide ou expiré }
+ */
+router.post('/verify-email', ctrl.verifyEmail);
+
+/**
+ * @swagger
+ * /api/auth/resend-verification:
+ *   post:
+ *     summary: Renvoyer le code de vérification email
+ *     tags: [Auth]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email: { type: string }
+ *     responses:
+ *       200: { description: Code renvoyé }
+ */
+router.post('/resend-verification', ctrl.resendVerification);
+
+/**
+ * @swagger
+ * /api/auth/forgot-password:
+ *   post:
+ *     summary: Demander un lien de réinitialisation du mot de passe
+ *     tags: [Auth]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email: { type: string }
+ *     responses:
+ *       200: { description: Lien envoyé (réponse générique pour sécurité) }
+ */
+router.post('/forgot-password', ctrl.forgotPassword);
+
+/**
+ * @swagger
+ * /api/auth/reset-password:
+ *   post:
+ *     summary: Réinitialiser le mot de passe avec le token reçu par email
+ *     tags: [Auth]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token, mot_de_passe]
+ *             properties:
+ *               token:        { type: string }
+ *               mot_de_passe: { type: string, minLength: 8 }
+ *     responses:
+ *       200: { description: Mot de passe mis à jour }
+ *       400: { description: Token invalide ou expiré }
+ */
+router.post('/reset-password', ctrl.resetPassword);
 
 /**
  * @swagger
@@ -51,6 +139,7 @@ router.post('/register', validate(registerSchema), ctrl.register);
  *     responses:
  *       200: { description: Token JWT retourné }
  *       401: { description: Identifiants incorrects }
+ *       403: { description: Email non vérifié }
  */
 router.post('/login', validate(loginSchema), ctrl.login);
 
@@ -81,5 +170,24 @@ router.post('/logout', ctrl.logout);
  *     tags: [Auth]
  */
 router.get('/me', auth, ctrl.me);
+
+/**
+ * @swagger
+ * /api/auth/sso-token:
+ *   get:
+ *     summary: Générer un token SSO court (5 min) pour l'application Java Desktop
+ *     tags: [Auth]
+ *     responses:
+ *       200:
+ *         description: Token SSO
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 sso_token: { type: string }
+ *                 expires_in: { type: integer, example: 300 }
+ */
+router.get('/sso-token', auth, ctrl.ssoToken);
 
 module.exports = router;

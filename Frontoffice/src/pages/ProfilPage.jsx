@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import useAuthStore from '../store/authStore'
 import api from '../services/api'
 import LangSwitcher from '../components/ui/LangSwitcher'
+import MfaSection from '../components/ui/MfaSection'
 
 export default function ProfilPage() {
   const { user, fetchMe, logout } = useAuthStore()
@@ -214,16 +215,146 @@ export default function ProfilPage() {
         </form>
       </div>
 
+      {/* Sécurité — MFA */}
+      <MfaSection user={user} onStatusChange={fetchMe} />
+
       {/* Langue */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
         <h3 className="font-semibold text-gray-800 mb-3">Langue / Language</h3>
         <LangSwitcher />
       </div>
 
+      {/* RGPD */}
+      <RgpdSection user={user} onDelete={logout} />
+
       <button onClick={logout}
         className="w-full border border-red-200 text-red-600 hover:bg-red-50 font-medium py-2.5 rounded-xl transition-colors text-sm">
         {t('profile.logout')}
       </button>
+    </div>
+  )
+}
+
+function RgpdSection({ user, onDelete }) {
+  const [deleteStep, setDeleteStep] = useState(null) // null | 'confirm' | 'verify'
+  const [credential, setCredential] = useState('')
+  const [loading, setLoading]       = useState(false)
+  const [error, setError]           = useState(null)
+
+  const handleExport = async () => {
+    try {
+      const res = await api.get('/rgpd/export', { responseType: 'blob' })
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/json' }))
+      const a   = document.createElement('a')
+      a.href     = url
+      a.download = `quartio-mes-donnees-${user?.id}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch { /* silencieux — l'utilisateur verra l'absence de téléchargement */ }
+  }
+
+  const handleDelete = async (e) => {
+    e.preventDefault()
+    if (!credential.trim()) return setError('Veuillez entrer votre ' + (user?.mfa_actif ? 'code MFA' : 'mot de passe'))
+    setLoading(true); setError(null)
+    try {
+      const body = user?.mfa_actif
+        ? { code: credential }
+        : { mot_de_passe: credential }
+      await api.delete('/rgpd/delete-account', { data: body })
+      onDelete?.()
+    } catch (err) {
+      setError(err.response?.data?.error || 'Erreur lors de la suppression')
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
+      <h3 className="font-semibold text-gray-800">Mes données (RGPD)</h3>
+      <p className="text-xs text-gray-500">
+        Conformément au RGPD, vous pouvez accéder à toutes vos données ou demander la suppression de votre compte.
+      </p>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">{error}</div>
+      )}
+
+      <button
+        onClick={handleExport}
+        className="w-full border border-[#1a4a3a] text-[#1a4a3a] hover:bg-[#f0faf5] font-medium py-2.5 rounded-lg text-sm transition-colors"
+      >
+        ⬇ Exporter mes données (JSON)
+      </button>
+
+      {deleteStep === null && (
+        <button
+          onClick={() => { setDeleteStep('confirm'); setError(null) }}
+          className="w-full border border-red-300 text-red-600 hover:bg-red-50 font-medium py-2.5 rounded-lg text-sm transition-colors"
+        >
+          Supprimer mon compte
+        </button>
+      )}
+
+      {deleteStep === 'confirm' && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
+          <p className="text-sm font-semibold text-red-700">⚠️ Cette action est irréversible</p>
+          <p className="text-xs text-red-600">
+            Toutes vos données personnelles seront supprimées définitivement.
+            Vos messages seront anonymisés. Vos contrats seront conservés sans votre identité (obligation légale).
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setDeleteStep(null)}
+              className="flex-1 border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium py-2 rounded-lg text-sm"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={() => setDeleteStep('verify')}
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 rounded-lg text-sm"
+            >
+              Continuer
+            </button>
+          </div>
+        </div>
+      )}
+
+      {deleteStep === 'verify' && (
+        <form onSubmit={handleDelete} className="space-y-3">
+          <label className="block text-sm font-medium text-gray-700">
+            {user?.mfa_actif
+              ? 'Entrez votre code MFA pour confirmer'
+              : 'Entrez votre mot de passe pour confirmer'}
+          </label>
+          <input
+            type={user?.mfa_actif ? 'text' : 'password'}
+            inputMode={user?.mfa_actif ? 'numeric' : undefined}
+            maxLength={user?.mfa_actif ? 6 : undefined}
+            value={credential}
+            onChange={(e) => { setCredential(e.target.value); setError(null) }}
+            placeholder={user?.mfa_actif ? '123456' : '••••••••'}
+            className="w-full border border-red-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+            autoFocus
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => { setDeleteStep(null); setCredential('') }}
+              className="flex-1 border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium py-2 rounded-lg text-sm"
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 rounded-lg text-sm disabled:opacity-60"
+            >
+              {loading ? 'Suppression…' : 'Supprimer définitivement'}
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   )
 }

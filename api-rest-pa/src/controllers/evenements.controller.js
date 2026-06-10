@@ -207,3 +207,58 @@ exports.getParticipants = async (req, res, next) => {
     })));
   } catch (err) { next(err); }
 };
+
+// POST /api/evenements/:id/swipe — enregistre l'intérêt dans Neo4j
+exports.swipe = async (req, res, next) => {
+  try {
+    if (!validateMongoId(req.params.id, res)) return;
+    const { direction } = req.body; // 'right' | 'left'
+    if (!['right', 'left'].includes(direction)) {
+      return res.status(400).json({ error: 'direction doit être "right" ou "left"' });
+    }
+
+    const relation = direction === 'right' ? 'A_AIME' : 'A_IGNORE';
+    const session  = driver.session();
+    try {
+      await session.run(
+        `MERGE (u:Utilisateur {pg_id: $uid})
+         MERGE (e:Evenement {mongo_id: $mid})
+         MERGE (u)-[r:${relation}]->(e)
+         ON CREATE SET r.date_action = datetime()`,
+        { uid: req.user.id, mid: req.params.id }
+      );
+    } finally {
+      await session.close();
+    }
+
+    res.status(201).json({ relation });
+  } catch (err) { next(err); }
+};
+
+// GET /api/evenements/suggestions — recommandations Neo4j basées sur les intérêts communs
+exports.suggestions = async (req, res, next) => {
+  try {
+    const uid     = req.user.id;
+    const session = driver.session();
+    let mongoIds  = [];
+    try {
+      const result = await session.run(
+        `MATCH (me:Utilisateur {pg_id: $uid})-[:PARTICIPE|A_AIME]->(e1:Evenement)
+         <-[:PARTICIPE|A_AIME]-(voisin:Utilisateur)-[:PARTICIPE|A_AIME]->(e2:Evenement)
+         WHERE NOT (me)-[:PARTICIPE|A_AIME]->(e2)
+           AND NOT (me)-[:A_IGNORE]->(e2)
+         RETURN e2.mongo_id AS mongo_id, count(voisin) AS score
+         ORDER BY score DESC LIMIT 5`,
+        { uid }
+      );
+      mongoIds = result.records.map((r) => r.get('mongo_id')).filter(Boolean);
+    } finally {
+      await session.close();
+    }
+
+    if (mongoIds.length === 0) return res.json([]);
+
+    const events = await Evenement.find({ _id: { $in: mongoIds }, statut: 'planifie' }).lean();
+    res.json(events);
+  } catch (err) { next(err); }
+};

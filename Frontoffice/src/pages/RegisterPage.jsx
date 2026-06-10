@@ -18,7 +18,7 @@ export default function RegisterPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     const ok = await register(form)
-    if (ok) navigate('/login')
+    if (ok) navigate(`/verify-email?email=${encodeURIComponent(form.email)}`)
   }
 
   return (

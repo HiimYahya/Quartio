@@ -26,10 +26,14 @@ export default function SwipeView({ evenements }) {
     const id = ev._id ?? ev.id
     if (direction === 'right') {
       showFeedback('join')
+      // Inscription + enregistrement Neo4j [:A_AIME]
       try { await api.post(`/evenements/${id}/participer`) } catch {}
+      try { await api.post(`/evenements/${id}/swipe`, { direction: 'right' }) } catch {}
       setJoined((j) => [...j, ev])
     } else {
       showFeedback('skip')
+      // Enregistrement Neo4j [:A_IGNORE]
+      try { await api.post(`/evenements/${id}/swipe`, { direction: 'left' }) } catch {}
       setSkipped((s) => [...s, ev])
     }
   }, [])

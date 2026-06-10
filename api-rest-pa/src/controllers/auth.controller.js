@@ -2,10 +2,13 @@ const bcrypt = require('bcrypt');
 const jwt    = require('jsonwebtoken');
 const crypto = require('crypto');
 const pool   = require('../config/db');
+const mailer = require('../config/mailer');
 
 const REFRESH_EXPIRES_DAYS = 7;
 
 const generateRefreshToken = () => crypto.randomBytes(64).toString('hex');
+
+const generateOtp = () => String(Math.floor(100000 + Math.random() * 900000));
 
 // POST /api/auth/register
 exports.register = async (req, res, next) => {
@@ -27,7 +30,118 @@ exports.register = async (req, res, next) => {
       [nom, prenom, email, hash, telephone || null, langue || 'fr']
     );
 
-    res.status(201).json({ utilisateur: result.rows[0] });
+    const user = result.rows[0];
+
+    // Génère et stocke le code OTP (15 min)
+    const code    = generateOtp();
+    const expireAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    await pool.query(
+      'INSERT INTO email_verification (id_utilisateur, code, expire_le) VALUES ($1, $2, $3)',
+      [user.id_utilisateur, code, expireAt]
+    );
+
+    // Envoi de l'email (non-bloquant : on ne fait pas échouer l'inscription si l'email rate)
+    mailer.sendVerificationEmail(email, prenom, code).catch(() => {});
+
+    res.status(201).json({
+      utilisateur: user,
+      email_verification_required: true,
+    });
+  } catch (err) { next(err); }
+};
+
+// POST /api/auth/verify-email
+exports.verifyEmail = async (req, res, next) => {
+  try {
+    const { email, code } = req.body;
+    if (!email || !code) {
+      return res.status(400).json({ error: 'Email et code requis' });
+    }
+
+    const userResult = await pool.query(
+      'SELECT id_utilisateur, prenom, email_verifie FROM utilisateur WHERE email = $1', [email]
+    );
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Utilisateur introuvable' });
+    }
+
+    const user = userResult.rows[0];
+
+    if (user.email_verifie) {
+      return res.status(400).json({ error: 'Email déjà vérifié' });
+    }
+
+    const tokenResult = await pool.query(
+      `SELECT * FROM email_verification
+       WHERE id_utilisateur = $1 AND code = $2 AND utilise = FALSE AND expire_le > NOW()
+       ORDER BY created_at DESC LIMIT 1`,
+      [user.id_utilisateur, code]
+    );
+
+    if (tokenResult.rows.length === 0) {
+      return res.status(400).json({ error: 'Code invalide ou expiré' });
+    }
+
+    // Active le compte et invalide tous les codes
+    await pool.query('BEGIN');
+    await pool.query(
+      'UPDATE utilisateur SET email_verifie = TRUE WHERE id_utilisateur = $1',
+      [user.id_utilisateur]
+    );
+    await pool.query(
+      'UPDATE email_verification SET utilise = TRUE WHERE id_utilisateur = $1',
+      [user.id_utilisateur]
+    );
+    await pool.query('COMMIT');
+
+    // Email de bienvenue
+    mailer.sendWelcomeEmail(email, user.prenom).catch(() => {});
+
+    res.json({ message: 'Email vérifié avec succès. Vous pouvez maintenant vous connecter.' });
+  } catch (err) {
+    await pool.query('ROLLBACK').catch(() => {});
+    next(err);
+  }
+};
+
+// POST /api/auth/resend-verification
+exports.resendVerification = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email requis' });
+
+    const userResult = await pool.query(
+      'SELECT id_utilisateur, prenom, email_verifie FROM utilisateur WHERE email = $1', [email]
+    );
+    if (userResult.rows.length === 0) {
+      // Sécurité : ne pas révéler si l'email existe
+      return res.json({ message: 'Si cet email existe, un nouveau code a été envoyé.' });
+    }
+
+    const user = userResult.rows[0];
+
+    if (user.email_verifie) {
+      return res.status(400).json({ error: 'Cet email est déjà vérifié' });
+    }
+
+    // Invalide les anciens codes
+    await pool.query(
+      'UPDATE email_verification SET utilise = TRUE WHERE id_utilisateur = $1',
+      [user.id_utilisateur]
+    );
+
+    const code     = generateOtp();
+    const expireAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    await pool.query(
+      'INSERT INTO email_verification (id_utilisateur, code, expire_le) VALUES ($1, $2, $3)',
+      [user.id_utilisateur, code, expireAt]
+    );
+
+    mailer.sendVerificationEmail(email, user.prenom, code).catch(() => {});
+
+    res.json({ message: 'Si cet email existe, un nouveau code a été envoyé.' });
   } catch (err) { next(err); }
 };
 
@@ -45,6 +159,25 @@ exports.login = async (req, res, next) => {
     const match = await bcrypt.compare(mot_de_passe, user.mot_de_passe);
     if (!match) {
       return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+    }
+
+    // Bloquer si email non vérifié
+    if (user.email_verifie === false) {
+      return res.status(403).json({
+        error: 'Veuillez vérifier votre adresse email avant de vous connecter.',
+        email_verification_required: true,
+        email: user.email,
+      });
+    }
+
+    // MFA activé → retourner un token temporaire, pas le vrai JWT
+    if (user.mfa_actif && user.mfa_secret) {
+      const mfaToken = jwt.sign(
+        { id: user.id_utilisateur, email: user.email, role: user.role, type: 'mfa' },
+        process.env.JWT_SECRET,
+        { expiresIn: '10m' }
+      );
+      return res.json({ mfa_required: true, mfa_token: mfaToken });
     }
 
     // Access token (courte durée)
@@ -78,6 +211,90 @@ exports.login = async (req, res, next) => {
       },
     });
   } catch (err) { next(err); }
+};
+
+// POST /api/auth/forgot-password
+exports.forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email requis' });
+
+    const userResult = await pool.query(
+      'SELECT id_utilisateur, prenom FROM utilisateur WHERE email = $1', [email]
+    );
+
+    // Toujours répondre la même chose (sécurité)
+    const genericMsg = { message: "Si cet email est associé à un compte, un lien de réinitialisation a été envoyé." };
+
+    if (userResult.rows.length === 0) return res.json(genericMsg);
+
+    const user     = userResult.rows[0];
+    const token    = crypto.randomBytes(64).toString('hex');
+    const expireAt = new Date(Date.now() + 60 * 60 * 1000); // 1h
+
+    // Invalide les anciens tokens
+    await pool.query(
+      'UPDATE password_reset SET utilise = TRUE WHERE id_utilisateur = $1',
+      [user.id_utilisateur]
+    );
+
+    await pool.query(
+      'INSERT INTO password_reset (id_utilisateur, token, expire_le) VALUES ($1, $2, $3)',
+      [user.id_utilisateur, token, expireAt]
+    );
+
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${token}`;
+    mailer.sendResetPasswordEmail(email, user.prenom, resetUrl).catch(() => {});
+
+    res.json(genericMsg);
+  } catch (err) { next(err); }
+};
+
+// POST /api/auth/reset-password
+exports.resetPassword = async (req, res, next) => {
+  try {
+    const { token, mot_de_passe } = req.body;
+    if (!token || !mot_de_passe) {
+      return res.status(400).json({ error: 'Token et nouveau mot de passe requis' });
+    }
+    if (mot_de_passe.length < 8) {
+      return res.status(400).json({ error: 'Le mot de passe doit faire au moins 8 caractères' });
+    }
+
+    const tokenResult = await pool.query(
+      `SELECT * FROM password_reset
+       WHERE token = $1 AND utilise = FALSE AND expire_le > NOW()`,
+      [token]
+    );
+
+    if (tokenResult.rows.length === 0) {
+      return res.status(400).json({ error: 'Lien de réinitialisation invalide ou expiré' });
+    }
+
+    const resetRow = tokenResult.rows[0];
+    const hash     = await bcrypt.hash(mot_de_passe, 10);
+
+    await pool.query('BEGIN');
+    await pool.query(
+      'UPDATE utilisateur SET mot_de_passe = $1 WHERE id_utilisateur = $2',
+      [hash, resetRow.id_utilisateur]
+    );
+    await pool.query(
+      'UPDATE password_reset SET utilise = TRUE WHERE id = $1',
+      [resetRow.id]
+    );
+    // Invalide tous les refresh tokens pour forcer la reconnexion
+    await pool.query(
+      'UPDATE refresh_token SET est_revoque = TRUE WHERE id_utilisateur = $1',
+      [resetRow.id_utilisateur]
+    );
+    await pool.query('COMMIT');
+
+    res.json({ message: 'Mot de passe mis à jour avec succès. Vous pouvez maintenant vous connecter.' });
+  } catch (err) {
+    await pool.query('ROLLBACK').catch(() => {});
+    next(err);
+  }
 };
 
 // POST /api/auth/refresh
@@ -128,12 +345,24 @@ exports.logout = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// GET /api/auth/sso-token — génère un JWT court (5 min) pour l'app Java Desktop
+exports.ssoToken = async (req, res, next) => {
+  try {
+    const token = jwt.sign(
+      { id: req.user.id, email: req.user.email, role: req.user.role, type: 'sso' },
+      process.env.JWT_SECRET,
+      { expiresIn: '5m' }
+    );
+    res.json({ sso_token: token, expires_in: 300 });
+  } catch (err) { next(err); }
+};
+
 // GET /api/auth/me
 exports.me = async (req, res, next) => {
   try {
     const result = await pool.query(
       `SELECT id_utilisateur, nom, prenom, email, telephone, role,
-              points_solde, langue, date_inscription
+              points_solde, langue, date_inscription, mfa_actif
        FROM utilisateur WHERE id_utilisateur = $1`,
       [req.user.id]
     );

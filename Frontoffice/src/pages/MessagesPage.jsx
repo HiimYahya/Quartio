@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../services/api'
 import useAuthStore from '../store/authStore'
@@ -6,54 +6,60 @@ import useSocketStore from '../store/socketStore'
 import OnlineBadge from '../components/ui/OnlineBadge'
 import { getSocket } from '../services/socket'
 
+function relativeTime(dateStr) {
+  if (!dateStr) return ''
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const s = Math.floor(diff / 1000)
+  if (s < 60)  return "à l'instant"
+  const m = Math.floor(s / 60)
+  if (m < 60)  return `il y a ${m} min`
+  const h = Math.floor(m / 60)
+  if (h < 24)  return `il y a ${h}h`
+  const d = Math.floor(h / 24)
+  if (d < 7)   return `il y a ${d}j`
+  return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+}
+
 export default function MessagesPage() {
   const [conversations, setConversations] = useState([])
   const [loading,       setLoading]       = useState(true)
   const user     = useAuthStore((s) => s.user)
   const isOnline = useSocketStore((s) => s.isOnline)
 
-  const load = () => {
+  const load = useCallback(() => {
     api.get('/conversations')
       .then(({ data }) => setConversations(data.conversations ?? data.data ?? data ?? []))
       .catch(() => setConversations([]))
       .finally(() => setLoading(false))
-  }
+  }, [])
 
   useEffect(() => {
     load()
-
-    // Nouveau message → re-fetch la liste pour mettre à jour le dernier message
     const socket = getSocket()
-    if (socket) {
-      socket.on('message:new', () => load())
-    }
-
-    return () => {
-      getSocket()?.off('message:new')
-    }
-  }, [])
+    if (socket) socket.on('message:new', load)
+    return () => { getSocket()?.off('message:new', load) }
+  }, [load])
 
   const getOtherParticipant = (conv) => {
-    if (!conv.participants) return null
+    if (!conv.participants?.length) return null
     return conv.participants.find(
       (p) => (p.id ?? p.id_utilisateur) !== (user?.id ?? user?.id_utilisateur)
     )
   }
 
-  const getOtherName = (conv) => {
-    const other = getOtherParticipant(conv)
-    return other ? `${other.prenom} ${other.nom}` : 'Voisin'
-  }
-
-  const getOtherId = (conv) => {
-    const other = getOtherParticipant(conv)
-    return other?.id ?? other?.id_utilisateur ?? null
-  }
+  const totalUnread = conversations.reduce((sum, c) => sum + (c.non_lus ?? 0), 0)
 
   return (
     <div className="max-w-2xl space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-gray-500 text-sm">{conversations.length} conversation(s)</p>
+        <div className="flex items-center gap-2">
+          <p className="text-gray-500 text-sm">{conversations.length} conversation(s)</p>
+          {totalUnread > 0 && (
+            <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+              {totalUnread} non lu{totalUnread > 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
         <SocketStatus />
       </div>
 
@@ -67,43 +73,49 @@ export default function MessagesPage() {
         </div>
       ) : (
         conversations.map((conv) => {
-          const otherId   = getOtherId(conv)
-          const otherName = getOtherName(conv)
-          const online    = otherId ? isOnline(otherId) : false
+          const other   = getOtherParticipant(conv)
+          const otherId = other?.id ?? other?.id_utilisateur ?? null
+          const name    = other ? `${other.prenom} ${other.nom}` : 'Voisin'
+          const online  = otherId ? isOnline(otherId) : false
+          const unread  = conv.non_lus ?? 0
+          const preview = conv.dernier_message
+            ? (conv.dernier_message_type === 'image' ? '📷 Photo' : conv.dernier_message)
+            : 'Aucun message'
 
           return (
             <Link
-              key={conv.id ?? conv._id}
-              to={`/messages/${conv.id ?? conv._id}`}
-              className="flex items-center gap-3 bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow"
+              key={conv._id ?? conv.id}
+              to={`/messages/${conv._id ?? conv.id}`}
+              className={`flex items-center gap-3 bg-white rounded-xl shadow-sm border p-4 hover:shadow-md transition-shadow ${unread > 0 ? 'border-[#34d399]/50' : 'border-gray-100'}`}
             >
-              {/* Avatar + badge online */}
               <div className="relative shrink-0">
-                <div className="w-10 h-10 bg-[#1a4a3a] rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                  {otherName[0]?.toUpperCase() ?? '?'}
+                <div className="w-11 h-11 bg-[#1a4a3a] rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                  {name[0]?.toUpperCase() ?? '?'}
                 </div>
                 {otherId && <OnlineBadge userId={otherId} />}
               </div>
 
-              {/* Infos */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="font-medium text-gray-800 truncate">{otherName}</p>
-                  {online && (
-                    <span className="text-xs text-green-600 font-medium shrink-0">● En ligne</span>
+                <div className="flex items-center justify-between gap-1">
+                  <p className={`truncate ${unread > 0 ? 'font-bold text-gray-900' : 'font-medium text-gray-800'}`}>
+                    {name}
+                    {online && <span className="ml-1.5 text-xs text-green-500 font-normal">● En ligne</span>}
+                  </p>
+                  <span className="text-xs text-gray-400 shrink-0 ml-2">
+                    {relativeTime(conv.date_dernier_message)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-2 mt-0.5">
+                  <p className={`text-sm truncate ${unread > 0 ? 'text-gray-700' : 'text-gray-400'}`}>
+                    {preview}
+                  </p>
+                  {unread > 0 && (
+                    <span className="shrink-0 bg-[#1a4a3a] text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                      {unread > 9 ? '9+' : unread}
+                    </span>
                   )}
                 </div>
-                <p className="text-sm text-gray-400 truncate">
-                  {conv.dernier_message ?? 'Aucun message'}
-                </p>
               </div>
-
-              {/* Date */}
-              {conv.date_dernier_message && (
-                <span className="text-xs text-gray-400 shrink-0">
-                  {new Date(conv.date_dernier_message).toLocaleDateString('fr-FR')}
-                </span>
-              )}
             </Link>
           )
         })
@@ -112,10 +124,8 @@ export default function MessagesPage() {
   )
 }
 
-// Indicateur de connexion Socket.io
 function SocketStatus() {
   const connected = useSocketStore((s) => s.connected)
-
   return (
     <div className="flex items-center gap-1.5 text-xs text-gray-400">
       <span className={`w-2 h-2 rounded-full ${connected ? 'bg-green-400' : 'bg-gray-300'}`} />

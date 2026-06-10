@@ -3,6 +3,7 @@ import Sidebar from './Sidebar'
 
 const titles = {
   '/dashboard':    'Dashboard',
+  '/statistiques': 'Statistiques',
   '/utilisateurs': 'Gestion des utilisateurs',
   '/quartiers':    'Gestion des quartiers',
   '/incidents':    'Gestion des incidents',

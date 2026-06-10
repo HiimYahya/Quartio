@@ -53,6 +53,9 @@ const { createSchema, updateSchema } = require('../validators/evenement.validato
 router.get('/', ctrl.getAll);
 router.post('/', auth, validate(createSchema), ctrl.create);
 
+// Route fixe AVANT /:id pour éviter la capture par le paramètre dynamique
+router.get('/suggestions', auth, ctrl.suggestions);
+
 /**
  * @swagger
  * /api/evenements/{id}:
@@ -158,5 +161,36 @@ router.delete('/:id/participer', auth, ctrl.seDesinscrire);
  *               items: { $ref: '#/components/schemas/UtilisateurPublic' }
  */
 router.get('/:id/participants', auth, ctrl.getParticipants);
+
+/**
+ * @swagger
+ * /api/evenements/{id}/swipe:
+ *   post:
+ *     summary: Enregistrer un swipe (intérêt) dans Neo4j
+ *     tags: [Événements]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [direction]
+ *             properties:
+ *               direction: { type: string, enum: [right, left] }
+ *     responses:
+ *       201: { description: Relation Neo4j créée }
+ */
+router.post('/:id/swipe', auth, ctrl.swipe);
+
+/**
+ * @swagger
+ * /api/evenements/suggestions:
+ *   get:
+ *     summary: Événements suggérés basés sur les intérêts communs (Neo4j)
+ *     tags: [Événements]
+ *     responses:
+ *       200:
+ *         description: Liste d'événements recommandés
+ */
 
 module.exports = router;

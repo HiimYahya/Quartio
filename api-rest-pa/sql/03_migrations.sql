@@ -2,6 +2,27 @@
 -- MIGRATION 03 — Refresh tokens + Notifications
 -- ============================================================
 
+-- MIGRATION 05 — Auth sécurisée (vérification email + reset mdp)
+ALTER TABLE utilisateur ADD COLUMN IF NOT EXISTS email_verifie BOOLEAN DEFAULT FALSE;
+
+CREATE TABLE IF NOT EXISTS email_verification (
+  id          SERIAL PRIMARY KEY,
+  id_utilisateur INTEGER NOT NULL REFERENCES utilisateur(id_utilisateur) ON DELETE CASCADE,
+  code        VARCHAR(6) NOT NULL,
+  expire_le   TIMESTAMP NOT NULL,
+  utilise     BOOLEAN DEFAULT FALSE,
+  created_at  TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS password_reset (
+  id          SERIAL PRIMARY KEY,
+  id_utilisateur INTEGER NOT NULL REFERENCES utilisateur(id_utilisateur) ON DELETE CASCADE,
+  token       VARCHAR(128) UNIQUE NOT NULL,
+  expire_le   TIMESTAMP NOT NULL,
+  utilise     BOOLEAN DEFAULT FALSE,
+  created_at  TIMESTAMP DEFAULT NOW()
+);
+
 -- MIGRATION 04 — Colonnes contrat pour le flux payant
 ALTER TABLE contrat ADD COLUMN IF NOT EXISTS id_vendeur      INTEGER REFERENCES utilisateur(id_utilisateur) ON DELETE SET NULL;
 ALTER TABLE contrat ADD COLUMN IF NOT EXISTS id_acheteur     INTEGER REFERENCES utilisateur(id_utilisateur) ON DELETE SET NULL;

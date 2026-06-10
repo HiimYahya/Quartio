@@ -13,7 +13,8 @@ import IncidentsPage   from './pages/IncidentsPage'
 import VotesPage       from './pages/VotesPage'
 import EvenementsPage  from './pages/EvenementsPage'
 import AnnoncesPage    from './pages/AnnoncesPage'
-import ContratsPage    from './pages/ContratsPage'
+import ContratsPage      from './pages/ContratsPage'
+import StatistiquesPage  from './pages/StatistiquesPage'
 
 export default function App() {
   const { token, fetchMe } = useAuthStore()
@@ -36,7 +37,8 @@ export default function App() {
             <Route path="/votes"        element={<VotesPage />} />
             <Route path="/evenements"   element={<EvenementsPage />} />
             <Route path="/annonces"     element={<AnnoncesPage />} />
-            <Route path="/contrats"     element={<ContratsPage />} />
+            <Route path="/contrats"      element={<ContratsPage />} />
+            <Route path="/statistiques" element={<StatistiquesPage />} />
           </Route>
         </Route>
 
