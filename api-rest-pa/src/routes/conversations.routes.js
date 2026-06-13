@@ -4,6 +4,7 @@ const router  = express.Router();
 const ctrl     = require('../controllers/conversations.controller');
 const auth     = require('../middlewares/auth.middleware');
 const validate = require('../middlewares/validate.middleware');
+const upload   = require('../middlewares/upload.middleware');
 const { createSchema, messageSchema } = require('../validators/conversation.validator');
 
 /**
@@ -132,5 +133,38 @@ router.get('/:id', auth, ctrl.getById);
  */
 router.get('/:id/messages',  auth, ctrl.getMessages);
 router.post('/:id/messages', auth, validate(messageSchema), ctrl.envoyerMessage);
+
+/**
+ * @swagger
+ * /api/conversations/{id}/messages/media:
+ *   post:
+ *     summary: Envoyer une image dans une conversation
+ *     description: Upload une image (jpeg, png, webp, gif - 5 Mo max) vers Cloudinary et crée un message de type "image".
+ *     tags: [Conversations]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [image]
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       201:
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Message' }
+ *       400: { description: Aucun fichier fourni ou type invalide }
+ *       403: { description: Vous n'êtes pas participant }
+ */
+router.post('/:id/messages/media', auth, upload.single('image'), ctrl.envoyerMessageMedia);
 
 module.exports = router;

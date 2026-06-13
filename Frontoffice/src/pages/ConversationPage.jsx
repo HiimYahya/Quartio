@@ -17,9 +17,13 @@ export default function ConversationPage() {
   const [conv,      setConv]      = useState(null)
   const [text,      setText]      = useState('')
   const [sending,   setSending]   = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
   const [typing,    setTyping]    = useState(false)   // quelqu'un tape de l'autre côté
+  const [signaledIds, setSignaledIds] = useState(new Set())
   const bottomRef  = useRef(null)
   const typingTimer = useRef(null)
+  const fileInputRef = useRef(null)
 
   // ─── Chargement initial ────────────────────────────────────────────────────
   const loadMessages = useCallback(async (silent = false) => {
@@ -88,6 +92,40 @@ export default function ConversationPage() {
     setSending(false)
   }
 
+  // ─── Envoi d'image ─────────────────────────────────────────────────────────
+  const handleImageChange = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setUploadError('')
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('image', file)
+      const { data } = await api.post(`/conversations/${id}/messages/media`, formData, {
+        headers: { 'Content-Type': undefined },
+      })
+      setMessages((prev) => [...prev, data])
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+    } catch (err) {
+      setUploadError(err.response?.data?.error?.message || err.response?.data?.error || 'Échec de l\'envoi de l\'image')
+    }
+    setUploading(false)
+  }
+
+  // ─── Signalement d'un message ──────────────────────────────────────────────
+  const signalerMessage = async (msgId) => {
+    try {
+      await api.post(`/messages/${msgId}/signaler`, {
+        type: 'message',
+        description: 'Message signalé depuis la conversation',
+      })
+      setSignaledIds((prev) => new Set(prev).add(msgId))
+    } catch {
+      // signalement échoué, on laisse l'utilisateur réessayer
+    }
+  }
+
   // ─── Indicateur de frappe ─────────────────────────────────────────────────
   const handleTextChange = (e) => {
     setText(e.target.value)
@@ -151,7 +189,13 @@ export default function ConversationPage() {
             </div>
           ) : (
             messages.map((msg, i) => (
-              <MessageBubble key={msg.id ?? msg._id ?? i} msg={msg} own={isOwn(msg)} />
+              <MessageBubble
+                key={msg.id ?? msg._id ?? i}
+                msg={msg}
+                own={isOwn(msg)}
+                signaled={signaledIds.has(msg.id ?? msg._id)}
+                onSignaler={() => signalerMessage(msg.id ?? msg._id)}
+              />
             ))
           )}
 
@@ -171,8 +215,29 @@ export default function ConversationPage() {
           <div ref={bottomRef} />
         </div>
 
+        {/* Erreur upload */}
+        {uploadError && (
+          <div className="px-3 pt-2 text-xs text-red-500">{uploadError}</div>
+        )}
+
         {/* Input */}
         <form onSubmit={sendMessage} className="border-t border-gray-100 p-3 flex gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            onChange={handleImageChange}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            title="Envoyer une image"
+            className="shrink-0 px-3 py-2 rounded-xl text-sm border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
+            {uploading ? '…' : '📎'}
+          </button>
           <input
             value={text}
             onChange={handleTextChange}
@@ -192,16 +257,39 @@ export default function ConversationPage() {
   )
 }
 
-function MessageBubble({ msg, own }) {
+function MessageBubble({ msg, own, signaled, onSignaler }) {
   const time = msg.created_at ?? msg.createdAt
+  const isImage = msg.type === 'image' && msg.media_url
   return (
-    <div className={`flex ${own ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex items-center gap-1.5 group ${own ? 'justify-end' : 'justify-start'}`}>
+      {!own && (
+        <button
+          onClick={onSignaler}
+          disabled={signaled}
+          title={signaled ? 'Message signalé' : 'Signaler ce message'}
+          className={`text-xs shrink-0 opacity-0 group-hover:opacity-100 transition-opacity px-1.5 py-1 rounded ${
+            signaled ? 'text-orange-500 opacity-100' : 'text-gray-300 hover:text-red-500 hover:bg-red-50'
+          }`}
+        >
+          {signaled ? '🚩' : '⚑'}
+        </button>
+      )}
       <div className={`max-w-xs lg:max-w-sm px-4 py-2.5 rounded-2xl text-sm ${
         own
           ? 'bg-[#1a4a3a] text-white rounded-br-sm'
           : 'bg-gray-100 text-gray-800 rounded-bl-sm'
       }`}>
-        <p>{msg.contenu}</p>
+        {isImage ? (
+          <a href={msg.media_url} target="_blank" rel="noopener noreferrer">
+            <img
+              src={msg.media_url}
+              alt="Image envoyée"
+              className="max-w-full max-h-64 rounded-lg object-contain"
+            />
+          </a>
+        ) : (
+          <p>{msg.contenu}</p>
+        )}
         {time && (
           <p className={`text-xs mt-1 ${own ? 'text-white/50' : 'text-gray-400'}`}>
             {new Date(time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}

@@ -9,4 +9,10 @@ const statutSchema = Joi.object({
   statut: Joi.string().valid('en_attente', 'signe', 'annule', 'termine').required(),
 });
 
-module.exports = { createSchema, statutSchema };
+const signerSchema = Joi.object({
+  signature_dataurl: Joi.string().allow('', null),
+  pdf_base64: Joi.string().allow('', null),
+  mfa_code: Joi.string().pattern(/^[0-9]{6}$/).allow('', null),
+});
+
+module.exports = { createSchema, statutSchema, signerSchema };

@@ -5,7 +5,7 @@ const ctrl     = require('../controllers/contrats.controller');
 const auth     = require('../middlewares/auth.middleware');
 const role     = require('../middlewares/role.middleware');
 const validate = require('../middlewares/validate.middleware');
-const { createSchema, statutSchema } = require('../validators/contrat.validator');
+const { createSchema, statutSchema, signerSchema } = require('../validators/contrat.validator');
 
 /**
  * @swagger
@@ -91,6 +91,52 @@ router.get('/:id', auth, ctrl.getById);
  *       - Le contrat passe au statut `termine`
  *       - L'annonce liée passe au statut `archivee`
  *       - Les deux parties reçoivent une notification
+ *
+ *       Si le MFA est activé sur le compte, le code TOTP (`mfa_code`) est obligatoire.
+ *       Si un PDF signé (`pdf_base64`) est fourni, il est archivé dans MongoDB avec son
+ *       hash SHA-256 (preuve d'intégrité), accessible ensuite via `GET /api/contrats/{id}/document`.
+ *     tags: [Contrats]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               signature_dataurl: { type: string, description: "Image PNG base64 de la signature manuscrite" }
+ *               pdf_base64:        { type: string, description: "PDF signé encodé en base64, archivé dans MongoDB" }
+ *               mfa_code:          { type: string, minLength: 6, maxLength: 6, description: "Code TOTP, requis si le MFA est activé" }
+ *     responses:
+ *       200:
+ *         description: Contrat mis à jour (signé ou finalisé)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Contrat' }
+ *       400:
+ *         description: Code MFA requis ou invalide
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       409:
+ *         description: Déjà signé, contrat annulé, ou points insuffisants
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
+router.put('/:id/signer', auth, validate(signerSchema), ctrl.signer);
+
+/**
+ * @swagger
+ * /api/contrats/{id}/document:
+ *   get:
+ *     summary: Document signé archivé (MongoDB)
+ *     description: |
+ *       Retourne le PDF signé archivé, son hash SHA-256 (preuve d'intégrité) et
+ *       l'historique des signatures. Accessible aux deux parties du contrat et aux admins.
  *     tags: [Contrats]
  *     parameters:
  *       - in: path
@@ -99,17 +145,30 @@ router.get('/:id', auth, ctrl.getById);
  *         schema: { type: integer }
  *     responses:
  *       200:
- *         description: Contrat mis à jour (signé ou finalisé)
+ *         description: Document archivé
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/Contrat' }
- *       409:
- *         description: Déjà signé, contrat annulé, ou points insuffisants
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/Error' }
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id_contrat_pg: { type: integer }
+ *                 pdf_url:       { type: string, nullable: true }
+ *                 pdf_base64:    { type: string, nullable: true }
+ *                 hash_sha256:   { type: string, nullable: true }
+ *                 signatures:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id_utilisateur_pg: { type: integer }
+ *                       prenom:    { type: string }
+ *                       nom:       { type: string }
+ *                       signed_at: { type: string, format: date-time }
+ *                 updated_at: { type: string, format: date-time }
+ *       403: { description: Accès refusé }
+ *       404: { description: Aucun document archivé pour ce contrat }
  */
-router.put('/:id/signer', auth, ctrl.signer);
+router.get('/:id/document', auth, ctrl.getDocument);
 
 /**
  * @swagger

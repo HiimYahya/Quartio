@@ -1,5 +1,6 @@
 const pool            = require('../config/db');
 const { driver }      = require('../config/neo4j');
+const cloudinary      = require('../config/cloudinary');
 const Conversation    = require('../models/mongo/conversation.model');
 const Message         = require('../models/mongo/message.model');
 const validateMongoId = require('../utils/validateMongoId');
@@ -192,6 +193,54 @@ exports.envoyerMessage = async (req, res, next) => {
     }
 
     // Émettre le message en temps réel via Socket.io
+    const msgPayload = message.toObject();
+    emitNewMessage(req.params.id, {
+      ...msgPayload,
+      auteur_id: req.user.id,
+    });
+
+    res.status(201).json(message);
+  } catch (err) { next(err); }
+};
+
+// POST /api/conversations/:id/messages/media — upload d'une image (Cloudinary)
+exports.envoyerMessageMedia = async (req, res, next) => {
+  try {
+    if (!validateMongoId(req.params.id, res)) return;
+    const conv = await Conversation.findById(req.params.id);
+    if (!conv) return res.status(404).json({ error: 'Conversation non trouvée' });
+    if (!conv.participants_pg.includes(req.user.id)) {
+      return res.status(403).json({ error: 'Accès refusé' });
+    }
+    if (!req.file) return res.status(400).json({ error: 'Aucun fichier fourni' });
+
+    const uploadResult = await cloudinary.uploader.upload(
+      `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`,
+      { folder: 'quartio/messages', resource_type: 'image' }
+    );
+
+    const message = await Message.create({
+      type: 'image',
+      media_url: uploadResult.secure_url,
+      id_utilisateur_pg: req.user.id,
+      id_conversation:   conv._id,
+      lu_par:            [req.user.id],
+    });
+
+    const session = driver.session();
+    try {
+      await session.run(
+        `MERGE (u:Utilisateur {pg_id: $uid})
+         MERGE (m:Message {mongo_id: $mid})
+         MERGE (c:Conversation {mongo_id: $cid})
+         MERGE (u)-[:ENVOIE]->(m)
+         MERGE (m)-[:CONTENU_DANS]->(c)`,
+        { uid: req.user.id, mid: message._id.toString(), cid: req.params.id }
+      );
+    } finally {
+      await session.close();
+    }
+
     const msgPayload = message.toObject();
     emitNewMessage(req.params.id, {
       ...msgPayload,

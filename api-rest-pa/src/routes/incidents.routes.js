@@ -11,8 +11,8 @@ const { createSchema, updateSchema } = require('../validators/incident.validator
  * @swagger
  * /api/incidents:
  *   get:
- *     summary: Liste tous les incidents (admin)
- *     description: Accès réservé aux administrateurs. Les utilisateurs voient leurs propres incidents via leur profil.
+ *     summary: Liste tous les incidents (admin, modérateur)
+ *     description: Accès réservé aux administrateurs et modérateurs. Les utilisateurs voient leurs propres incidents via leur profil.
  *     tags: [Incidents]
  *     parameters:
  *       - in: query
@@ -21,6 +21,10 @@ const { createSchema, updateSchema } = require('../validators/incident.validator
  *       - in: query
  *         name: priorite
  *         schema: { type: string, enum: [basse, normale, haute, critique] }
+ *       - in: query
+ *         name: signalements
+ *         schema: { type: boolean }
+ *         description: Si true, retourne uniquement les messages signalés (avec contenu + auteur)
  *       - in: query
  *         name: page
  *         schema: { type: integer, default: 1 }
@@ -39,7 +43,7 @@ const { createSchema, updateSchema } = require('../validators/incident.validator
  *                     data:
  *                       type: array
  *                       items: { $ref: '#/components/schemas/Incident' }
- *       403: { description: Accès réservé aux admins }
+ *       403: { description: Accès réservé aux admins et modérateurs }
  *   post:
  *     summary: Signaler un incident
  *     tags: [Incidents]
@@ -61,7 +65,7 @@ const { createSchema, updateSchema } = require('../validators/incident.validator
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Incident' }
  */
-router.get('/',  auth, role('admin'), ctrl.getAll);
+router.get('/',  auth, role('admin', 'moderateur'), ctrl.getAll);
 router.post('/', auth, validate(createSchema), ctrl.create);
 
 /**
@@ -82,7 +86,7 @@ router.post('/', auth, validate(createSchema), ctrl.create);
  *             schema: { $ref: '#/components/schemas/Incident' }
  *       404: { description: Incident non trouvé }
  *   put:
- *     summary: Mettre à jour un incident (admin)
+ *     summary: Mettre à jour un incident (admin, modérateur)
  *     description: Permet de changer le statut, la priorité ou la date de résolution.
  *     tags: [Incidents]
  *     parameters:
@@ -116,7 +120,7 @@ router.post('/', auth, validate(createSchema), ctrl.create);
  *       204: { description: Supprimé }
  */
 router.get('/:id',  auth, ctrl.getById);
-router.put('/:id',  auth, role('admin'), validate(updateSchema), ctrl.update);
+router.put('/:id',  auth, role('admin', 'moderateur'), validate(updateSchema), ctrl.update);
 router.delete('/:id', auth, role('admin'), ctrl.remove);
 
 module.exports = router;

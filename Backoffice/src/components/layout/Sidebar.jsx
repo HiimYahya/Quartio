@@ -9,6 +9,7 @@ const ALL_LINKS = [
   { to: '/utilisateurs', icon: '👥', label: 'Utilisateurs', roles: ['admin'] },
   { to: '/quartiers',    icon: '🗺️', label: 'Quartiers',    roles: ['admin'] },
   { to: '/incidents',    icon: '⚠️', label: 'Incidents' },
+  { to: '/signalements', icon: '🚩', label: 'Signalements' },
   { to: '/votes',        icon: '🗳️', label: 'Votes',        roles: ['admin'] },
   { to: '/evenements',   icon: '📅', label: 'Événements',   roles: ['admin'] },
   { to: '/annonces',     icon: '📋', label: 'Annonces' },

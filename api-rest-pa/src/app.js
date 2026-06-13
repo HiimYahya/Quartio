@@ -48,7 +48,7 @@ app.use(morgan('combined', {
 }));
 
 // ── Parsing ───────────────────────────────────────────────────────────────────
-app.use(express.json());
+app.use(express.json({ limit: '15mb' }));
 
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ status: 'ok' }));

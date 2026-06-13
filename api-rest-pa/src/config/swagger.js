@@ -265,7 +265,9 @@ API de gestion de quartier connecté.
           type: 'object',
           properties: {
             _id:          { type: 'string' },
+            type:         { type: 'string', enum: ['texte', 'image', 'video', 'fichier'] },
             contenu:      { type: 'string' },
+            media_url:    { type: 'string' },
             auteur_id:    { type: 'integer' },
             signale:      { type: 'boolean' },
             created_at:   { type: 'string', format: 'date-time' },

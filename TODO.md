@@ -168,11 +168,10 @@
 - ✅ Indicateur de frappe (typing — partiellement dans socketStore)
 - ✅ Messages en temps réel (Socket.io — serveur implémenté)
 - ✅ Présence online/offline de l'interlocuteur visible en haut
-- ⬜ 🔴 Envoi d'images (bouton 📎 → Cloudinary → affichage inline)
-- ⬜ 🔴 Messages vocaux (bouton 🎤 → MediaRecorder → upload → player audio inline)
+- ✅ Envoi d'images (bouton 📎 → Cloudinary → affichage inline)
 - ⬜ 🟡 Scroll automatique vers le bas sur nouveau message
 - ⬜ 🟡 Messages lus / non lus (simple indicateur)
-- ⬜ 🟡 Bouton "Signaler ce message" (3 points → menu contextuel)
+- ✅ Bouton "Signaler ce message" (icône au survol du message)
 - ⬜ Répondre à un message (citation)
 - ⬜ Sélectionner + supprimer ses propres messages
 - ⬜ 🟢 Emoji picker
@@ -195,9 +194,9 @@
 - ✅ Étapes : infos → upload PDF → signature canvas
 - ✅ Embed de la signature dans le PDF + téléchargement
 - ✅ Rechargement après signature
-- ⬜ 🔴 MFA requis avant signature (modal saisie TOTP → `POST /api/auth/mfa/verify`)
-- ⬜ 🔴 Télécharger le contrat final signé depuis MongoDB (si finalisé)
-- ⬜ 🔴 Hash SHA-256 du document affiché (preuve d'intégrité)
+- ✅ MFA requis avant signature (modal saisie TOTP, vérifié côté `PUT /api/contrats/:id/signer`)
+- ✅ Télécharger le contrat final signé depuis MongoDB (si finalisé)
+- ✅ Hash SHA-256 du document affiché (preuve d'intégrité)
 - ⬜ 🟡 Résumé de l'annonce liée (titre, description)
 - ⬜ 🟡 Bouton "Annuler le contrat" (si statut en_attente et l'autre n'a pas encore signé)
 - ⬜ 🟡 Bouton "Ouvrir un litige" (si statut terminé et problème)
@@ -381,9 +380,9 @@
 
 ---
 
-#### 🚨 SignalementsPage (`/signalements`) — À CRÉER (backoffice)
-- ⬜ 🟡 Liste des messages signalés (auteur, contenu, conversation, date)
-- ⬜ 🟡 Actions : supprimer le message / avertir l'utilisateur / ignorer le signalement
+#### 🚨 SignalementsPage (`/signalements`)
+- ✅ Liste des messages signalés (auteur, contenu, date, motif)
+- ✅ Actions : supprimer le message / avertir l'utilisateur / ignorer le signalement
 - ⬜ Compteur de signalements non traités (badge dans le menu)
 
 ---
@@ -424,12 +423,12 @@ Le rôle `moderateur` existe en base mais n'est associé à aucune interface ni 
 
 **Ce qu'un modérateur doit pouvoir faire (à définir dans le code et les routes) :**
 - ✅ Accéder au backoffice avec le rôle `moderateur` (login + fetchMe mis à jour)
-- ⬜ 🔴 Voir et traiter les messages signalés (`SignalementsPage`)
+- ✅ Voir et traiter les messages signalés (`SignalementsPage` : supprimer le message / avertir l'auteur / ignorer)
 - ✅ Modifier le statut des incidents (accès backoffice IncidentsPage pour modérateurs)
 - ✅ Modérer les annonces (accès backoffice AnnoncesPage pour modérateurs)
-- ✅ Sidebar filtrée par rôle : modérateur voit Incidents + Annonces uniquement
+- ✅ Sidebar filtrée par rôle : modérateur voit Incidents + Signalements + Annonces
 - ⬜ 🟡 **Ne peut pas** : gérer les quartiers, changer les rôles, supprimer des comptes, accéder aux stats
-- ⬜ Middleware `role('admin', 'moderateur')` sur les routes concernées
+- ✅ Middleware `role('admin', 'moderateur')` sur les routes concernées (incidents GET/PUT, messages avertir)
 - ⬜ Route `/api/auth/login` backoffice : accepter aussi `role === 'moderateur'` (pas que `admin`)
 - ⬜ Sidebar backoffice : sections visibles selon le rôle connecté
 
@@ -484,12 +483,12 @@ Le cahier des charges dit que Socket.io gère **"Chat, présences online/offline
 La stack technique précise : **"MongoDB : stockage des documents (contrats, signatures), événements, messages"**. Actuellement les contrats sont en PostgreSQL uniquement. Les **documents contractuels et les signatures** doivent être dans MongoDB.
 
 **Architecture corrigée :**
-- ⬜ 🔴 Créer un modèle MongoDB `ContratDocument` : `{ id_contrat_pg, pdf_url, hash_sha256, signatures: [{id_utilisateur_pg, dataurl, signed_at, ip}], created_at }`
-- ⬜ 🔴 PostgreSQL garde les métadonnées du contrat (statut, points, parties, dates)
-- ⬜ 🔴 MongoDB stocke les PDFs signés et les données de signature
+- ✅ Créer un modèle MongoDB `ContratDocument` : `{ id_contrat_pg, pdf_url, pdf_base64, hash_sha256, signatures: [{id_utilisateur_pg, prenom, nom, dataurl, signed_at, ip}], created_at }`
+- ✅ PostgreSQL garde les métadonnées du contrat (statut, points, parties, dates)
+- ✅ MongoDB stocke les PDFs signés (base64) et les données de signature
 - ⬜ 🔴 Neo4j garde les relations `[:SIGNE]` entre utilisateurs et contrats
-- ⬜ `GET /api/contrats/:id/document` → interroge MongoDB pour le PDF archivé
-- ⬜ **ContratDetailPage** : bouton "Télécharger le contrat signé" visible une fois les 2 signatures validées
+- ✅ `GET /api/contrats/:id/document` → interroge MongoDB pour le PDF archivé (+ hash SHA-256)
+- ✅ **ContratDetailPage** : bouton "Télécharger le contrat signé" visible dès qu'un document est archivé
 
 ---
 
@@ -625,18 +624,13 @@ Cela s'applique au web (pas seulement à l'app Java).
 
 ---
 
-## BLOC 5 — Messagerie multimédia 🔴 (photos + vocaux demandés)
+## BLOC 5 — Messagerie multimédia 🔴 (photos)
 
 ### 5.1 Photos dans les messages
-- ⬜ 🔴 `POST /api/conversations/:id/messages/media` → upload image via Cloudinary, retourne le message créé
-- ⬜ 🔴 Modèle Message MongoDB : ajouter `type` (text/image/audio) et `media_url`
-- ⬜ 🔴 Frontoffice ConversationPage : bouton upload image, affichage inline des images
-- ⬜ 🔴 Émettre `message:new` avec le message média via Socket.io
-
-### 5.2 Messages vocaux
-- ⬜ 🔴 Frontoffice : bouton d'enregistrement vocal (MediaRecorder API), upload du fichier audio vers Cloudinary
-- ⬜ 🔴 Affichage d'un player audio inline dans la conversation
-- ⬜ Durée max : 2 minutes
+- ✅ `POST /api/conversations/:id/messages/media` → upload image via Cloudinary, retourne le message créé
+- ✅ Modèle Message MongoDB : ajoute `type` (texte/image) et `media_url`
+- ✅ Frontoffice ConversationPage : bouton upload image, affichage inline des images
+- ✅ Émettre `message:new` avec le message média via Socket.io
 
 ### 5.3 Appels vidéo (🟢 bonus)
 - ⬜ 🟢 Intégrer WebRTC ou un service tiers (Agora, Daily.co) pour les appels vidéo entre voisins
@@ -673,9 +667,10 @@ Cela s'applique au web (pas seulement à l'app Java).
 
 ### 7.1 Archivage MongoDB
 > Le sujet demande : "MongoDB : stockage des documents (contrats, signatures)"
-- ⬜ 🔴 Créer un modèle MongoDB `Signature` : `{ id_contrat, id_utilisateur, signature_dataurl, pdf_url, signed_at }`
-- ⬜ 🔴 Lors de la signature : uploader le PDF signé sur Cloudinary et stocker l'URL dans MongoDB
-- ⬜ 🔴 `GET /api/contrats/:id/document` → retourne le PDF signé archivé (URL Cloudinary)
+- ✅ Créer un modèle MongoDB `ContratDocument` : `{ id_contrat_pg, pdf_url, pdf_base64, hash_sha256, signatures: [{id_utilisateur_pg, prenom, nom, dataurl, signed_at, ip}] }`
+- ✅ Lors de la signature : le PDF signé (base64) et son hash SHA-256 sont stockés dans MongoDB
+- ✅ `GET /api/contrats/:id/document` → retourne le PDF signé archivé (base64) + hash + historique des signatures
+- ⬜ 🟡 Migrer le stockage `pdf_base64` vers Cloudinary (`pdf_url`) pour éviter de gonfler MongoDB
 
 ### 7.2 Zones de signature dans le PDF
 - ⬜ 🟡 Permettre de placer des zones de signature/initiales à des endroits précis du PDF (drag & drop)
@@ -683,9 +678,9 @@ Cela s'applique au web (pas seulement à l'app Java).
 - ⬜ 🟡 Générateur de contrat PDF automatique si aucun PDF fourni (pdf-lib : template avec infos du service)
 
 ### 7.3 Sécurisation des signatures
-- ⬜ 🔴 MFA requis avant signature (code TOTP vérifié côté serveur)
-- ⬜ 🔴 Hash SHA-256 du document signé stocké en base (preuve d'intégrité)
-- ⬜ 🟡 Horodatage serveur de chaque signature (non falsifiable côté client)
+- ✅ MFA requis avant signature (code TOTP vérifié côté serveur dans `signer`)
+- ✅ Hash SHA-256 du document signé stocké en base (preuve d'intégrité)
+- ✅ Horodatage serveur de chaque signature (non falsifiable côté client)
 
 ### 7.4 Flux contrat — cas manquants
 - ⬜ 🟡 `PUT /api/contrats/:id/annuler` → annulation par l'une des parties (avec règles : seulement si non signé par l'autre)
@@ -761,7 +756,7 @@ Cela s'applique au web (pas seulement à l'app Java).
 - ⬜ Exporter les stats en CSV
 
 ### 11.2 Modération
-- ⬜ 🟡 Liste des messages signalés avec actions (supprimer, avertir l'utilisateur, ignorer)
+- ✅ Liste des messages signalés avec actions (supprimer, avertir l'utilisateur, ignorer)
 - ⬜ 🟡 Suspendre un compte temporairement (colonne `suspendu_jusqu_au`)
 - ⬜ 🟡 Logs d'activité admin (qui a fait quoi, quand)
 - ⬜ Gestion des litiges de contrats
@@ -876,7 +871,7 @@ Cela s'applique au web (pas seulement à l'app Java).
 2. MFA / TOTP (colonne déjà présente)
 3. RGPD : export + suppression compte
 4. Socket.io : messagerie temps réel + présence
-5. Messagerie multimédia : photos + vocaux
+5. Messagerie multimédia : photos
 6. Moteur de recommandations Neo4j
 7. Langage d'interrogation maison (lex/yacc)
 8. ✅ Application Java Desktop — prise en charge par l'équipe

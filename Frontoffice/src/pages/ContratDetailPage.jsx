@@ -18,6 +18,20 @@ const STATUS_COLORS = {
   termine:    'bg-green-100 text-green-700 border-green-200',
 }
 
+function arrayBufferToBase64(buffer) {
+  let binary = ''
+  const bytes = new Uint8Array(buffer)
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+  return btoa(binary)
+}
+
+function base64ToArrayBuffer(base64) {
+  const binary = atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return bytes.buffer
+}
+
 export default function ContratDetailPage() {
   const { id }    = useParams()
   const navigate  = useNavigate()
@@ -34,6 +48,15 @@ export default function ContratDetailPage() {
   const [signed,     setSigned]     = useState(false)
   const [error,      setError]      = useState(null)
   const [step,       setStep]       = useState(1)      // 1: infos  2: pdf  3: signature
+  const [document_,  setDocument_]  = useState(null)   // document archivé (MongoDB)
+  const [showMfaModal, setShowMfaModal] = useState(false)
+  const [mfaCode,    setMfaCode]    = useState('')
+
+  const loadDocument = () => {
+    api.get(`/contrats/${id}/document`)
+      .then(({ data }) => setDocument_(data))
+      .catch(() => setDocument_(null))
+  }
 
   useEffect(() => {
     api.get(`/contrats/${id}`)
@@ -48,6 +71,7 @@ export default function ContratDetailPage() {
       })
       .catch(() => navigate('/contrats'))
       .finally(() => setLoading(false))
+    loadDocument()
   }, [id, user?.id])
 
   // ─── Upload PDF ─────────────────────────────────────────────────────────────
@@ -63,28 +87,47 @@ export default function ContratDetailPage() {
   }
 
   // ─── Signer ─────────────────────────────────────────────────────────────────
-  const handleSign = async () => {
+  const handleSign = async (codeOverride) => {
     if (sigRef.current?.isEmpty()) {
       setError('Veuillez apposer votre signature.')
       return
     }
+
+    // MFA requis avant signature
+    if (user?.mfa_actif && !codeOverride) {
+      setShowMfaModal(true)
+      return
+    }
+
     setSigning(true)
     setError(null)
 
     try {
-      // 1. Appel backend pour enregistrer la signature
-      await api.put(`/contrats/${id}/signer`)
+      const sigDataUrl = sigRef.current.getTrimmedCanvas().toDataURL('image/png')
 
-      // 2. Si un PDF a été chargé → on l'embed avec pdf-lib
-      if (pdfBytes) {
-        const sigDataUrl = sigRef.current.getTrimmedCanvas().toDataURL('image/png')
-        await embedSignatureToPdf(pdfBytes, sigDataUrl, contrat)
+      // Si un PDF est disponible (uploadé, ou déjà signé par l'autre partie) → on y embed la signature
+      let pdfBase64 = null
+      const sourceBytes = pdfBytes ?? (document_?.pdf_base64 ? base64ToArrayBuffer(document_.pdf_base64) : null)
+      if (sourceBytes) {
+        const signedBytes = await embedSignatureToPdf(sourceBytes, sigDataUrl)
+        pdfBase64 = arrayBufferToBase64(signedBytes)
+        downloadPdf(signedBytes)
       }
 
+      // Appel backend pour enregistrer la signature (et archiver le PDF + hash dans MongoDB)
+      await api.put(`/contrats/${id}/signer`, {
+        signature_dataurl: sigDataUrl,
+        pdf_base64: pdfBase64,
+        mfa_code: codeOverride ?? undefined,
+      })
+
       setSigned(true)
+      setShowMfaModal(false)
+      setMfaCode('')
       // Recharge depuis l'API pour avoir l'état exact (signe_vendeur, signe_acheteur, statut)
       const { data: fresh } = await api.get(`/contrats/${id}`)
       setContrat(fresh)
+      loadDocument()
       setStep(1)
     } catch (err) {
       setError(err.response?.data?.error ?? 'Erreur lors de la signature')
@@ -92,21 +135,27 @@ export default function ContratDetailPage() {
     setSigning(false)
   }
 
-  // ─── Embed signature dans le PDF et déclenche le téléchargement ─────────────
-  const embedSignatureToPdf = async (pdfArrayBuffer, sigDataUrl, contrat) => {
+  const handleMfaSubmit = () => {
+    if (mfaCode.length !== 6) return
+    handleSign(mfaCode)
+  }
+
+  // ─── Embed signature dans le PDF, retourne les octets du PDF signé ──────────
+  const embedSignatureToPdf = async (pdfArrayBuffer, sigDataUrl) => {
     const pdfDoc   = await PDFDocument.load(pdfArrayBuffer)
     const pages    = pdfDoc.getPages()
     const lastPage = pages[pages.length - 1]
-    const { width, height } = lastPage.getSize()
+    const { width } = lastPage.getSize()
 
     // Convertir la signature PNG en image pdf-lib
     const sigBytes = await fetch(sigDataUrl).then((r) => r.arrayBuffer())
     const sigImage = await pdfDoc.embedPng(sigBytes)
     const sigDims  = sigImage.scale(0.4)
 
-    // Zone de signature en bas à droite
+    // Zone de signature en bas à droite, décalée si l'autre partie a déjà signé
+    const offset = document_?.signatures?.length > 0 ? sigDims.height + 35 : 0
     const sigX = width  - sigDims.width  - 40
-    const sigY = 40
+    const sigY = 40 + offset
 
     // Ligne de signature
     lastPage.drawLine({
@@ -128,15 +177,22 @@ export default function ContratDetailPage() {
       color: rgb(0.4, 0.4, 0.4),
     })
 
-    // Téléchargement
-    const signedBytes = await pdfDoc.save()
-    const blob = new Blob([signedBytes], { type: 'application/pdf' })
+    return pdfDoc.save()
+  }
+
+  const downloadPdf = (bytes, filename = `contrat_${id}_signe.pdf`) => {
+    const blob = new Blob([bytes], { type: 'application/pdf' })
     const url  = URL.createObjectURL(blob)
-    const a    = document.createElement('a')
+    const a    = window.document.createElement('a')
     a.href     = url
-    a.download = `contrat_${id}_signe.pdf`
+    a.download = filename
     a.click()
     URL.revokeObjectURL(url)
+  }
+
+  const handleDownloadArchived = () => {
+    if (!document_?.pdf_base64) return
+    downloadPdf(base64ToArrayBuffer(document_.pdf_base64))
   }
 
   const clearSig = () => { sigRef.current?.clear(); setSigEmpty(true) }
@@ -206,6 +262,27 @@ export default function ContratDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Document signé archivé (MongoDB) */}
+      {document_?.pdf_base64 && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-3">
+          <h3 className="font-semibold text-gray-800 text-sm uppercase tracking-wide text-gray-500">
+            Document signé archivé
+          </h3>
+          {document_.hash_sha256 && (
+            <div className="bg-gray-50 rounded-xl p-3">
+              <p className="text-gray-500 text-xs mb-1">Hash SHA-256 (preuve d'intégrité)</p>
+              <p className="font-mono text-xs text-gray-700 break-all">{document_.hash_sha256}</p>
+            </div>
+          )}
+          <button
+            onClick={handleDownloadArchived}
+            className="w-full bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-medium py-2.5 rounded-xl transition-colors"
+          >
+            ⬇️ Télécharger le contrat signé
+          </button>
+        </div>
+      )}
 
       {/* Participants et état des signatures */}
       {(contrat.id_vendeur || contrat.id_acheteur) && (
@@ -330,10 +407,18 @@ export default function ContratDetailPage() {
       {step === 2 && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
           <h3 className="font-semibold text-gray-800">Document PDF (optionnel)</h3>
-          <p className="text-sm text-gray-500">
-            Importez un document PDF si vous souhaitez y apposer votre signature. Votre signature
-            sera intégrée dans le PDF et le fichier signé sera téléchargé automatiquement.
-          </p>
+
+          {document_?.pdf_base64 ? (
+            <div className="flex items-center gap-2 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+              <span>📄</span>
+              <span>Un document a déjà été déposé par l'autre partie — votre signature y sera ajoutée.</span>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">
+              Importez un document PDF si vous souhaitez y apposer votre signature. Votre signature
+              sera intégrée dans le PDF et le fichier signé sera téléchargé automatiquement.
+            </p>
+          )}
 
           <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl py-8 px-4 cursor-pointer hover:border-[#34d399] hover:bg-[#f0faf5] transition-colors">
             <span className="text-3xl mb-2">📄</span>
@@ -412,19 +497,19 @@ export default function ContratDetailPage() {
               ← Retour
             </button>
             <button
-              onClick={handleSign}
+              onClick={() => handleSign()}
               disabled={signing || sigEmpty}
               className="flex-1 bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-medium py-2.5 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {signing
                 ? 'Signature en cours…'
-                : pdfFile
+                : pdfFile || document_?.pdf_base64
                 ? '✍️ Signer et télécharger le PDF'
                 : '✍️ Signer le contrat'}
             </button>
           </div>
 
-          {pdfFile && (
+          {(pdfFile || document_?.pdf_base64) && (
             <p className="text-xs text-gray-400 text-center">
               Le PDF signé sera téléchargé automatiquement après signature.
             </p>
@@ -445,6 +530,48 @@ export default function ContratDetailPage() {
             className="w-full"
             style={{ height: 400 }}
           />
+        </div>
+      )}
+
+      {/* Modale MFA — code TOTP requis avant signature */}
+      {showMfaModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4">
+            <h3 className="font-semibold text-gray-800">Vérification en deux étapes</h3>
+            <p className="text-sm text-gray-500">
+              La signature de ce contrat est protégée par MFA. Saisissez le code de votre application d'authentification.
+            </p>
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
+                {error}
+              </div>
+            )}
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              value={mfaCode}
+              onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+              placeholder="000000"
+              autoFocus
+              className="w-full text-center text-2xl tracking-[0.5em] font-mono border border-gray-300 rounded-xl py-3 focus:outline-none focus:ring-2 focus:ring-[#34d399]"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowMfaModal(false); setMfaCode(''); setError(null) }}
+                className="flex-1 border border-gray-300 text-gray-700 font-medium py-2.5 rounded-xl hover:bg-gray-50 transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleMfaSubmit}
+                disabled={signing || mfaCode.length !== 6}
+                className="flex-1 bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-medium py-2.5 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {signing ? 'Vérification…' : 'Vérifier et signer'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

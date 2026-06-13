@@ -10,6 +10,7 @@ import DashboardPage   from './pages/DashboardPage'
 import UtilisateursPage from './pages/UtilisateursPage'
 import QuartiersPage   from './pages/QuartiersPage'
 import IncidentsPage   from './pages/IncidentsPage'
+import SignalementsPage from './pages/SignalementsPage'
 import VotesPage       from './pages/VotesPage'
 import EvenementsPage  from './pages/EvenementsPage'
 import AnnoncesPage    from './pages/AnnoncesPage'
@@ -35,6 +36,7 @@ export default function App() {
             <Route path="/utilisateurs" element={<UtilisateursPage />} />
             <Route path="/quartiers"    element={<QuartiersPage />} />
             <Route path="/incidents"    element={<IncidentsPage />} />
+            <Route path="/signalements" element={<SignalementsPage />} />
             <Route path="/votes"        element={<VotesPage />} />
             <Route path="/evenements"   element={<EvenementsPage />} />
             <Route path="/annonces"     element={<AnnoncesPage />} />

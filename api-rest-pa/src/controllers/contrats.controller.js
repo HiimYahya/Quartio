@@ -1,8 +1,11 @@
+const crypto                 = require('crypto');
+const speakeasy              = require('speakeasy');
 const pool                   = require('../config/db');
 const { driver }             = require('../config/neo4j');
 const { getPagination, paginate } = require('../utils/pagination');
 const { createNotification } = require('../utils/notify');
 const { emitAlert }          = require('../socket/index');
+const ContratDocument        = require('../models/mongo/contratdocument.model');
 
 // GET /api/contrats  → mes contrats (vendeur ou acheteur)
 exports.getMes = async (req, res, next) => {
@@ -117,14 +120,28 @@ exports.signer = async (req, res, next) => {
     if (!isVendeur && !isAcheteur)
       return res.status(403).json({ error: 'Vous n\'êtes pas participant à ce contrat' });
 
+    const { signature_dataurl, pdf_base64, mfa_code } = req.body;
+
+    const { rows: uRows } = await pool.query(
+      'SELECT nom, prenom, points_solde, mfa_actif, mfa_secret FROM utilisateur WHERE id_utilisateur = $1', [uid]
+    );
+    const signataire = uRows[0];
+
+    // MFA obligatoire pour signer si activé sur le compte
+    if (signataire.mfa_actif) {
+      if (!mfa_code)
+        return res.status(400).json({ error: 'Code MFA requis pour signer ce contrat' });
+      const validMfa = speakeasy.totp.verify({
+        secret: signataire.mfa_secret, encoding: 'base32', token: mfa_code, window: 1,
+      });
+      if (!validMfa)
+        return res.status(400).json({ error: 'Code MFA invalide' });
+    }
+
     // Vérifier que l'acheteur a assez de points avant de signer
     const points = c.points_echanges ?? 0;
-    if (isAcheteur && points > 0) {
-      const { rows: uRows } = await pool.query(
-        'SELECT points_solde FROM utilisateur WHERE id_utilisateur = $1', [uid]
-      );
-      if (uRows[0].points_solde < points)
-        return res.status(409).json({ error: `Points insuffisants (solde : ${uRows[0].points_solde} pts, requis : ${points} pts)` });
+    if (isAcheteur && points > 0 && signataire.points_solde < points) {
+      return res.status(409).json({ error: `Points insuffisants (solde : ${signataire.points_solde} pts, requis : ${points} pts)` });
     }
 
     // Marquer la signature du participant
@@ -136,6 +153,31 @@ exports.signer = async (req, res, next) => {
       `UPDATE contrat SET ${colSigne} = TRUE, statut = 'signe' WHERE id_contrat = $1`,
       [contratId]
     );
+
+    // Archive la signature (et le PDF signé si fourni) dans MongoDB
+    if (signature_dataurl || pdf_base64) {
+      const mongoUpdate = {
+        $push: {
+          signatures: {
+            id_utilisateur_pg: uid,
+            prenom: signataire.prenom,
+            nom: signataire.nom,
+            dataurl: signature_dataurl,
+            signed_at: new Date(),
+            ip: req.ip,
+          },
+        },
+      };
+      if (pdf_base64) {
+        mongoUpdate.$set = {
+          pdf_base64,
+          hash_sha256: crypto.createHash('sha256').update(Buffer.from(pdf_base64, 'base64')).digest('hex'),
+        };
+      }
+      await ContratDocument.findOneAndUpdate(
+        { id_contrat_pg: contratId }, mongoUpdate, { upsert: true }
+      ).catch(() => {});
+    }
 
     // Recharger pour voir si les 2 ont maintenant signé
     const { rows: refreshed } = await pool.query(
@@ -226,6 +268,41 @@ exports.signer = async (req, res, next) => {
 
     const { rows: final } = await pool.query('SELECT * FROM contrat WHERE id_contrat = $1', [contratId]);
     res.json(final[0]);
+  } catch (err) { next(err); }
+};
+
+// GET /api/contrats/:id/document  (auth — participant ou admin)
+// Retourne le document archivé dans MongoDB : PDF signé (base64), hash SHA-256, signatures
+exports.getDocument = async (req, res, next) => {
+  try {
+    const contratId = parseInt(req.params.id);
+    const { rows } = await pool.query(
+      'SELECT id_vendeur, id_acheteur FROM contrat WHERE id_contrat = $1', [contratId]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Contrat non trouvé' });
+
+    const c = rows[0];
+    const uid = req.user.id;
+    if (uid !== c.id_vendeur && uid !== c.id_acheteur && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Accès refusé' });
+    }
+
+    const doc = await ContratDocument.findOne({ id_contrat_pg: contratId });
+    if (!doc) return res.status(404).json({ error: 'Aucun document archivé pour ce contrat' });
+
+    res.json({
+      id_contrat_pg: doc.id_contrat_pg,
+      pdf_url:       doc.pdf_url,
+      pdf_base64:    doc.pdf_base64,
+      hash_sha256:   doc.hash_sha256,
+      signatures: doc.signatures.map((s) => ({
+        id_utilisateur_pg: s.id_utilisateur_pg,
+        prenom:    s.prenom,
+        nom:       s.nom,
+        signed_at: s.signed_at,
+      })),
+      updated_at: doc.updatedAt,
+    });
   } catch (err) { next(err); }
 };
 

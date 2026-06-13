@@ -11,12 +11,32 @@ exports.remove = async (req, res, next) => {
     const message = await Message.findById(req.params.id);
     if (!message) return res.status(404).json({ error: 'Message non trouvé' });
 
-    if (message.id_utilisateur_pg !== req.user.id && req.user.role !== 'admin') {
+    if (message.id_utilisateur_pg !== req.user.id && !['admin', 'moderateur'].includes(req.user.role)) {
       return res.status(403).json({ error: 'Accès refusé' });
     }
 
     // Soft delete
     await Message.findByIdAndUpdate(req.params.id, { est_supprime: true });
+    res.status(204).send();
+  } catch (err) { next(err); }
+};
+
+// POST /api/messages/:id/avertir  (admin, modérateur) → notifie l'auteur du message
+exports.avertir = async (req, res, next) => {
+  try {
+    if (!validateMongoId(req.params.id, res)) return;
+    const message = await Message.findById(req.params.id);
+    if (!message) return res.status(404).json({ error: 'Message non trouvé' });
+
+    createNotification(
+      message.id_utilisateur_pg,
+      'incident',
+      'Avertissement de la modération',
+      req.body?.motif || 'Un message que vous avez envoyé ne respecte pas les règles de la communauté.',
+      message._id.toString(),
+      'message'
+    );
+
     res.status(204).send();
   } catch (err) { next(err); }
 };

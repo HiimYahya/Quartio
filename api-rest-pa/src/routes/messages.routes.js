@@ -3,6 +3,7 @@ const router  = express.Router();
 
 const ctrl = require('../controllers/messages.controller');
 const auth = require('../middlewares/auth.middleware');
+const role = require('../middlewares/role.middleware');
 
 /**
  * @swagger
@@ -41,5 +42,30 @@ router.delete('/:id', auth, ctrl.remove);
  *       404: { description: Message non trouvé }
  */
 router.post('/:id/signaler', auth, ctrl.signaler);
+
+/**
+ * @swagger
+ * /api/messages/{id}/avertir:
+ *   post:
+ *     summary: Avertir l'auteur d'un message signalé (admin, modérateur)
+ *     description: Envoie une notification d'avertissement à l'auteur du message.
+ *     tags: [Messages]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               motif: { type: string }
+ *     responses:
+ *       204: { description: Avertissement envoyé }
+ *       404: { description: Message non trouvé }
+ */
+router.post('/:id/avertir', auth, role('admin', 'moderateur'), ctrl.avertir);
 
 module.exports = router;

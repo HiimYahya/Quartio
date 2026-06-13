@@ -1076,6 +1076,19 @@ if (sockets.size === 0) {
 - Aperçu texte du dernier message ou "📷 Photo" si type image
 - Mise à jour en temps réel via événement `message:new`
 
+### Photos dans les messages (Cloudinary)
+
+**Backend :**
+- `src/config/cloudinary.js` — configure le SDK Cloudinary depuis `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (compte gratuit cloudinary.com)
+- `src/middlewares/upload.middleware.js` — `multer` en `memoryStorage`, filtre les types `jpeg/png/webp/gif`, limite 5 Mo
+- `POST /api/conversations/:id/messages/media` (multipart, champ `image`) — upload l'image vers le dossier `quartio/messages` sur Cloudinary, crée un `Message` MongoDB `{ type: 'image', media_url }`, enregistre la relation Neo4j `(u)-[:ENVOIE]->(m)-[:CONTENU_DANS]->(c)` et diffuse `message:new` via Socket.io
+- Les erreurs Multer (type/taille invalides) sont mappées sur HTTP 400 par `error.middleware.js`
+
+**Frontend (`ConversationPage`) :**
+- Bouton 📎 → sélection d'un fichier → `POST .../messages/media` en `FormData`
+- Les messages `type: 'image'` sont affichés inline (`<img>` cliquable, ouvre l'original dans un nouvel onglet)
+- `MessagesPage` affiche "📷 Photo" comme aperçu du dernier message si `dernier_message_type === 'image'`
+
 ### Frontend — `socketStore` (Zustand)
 
 Le store gère la connexion Socket.io et expose :
@@ -1473,6 +1486,31 @@ const links = ALL_LINKS.filter((l) => !l.roles || l.roles.includes(admin?.role))
 Un badge coloré dans la sidebar identifie le rôle connecté :
 - Indigo : `Administrateur`
 - Amber : `Modérateur`
+
+### Permissions API du modérateur
+
+Le middleware `role('admin', 'moderateur')` (`src/middlewares/role.middleware.js`) est appliqué sur les routes que le modérateur doit pouvoir utiliser :
+
+| Route | Accès |
+|---|---|
+| `GET /api/incidents` | `admin`, `moderateur` |
+| `PUT /api/incidents/:id` | `admin`, `moderateur` (changement de statut) |
+| `DELETE /api/incidents/:id` | `admin` uniquement |
+| `POST /api/messages/:id/avertir` | `admin`, `moderateur` |
+| `DELETE /api/messages/:id` | auteur du message, `admin`, `moderateur` |
+| `POST /api/query` (Quartio-QL) | `admin`, `moderateur` (FIND/COUNT seulement) |
+
+### Signalements de messages — `SignalementsPage`
+
+**Signaler un message (Frontoffice) :** dans `ConversationPage`, un bouton ⚑ apparaît au survol de chaque message reçu → `POST /api/messages/:id/signaler`. Cela crée un document `Incident` MongoDB avec `id_message` renseigné et la relation Neo4j `(m:Message)-[:SIGNALE]->(i:Incident)`.
+
+**Traiter les signalements (Backoffice) :**
+- `GET /api/incidents?signalements=true` — le contrôleur `incidents.controller.js` filtre les incidents où `id_message` existe, `populate()` le message associé et enrichit chaque entrée avec `message_auteur` (nom/prénom récupérés en PostgreSQL). La liste `getAll` par défaut (sans ce paramètre) exclut ces entrées (`id_message: { $exists: false }`).
+- `Backoffice/src/pages/SignalementsPage.jsx` affiche pour chaque signalement : auteur, contenu (ou aperçu image), motif, date, avec trois actions :
+  - **Supprimer le message** → `DELETE /api/messages/:id` (soft delete, `est_supprime = true`) puis `PUT /api/incidents/:id { statut: 'resolu' }`
+  - **Avertir** → `POST /api/messages/:id/avertir` (crée une notification "Avertissement de la modération" pour l'auteur) puis `PUT /api/incidents/:id { statut: 'resolu' }`
+  - **Ignorer** → `PUT /api/incidents/:id { statut: 'ferme' }`
+- Lien `/signalements` visible dans la sidebar pour `admin` et `moderateur`.
 
 ---
 
