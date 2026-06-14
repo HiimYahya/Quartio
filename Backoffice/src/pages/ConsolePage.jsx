@@ -12,7 +12,7 @@ const EXAMPLES = [
   { label: 'Archiver les inactives',  query: 'UPDATE annonces WHERE statut = "inactive" SET { "statut": "archivee" }' },
 ]
 
-const SYNTAX_HELP = `Quartio-QL — Syntaxe
+const SYNTAX_HELP = `Quartio-QL - Syntaxe
 
 FIND   <collection> [WHERE <conditions>] [ORDER BY <field> ASC|DESC] [LIMIT n]
 COUNT  <collection> [WHERE <conditions>]
@@ -55,7 +55,7 @@ export default function ConsolePage() {
       e.preventDefault()
       execute()
     }
-    // Tab → 2 espaces
+    // Tab -> 2 espaces
     if (e.key === 'Tab') {
       e.preventDefault()
       const el    = textareaRef.current
@@ -127,7 +127,7 @@ export default function ConsolePage() {
                 {result && (
                   <span className={result.ok ? 'text-green-400' : 'text-red-400'}>
                     {result.ok
-                      ? `${result.data.duration_ms}ms — ${isArray ? `${rows.length} résultat(s)` : typeof rows === 'number' ? `count: ${rows}` : 'OK'}`
+                      ? `${result.data.duration_ms}ms - ${isArray ? `${rows.length} résultat(s)` : typeof rows === 'number' ? `count: ${rows}` : 'OK'}`
                       : `Erreur : ${result.error?.error ?? 'inconnue'}`}
                   </span>
                 )}
@@ -137,7 +137,7 @@ export default function ConsolePage() {
                 disabled={loading}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-1.5 rounded-lg disabled:opacity-60 transition-colors"
               >
-                {loading ? '…' : '▶ Exécuter'}
+                {loading ? '...' : '▶ Exécuter'}
               </button>
             </div>
           </div>
@@ -152,7 +152,7 @@ export default function ConsolePage() {
                     {result.error?.error ?? JSON.stringify(result.error, null, 2)}
                   </pre>
                   {result.error?.type === 'parse_error' && (
-                    <p className="text-xs text-slate-400 mt-2">Vérifiez la syntaxe — cliquez sur "? Syntaxe" pour l'aide.</p>
+                    <p className="text-xs text-slate-400 mt-2">Vérifiez la syntaxe - cliquez sur "? Syntaxe" pour l'aide.</p>
                   )}
                 </div>
               ) : typeof result.data.result === 'number' ? (
@@ -227,7 +227,7 @@ export default function ConsolePage() {
                   className="w-full text-left group">
                   <div className={`flex items-start gap-2 p-2 rounded-lg hover:bg-slate-50 transition-colors`}>
                     <span className={`shrink-0 mt-0.5 ${ok ? 'text-green-400' : 'text-red-400'}`}>
-                      {ok ? '✓' : '✗'}
+                      {ok ? '' : ''}
                     </span>
                     <span className="text-xs font-mono text-slate-600 truncate group-hover:text-slate-900">
                       {q.slice(0, 50)}

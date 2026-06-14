@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Vote } from 'lucide-react'
 import api from '../services/api'
 
 const STATUT_COLORS = {
@@ -93,9 +94,10 @@ export default function VotesPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-slate-400">Chargement…</div>
+        <div className="text-center py-12 text-slate-400">Chargement...</div>
       ) : votes.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl border border-slate-100">
+          <Vote className="w-8 h-8 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-400">Aucun vote.</p>
         </div>
       ) : (
@@ -127,7 +129,7 @@ export default function VotesPage() {
                       </select>
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-400">
-                      {v.date_debut ? new Date(v.date_debut).toLocaleDateString('fr-FR') : '—'}
+                      {v.date_debut ? new Date(v.date_debut).toLocaleDateString('fr-FR') : '-'}
                     </td>
                     <td className="px-4 py-3">
                       <button onClick={() => setConfirm({ id, titre: v.titre })} className="text-xs text-red-500 hover:underline">Supprimer</button>
@@ -204,7 +206,7 @@ export default function VotesPage() {
                 </button>
                 <button type="submit" disabled={saving}
                   className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-sm transition disabled:opacity-60">
-                  {saving ? 'Création…' : 'Créer'}
+                  {saving ? 'Création...' : 'Créer'}
                 </button>
               </div>
             </form>

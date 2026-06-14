@@ -1,6 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { CheckCircle2 } from 'lucide-react'
 import api from '../services/api'
+import PasswordStrengthMeter from '../components/ui/PasswordStrengthMeter'
+import { isPasswordValid, PASSWORD_RULES_MESSAGE } from '../utils/passwordPolicy'
 
 export default function ResetPasswordPage() {
   const { token }                   = useParams()
@@ -11,23 +14,10 @@ export default function ResetPasswordPage() {
   const [error, setError]           = useState(null)
   const [success, setSuccess]       = useState(false)
 
-  const strength = (() => {
-    if (password.length === 0) return null
-    let score = 0
-    if (password.length >= 8)  score++
-    if (/[A-Z]/.test(password)) score++
-    if (/[0-9]/.test(password)) score++
-    if (/[^A-Za-z0-9]/.test(password)) score++
-    return score
-  })()
-
-  const strengthLabel = ['Très faible', 'Faible', 'Moyen', 'Fort', 'Très fort'][strength ?? 0]
-  const strengthColor = ['bg-red-400', 'bg-orange-400', 'bg-yellow-400', 'bg-blue-400', 'bg-green-500'][strength ?? 0]
-
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (password !== confirm) return setError('Les mots de passe ne correspondent pas')
-    if (password.length < 8)  return setError('Le mot de passe doit faire au moins 8 caractères')
+    if (!isPasswordValid(password)) return setError(PASSWORD_RULES_MESSAGE)
 
     setLoading(true)
     setError(null)
@@ -54,9 +44,9 @@ export default function ResetPasswordPage() {
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           {success ? (
             <div className="text-center py-4">
-              <div className="text-5xl mb-4">✅</div>
+              <CheckCircle2 className="w-12 h-12 text-[#34d399] mx-auto mb-3" />
               <h2 className="text-xl font-semibold text-[#1a4a3a] mb-2">Mot de passe mis à jour !</h2>
-              <p className="text-gray-500 text-sm">Redirection vers la connexion…</p>
+              <p className="text-gray-500 text-sm">Redirection vers la connexion...</p>
             </div>
           ) : (
             <>
@@ -77,26 +67,10 @@ export default function ResetPasswordPage() {
                     value={password}
                     onChange={(e) => { setPassword(e.target.value); setError(null) }}
                     required
-                    minLength={8}
-                    placeholder="••••••••"
+                    placeholder="--------"
                     className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399] transition"
                   />
-                  {password.length > 0 && (
-                    <div className="mt-2">
-                      <div className="flex gap-1 mb-1">
-                        {[1, 2, 3, 4].map((n) => (
-                          <div key={n} className={`h-1 flex-1 rounded-full transition-colors ${strength >= n ? strengthColor : 'bg-gray-200'}`} />
-                        ))}
-                      </div>
-                      <p className="text-xs text-gray-500">{strengthLabel}</p>
-                    </div>
-                  )}
-                  <ul className="mt-2 text-xs text-gray-400 space-y-0.5">
-                    <li className={password.length >= 8       ? 'text-green-600' : ''}>• 8 caractères minimum</li>
-                    <li className={/[A-Z]/.test(password)     ? 'text-green-600' : ''}>• 1 majuscule</li>
-                    <li className={/[0-9]/.test(password)     ? 'text-green-600' : ''}>• 1 chiffre</li>
-                    <li className={/[^A-Za-z0-9]/.test(password) ? 'text-green-600' : ''}>• 1 caractère spécial</li>
-                  </ul>
+                  <PasswordStrengthMeter password={password} />
                 </div>
 
                 <div>
@@ -106,7 +80,7 @@ export default function ResetPasswordPage() {
                     value={confirm}
                     onChange={(e) => { setConfirm(e.target.value); setError(null) }}
                     required
-                    placeholder="••••••••"
+                    placeholder="--------"
                     className={`w-full border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399] transition ${
                       confirm && confirm !== password ? 'border-red-400' : 'border-gray-300'
                     }`}
@@ -118,12 +92,12 @@ export default function ResetPasswordPage() {
 
                 <button type="submit" disabled={loading}
                   className="w-full bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-60">
-                  {loading ? 'Mise à jour…' : 'Mettre à jour le mot de passe'}
+                  {loading ? 'Mise à jour...' : 'Mettre à jour le mot de passe'}
                 </button>
               </form>
 
               <p className="text-center text-sm text-gray-400 mt-5">
-                <Link to="/login" className="hover:underline">← Retour à la connexion</Link>
+                <Link to="/login" className="hover:underline">{'<- Retour à la connexion'}</Link>
               </p>
             </>
           )}

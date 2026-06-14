@@ -6,7 +6,7 @@ const roleMiddleware = (...rolesAutorises) => {
 
     if (!rolesAutorises.includes(req.user.role)) {
       return res.status(403).json({
-        error: `Accès refusé — rôle requis : ${rolesAutorises.join(' ou ')}`,
+        error: `Accès refusé - rôle requis : ${rolesAutorises.join(' ou ')}`,
       });
     }
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Megaphone } from 'lucide-react'
 import api from '../services/api'
 
 const STATUT_COLORS = {
@@ -93,9 +94,10 @@ export default function AnnoncesPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-slate-400">Chargement…</div>
+        <div className="text-center py-12 text-slate-400">Chargement...</div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl border border-slate-100">
+          <Megaphone className="w-8 h-8 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-400">Aucune annonce.</p>
         </div>
       ) : (
@@ -119,7 +121,7 @@ export default function AnnoncesPage() {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${a.type === 'offre' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                        {a.type ?? '—'}
+                        {a.type ?? '-'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-slate-500 text-xs">
@@ -185,7 +187,7 @@ export default function AnnoncesPage() {
                 <label className="block text-xs font-medium text-slate-600 mb-1">Quartier *</label>
                 <select required value={form.id_quartier} onChange={(e) => setForm((f) => ({ ...f, id_quartier: e.target.value }))}
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                  <option value="">Sélectionner…</option>
+                  <option value="">Sélectionner...</option>
                   {quartiers.map((q) => <option key={q.id_quartier} value={q.id_quartier}>{q.nom}</option>)}
                 </select>
               </div>
@@ -210,7 +212,7 @@ export default function AnnoncesPage() {
                 </button>
                 <button type="submit" disabled={saving}
                   className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-sm transition disabled:opacity-60">
-                  {saving ? 'Création…' : 'Créer'}
+                  {saving ? 'Création...' : 'Créer'}
                 </button>
               </div>
             </form>

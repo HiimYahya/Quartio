@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
+import { MessageCircle } from 'lucide-react'
 import api from '../services/api'
 import useAuthStore from '../store/authStore'
 import useSocketStore from '../store/socketStore'
@@ -64,10 +65,10 @@ export default function MessagesPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-gray-400">Chargement…</div>
+        <div className="text-center py-12 text-gray-400">Chargement...</div>
       ) : conversations.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
-          <p className="text-4xl mb-3">💬</p>
+          <MessageCircle className="w-8 h-8 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500">Aucune conversation.</p>
           <p className="text-sm text-gray-400 mt-1">Contactez un voisin depuis une annonce.</p>
         </div>
@@ -79,7 +80,7 @@ export default function MessagesPage() {
           const online  = otherId ? isOnline(otherId) : false
           const unread  = conv.non_lus ?? 0
           const preview = conv.dernier_message
-            ? (conv.dernier_message_type === 'image' ? '📷 Photo' : conv.dernier_message)
+            ? (conv.dernier_message_type === 'image' ? 'Photo' : conv.dernier_message)
             : 'Aucun message'
 
           return (

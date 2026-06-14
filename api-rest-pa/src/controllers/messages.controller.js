@@ -21,7 +21,7 @@ exports.remove = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/messages/:id/avertir  (admin, modérateur) → notifie l'auteur du message
+// POST /api/messages/:id/avertir  (admin, modérateur) -> notifie l'auteur du message
 exports.avertir = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
@@ -41,7 +41,7 @@ exports.avertir = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/messages/:id/signaler  → MongoDB Incident + Neo4j [:SIGNALE]
+// POST /api/messages/:id/signaler  -> MongoDB Incident + Neo4j [:SIGNALE]
 exports.signaler = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
@@ -71,7 +71,7 @@ exports.signaler = async (req, res, next) => {
       await session.close();
     }
 
-    // Notifier les admins (id_utilisateur = 0 → sera ignoré si inexistant)
+    // Notifier les admins (id_utilisateur = 0 -> sera ignoré si inexistant)
     createNotification(
       message.id_utilisateur_pg,
       'incident',

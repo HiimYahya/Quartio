@@ -4,17 +4,17 @@ const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Quartio — API REST',
+      title: 'Quartio - API REST',
       version: '2.0.0',
       description: `
 API de gestion de quartier connecté.
 
 **Bases de données :**
-- PostgreSQL — utilisateurs, quartiers, contrats, transactions, votes
-- MongoDB — annonces, événements, incidents, messages, conversations
-- Neo4j — relations sociales (habite, signe, participe…)
+- PostgreSQL - utilisateurs, quartiers, contrats, transactions, votes
+- MongoDB - annonces, événements, incidents, messages, conversations
+- Neo4j - relations sociales (habite, signe, participe...)
 
-**Authentification :** Bearer JWT — obtenez un token via \`POST /api/auth/login\`, puis passez-le dans le header \`Authorization: Bearer <token>\`.
+**Authentification :** Bearer JWT - obtenez un token via \`POST /api/auth/login\`, puis passez-le dans le header \`Authorization: Bearer <token>\`.
       `.trim(),
       contact: { name: 'Équipe Quartio', email: 'contact@quartio.fr' },
     },
@@ -29,7 +29,7 @@ API de gestion de quartier connecté.
       { name: 'Annonces',      description: 'Annonces de services entre voisins' },
       { name: 'Événements',    description: 'Événements locaux' },
       { name: 'Votes',         description: 'Votes et sondages du quartier' },
-      { name: 'Conversations', description: 'Messagerie — fils de discussion' },
+      { name: 'Conversations', description: 'Messagerie - fils de discussion' },
       { name: 'Messages',      description: 'Messages individuels' },
       { name: 'Contrats',      description: 'Contrats de service et transferts de points' },
       { name: 'Transactions',  description: 'Historique des points échangés' },

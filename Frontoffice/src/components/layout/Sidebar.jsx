@@ -4,15 +4,15 @@ import useAuthStore from '../../store/authStore'
 import LangSwitcher from '../ui/LangSwitcher'
 
 const NAV_LINKS = [
-  { to: '/dashboard',  icon: '⊞',  key: 'nav.home' },
-  { to: '/carte',      icon: '🗺️', key: 'nav.map' },
-  { to: '/annonces',   icon: '📋', key: 'nav.annonces' },
-  { to: '/evenements', icon: '📅', key: 'nav.events' },
-  { to: '/votes',      icon: '🗳️', key: 'nav.votes' },
-  { to: '/messages',   icon: '💬', key: 'nav.messages' },
-  { to: '/contrats',   icon: '📄', key: 'nav.contracts' },
-  { to: '/incidents',  icon: '⚠️', key: 'nav.incidents' },
-  { to: '/profil',     icon: '👤', key: 'nav.profile' },
+  { to: '/dashboard',  key: 'nav.home' },
+  { to: '/carte',      key: 'nav.map' },
+  { to: '/annonces',   key: 'nav.annonces' },
+  { to: '/evenements', key: 'nav.events' },
+  { to: '/votes',      key: 'nav.votes' },
+  { to: '/messages',   key: 'nav.messages' },
+  { to: '/contrats',   key: 'nav.contracts' },
+  { to: '/incidents',  key: 'nav.incidents' },
+  { to: '/profil',     key: 'nav.profile' },
 ]
 
 export default function Sidebar() {
@@ -33,7 +33,7 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {NAV_LINKS.map(({ to, icon, key }) => (
+        {NAV_LINKS.map(({ to, key }) => (
           <NavLink
             key={to}
             to={to}
@@ -45,7 +45,6 @@ export default function Sidebar() {
               }`
             }
           >
-            <span className="text-base w-5 text-center">{icon}</span>
             {t(key)}
           </NavLink>
         ))}
@@ -61,7 +60,6 @@ export default function Sidebar() {
               <p className="text-white/60 text-xs">Mon solde</p>
               <p className="text-white font-bold text-lg leading-none">{user.points_solde} pts</p>
             </div>
-            <span className="text-2xl">⭐</span>
           </Link>
         )}
         <div className="flex items-center justify-between px-1">
@@ -71,7 +69,6 @@ export default function Sidebar() {
           onClick={logout}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/60 hover:bg-white/10 hover:text-red-400 transition-all duration-150"
         >
-          <span className="text-base w-5 text-center">🚪</span>
           {t('nav.logout')}
         </button>
       </div>

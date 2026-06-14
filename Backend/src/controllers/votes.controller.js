@@ -132,7 +132,7 @@ exports.remove = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/votes/:id/voter  (auth) → Neo4j [:REPOND]
+// POST /api/votes/:id/voter  (auth) -> Neo4j [:REPOND]
 exports.voter = async (req, res, next) => {
   try {
     const voteId    = parseInt(req.params.id);

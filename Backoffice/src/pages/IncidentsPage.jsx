@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { AlertTriangle } from 'lucide-react'
 import api from '../services/api'
 
 const STATUT_LABELS  = { ouvert: 'Ouvert', en_cours: 'En cours', resolu: 'Résolu', ferme: 'Fermé' }
@@ -93,10 +94,10 @@ export default function IncidentsPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-slate-400">Chargement…</div>
+        <div className="text-center py-12 text-slate-400">Chargement...</div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl border border-slate-100">
-          <p className="text-4xl mb-3">✅</p>
+          <AlertTriangle className="w-8 h-8 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-400">Aucun incident dans cette catégorie.</p>
         </div>
       ) : (
@@ -115,7 +116,7 @@ export default function IncidentsPage() {
                     </div>
                     {inc.description && <p className="text-sm text-slate-500 line-clamp-2">{inc.description}</p>}
                     <p className="text-xs text-slate-400 mt-1">
-                      {inc.created_at ? new Date(inc.created_at).toLocaleDateString('fr-FR') : '—'}
+                      {inc.created_at ? new Date(inc.created_at).toLocaleDateString('fr-FR') : '-'}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -126,7 +127,7 @@ export default function IncidentsPage() {
                       ))}
                     </select>
                     <button onClick={() => setConfirm({ id, titre: inc.titre })}
-                      className="text-xs text-red-400 hover:text-red-600 px-2 py-1.5 rounded hover:bg-red-50 transition">✕</button>
+                      className="text-xs text-red-400 hover:text-red-600 px-2 py-1.5 rounded hover:bg-red-50 transition"></button>
                   </div>
                 </div>
               </div>
@@ -156,7 +157,7 @@ export default function IncidentsPage() {
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Type</label>
                   <input value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-                    placeholder="voirie, éclairage…"
+                    placeholder="voirie, éclairage..."
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
                 <div>
@@ -177,7 +178,7 @@ export default function IncidentsPage() {
                 </button>
                 <button type="submit" disabled={saving}
                   className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-sm transition disabled:opacity-60">
-                  {saving ? 'Création…' : 'Créer'}
+                  {saving ? 'Création...' : 'Créer'}
                 </button>
               </div>
             </form>

@@ -102,7 +102,7 @@ exports.remove = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/evenements/:id/participer  → Neo4j [:PARTICIPE]
+// POST /api/evenements/:id/participer  -> Neo4j [:PARTICIPE]
 exports.participer = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
@@ -172,7 +172,7 @@ exports.seDesinscrire = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/evenements/:id/participants  → Neo4j → PostgreSQL
+// GET /api/evenements/:id/participants  -> Neo4j -> PostgreSQL
 exports.getParticipants = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
@@ -208,7 +208,7 @@ exports.getParticipants = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/evenements/:id/swipe — enregistre l'intérêt dans Neo4j
+// POST /api/evenements/:id/swipe - enregistre l'intérêt dans Neo4j
 exports.swipe = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
@@ -235,7 +235,7 @@ exports.swipe = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/evenements/suggestions — recommandations Neo4j basées sur les intérêts communs
+// GET /api/evenements/suggestions - recommandations Neo4j basées sur les intérêts communs
 exports.suggestions = async (req, res, next) => {
   try {
     const uid     = req.user.id;

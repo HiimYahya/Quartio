@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Flag } from 'lucide-react'
 import api from '../services/api'
 
 export default function SignalementsPage() {
@@ -64,10 +65,10 @@ export default function SignalementsPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-slate-400">Chargement…</div>
+        <div className="text-center py-12 text-slate-400">Chargement...</div>
       ) : signalements.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl border border-slate-100">
-          <p className="text-4xl mb-3">✅</p>
+          <Flag className="w-8 h-8 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-400">Aucun message signalé à traiter.</p>
         </div>
       ) : (
@@ -92,7 +93,7 @@ export default function SignalementsPage() {
                     {msg?.type === 'image' && msg?.media_url ? (
                       <img src={msg.media_url} alt="Image signalée" className="max-h-40 rounded-lg mt-1" />
                     ) : (
-                      <p className="text-sm text-slate-600 italic">"{msg?.contenu || msg?.est_supprime && '[Message supprimé]' || '—'}"</p>
+                      <p className="text-sm text-slate-600 italic">"{msg?.contenu || msg?.est_supprime && '[Message supprimé]' || '-'}"</p>
                     )}
                     {sig.description && (
                       <p className="text-xs text-slate-400 mt-1">Motif : {sig.description}</p>

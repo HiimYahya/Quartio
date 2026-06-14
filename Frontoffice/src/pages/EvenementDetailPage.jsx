@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { CalendarDays, MapPin, Users } from 'lucide-react'
 import api from '../services/api'
 import useAuthStore from '../store/authStore'
 
@@ -47,12 +48,12 @@ export default function EvenementDetailPage() {
     setActionLoading(false)
   }
 
-  if (loading) return <div className="text-center py-12 text-gray-400">Chargement…</div>
+  if (loading) return <div className="text-center py-12 text-gray-400">Chargement...</div>
   if (!ev) return null
 
   const formatDate = (d) => d
     ? new Date(d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-    : '—'
+    : '-'
 
   const isOrganisateur = ev.id_utilisateur_pg === (user?.id ?? user?.id_utilisateur)
   const complet = ev.capacite_max && nbParticipants >= ev.capacite_max && !inscrit
@@ -60,7 +61,7 @@ export default function EvenementDetailPage() {
   return (
     <div className="max-w-2xl space-y-5">
       <button onClick={() => navigate(-1)} className="text-sm text-[#2d7a5f] hover:underline">
-        ← Retour aux événements
+        {'<- Retour aux événements'}
       </button>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -78,22 +79,25 @@ export default function EvenementDetailPage() {
           {/* Méta */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-600">
             <div className="flex items-center gap-2">
-              <span>📅</span><span>{formatDate(ev.date_debut)}</span>
+              <CalendarDays className="w-4 h-4 shrink-0" />
+              <span>{formatDate(ev.date_debut)}</span>
             </div>
             {ev.date_fin && (
               <div className="flex items-center gap-2">
-                <span>🏁</span><span>{formatDate(ev.date_fin)}</span>
+                <CalendarDays className="w-4 h-4 shrink-0" />
+                <span>{formatDate(ev.date_fin)}</span>
               </div>
             )}
             {ev.lieu && (
               <div className="flex items-center gap-2">
-                <span>📍</span><span>{ev.lieu}</span>
+                <MapPin className="w-4 h-4 shrink-0" />
+                <span>{ev.lieu}</span>
               </div>
             )}
             <div className="flex items-center gap-2">
-              <span>👥</span>
+              <Users className="w-4 h-4 shrink-0" />
               <span>
-                {nbParticipants ?? '…'} participant{nbParticipants !== 1 ? 's' : ''}
+                {nbParticipants ?? '...'} participant{nbParticipants !== 1 ? 's' : ''}
                 {ev.capacite_max ? ` / ${ev.capacite_max} places` : ''}
               </span>
             </div>
@@ -140,7 +144,7 @@ export default function EvenementDetailPage() {
                     : 'bg-[#1a4a3a] hover:bg-[#0f2e24] text-white'
               }`}
             >
-              {actionLoading ? '…' : inscrit ? '✓ Inscrit — Se désinscrire' : complet ? 'Complet' : "S'inscrire à cet événement"}
+              {actionLoading ? '...' : inscrit ? 'Inscrit - Se désinscrire' : complet ? 'Complet' : "S'inscrire à cet événement"}
             </button>
           )}
 

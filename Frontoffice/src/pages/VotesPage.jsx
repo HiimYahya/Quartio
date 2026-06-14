@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
+import { Vote } from 'lucide-react'
 import api from '../services/api'
 
 const TYPE_LABELS = {
-  choix_multiple: '📋 Choix multiple',
-  oui_non:        '✅ Oui / Non',
-  classement:     '🏆 Classement',
+  choix_multiple: 'Choix multiple',
+  oui_non:        'Oui / Non',
+  classement:     'Classement',
 }
 
 export default function VotesPage() {
@@ -17,7 +18,7 @@ export default function VotesPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError]           = useState(null)
   const [voted, setVoted]           = useState({})
-  const [rankings, setRankings]     = useState({}) // voteId → [optId, ...]
+  const [rankings, setRankings]     = useState({}) // voteId -> [optId, ...]
 
   const load = async () => {
     setLoading(true)
@@ -181,17 +182,17 @@ export default function VotesPage() {
 
           <button type="submit" disabled={submitting}
             className="bg-[#1a4a3a] hover:bg-[#0f2e24] text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors disabled:opacity-60">
-            {submitting ? 'Création…' : 'Créer le vote'}
+            {submitting ? 'Création...' : 'Créer le vote'}
           </button>
         </form>
       )}
 
       {/* ── Liste des votes ────────────────────────────────────────────── */}
       {loading ? (
-        <div className="text-center py-12 text-gray-400">Chargement…</div>
+        <div className="text-center py-12 text-gray-400">Chargement...</div>
       ) : votes.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
-          <p className="text-4xl mb-3">🗳️</p>
+          <Vote className="w-8 h-8 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500">Aucun vote en cours.</p>
         </div>
       ) : (
@@ -212,12 +213,12 @@ export default function VotesPage() {
                 <div key={voteId} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
                   <div className="flex items-center gap-2 mb-1">
                     <h4 className="font-semibold text-gray-800">{v.titre}</h4>
-                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">🏆 Classement</span>
+                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">Classement</span>
                   </div>
                   {v.description && <p className="text-sm text-gray-500 mb-3">{v.description}</p>}
 
                   {hasVoted ? (
-                    <div className="text-sm text-green-600 font-medium py-2">✅ Votre classement a été enregistré.</div>
+                    <div className="text-sm text-green-600 font-medium py-2">Votre classement a été enregistré.</div>
                   ) : (
                     <>
                       <p className="text-xs text-gray-400 mb-2">Ordonnez les options par préférence (1 = meilleur)</p>
@@ -231,9 +232,9 @@ export default function VotesPage() {
                             <span className="flex-1 text-sm text-gray-700">{opt.libelle}</span>
                             <div className="flex gap-1">
                               <button onClick={() => moveRankingItem(voteId, opts, idx, -1)} disabled={idx === 0}
-                                className="text-gray-400 hover:text-gray-700 disabled:opacity-20 text-lg leading-none">↑</button>
+                                className="text-gray-400 hover:text-gray-700 disabled:opacity-20 text-lg leading-none">^</button>
                               <button onClick={() => moveRankingItem(voteId, opts, idx, 1)} disabled={idx === sortedOpts.length - 1}
-                                className="text-gray-400 hover:text-gray-700 disabled:opacity-20 text-lg leading-none">↓</button>
+                                className="text-gray-400 hover:text-gray-700 disabled:opacity-20 text-lg leading-none">v</button>
                             </div>
                           </div>
                         ))}
@@ -255,7 +256,7 @@ export default function VotesPage() {
                 <div className="flex items-center gap-2 mb-1">
                   <h4 className="font-semibold text-gray-800">{v.titre}</h4>
                   {typeVote === 'oui_non' && (
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">✅ Oui / Non</span>
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Oui / Non</span>
                   )}
                 </div>
                 {v.description && <p className="text-sm text-gray-500 mb-3">{v.description}</p>}

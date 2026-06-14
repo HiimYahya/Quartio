@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { FileText } from 'lucide-react'
 import api from '../services/api'
 
 const STATUT_LABELS = { en_attente: 'En attente', signe: 'Signé', annule: 'Annulé', termine: 'Terminé' }
@@ -38,14 +39,34 @@ export default function ContratsPage() {
     setConfirm(null)
   }
 
+  const handleDocument = async (id) => {
+    try {
+      const { data } = await api.get(`/contrats/${id}/document`)
+      if (data.pdf_url) {
+        window.open(data.pdf_url, '_blank')
+      } else if (data.pdf_base64) {
+        const bytes = atob(data.pdf_base64)
+        const buffer = new Uint8Array(bytes.length)
+        for (let i = 0; i < bytes.length; i++) buffer[i] = bytes.charCodeAt(i)
+        const blob = new Blob([buffer], { type: 'application/pdf' })
+        window.open(URL.createObjectURL(blob), '_blank')
+      } else {
+        alert('Aucun document archivé pour ce contrat.')
+      }
+    } catch {
+      alert('Aucun document archivé pour ce contrat.')
+    }
+  }
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-400">{items.length} contrat(s)</p>
 
       {loading ? (
-        <div className="text-center py-12 text-slate-400">Chargement…</div>
+        <div className="text-center py-12 text-slate-400">Chargement...</div>
       ) : items.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl border border-slate-100">
+          <FileText className="w-8 h-8 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-400">Aucun contrat.</p>
         </div>
       ) : (
@@ -64,10 +85,10 @@ export default function ContratsPage() {
                   <td className="px-4 py-3 font-medium text-slate-800">#{c.id_contrat}</td>
                   <td className="px-4 py-3 text-slate-500">{c.points_echanges > 0 ? `${c.points_echanges} pts` : 'Gratuit'}</td>
                   <td className="px-4 py-3 text-slate-400 text-xs">
-                    {c.date_creation ? new Date(c.date_creation).toLocaleDateString('fr-FR') : '—'}
+                    {c.date_creation ? new Date(c.date_creation).toLocaleDateString('fr-FR') : '-'}
                   </td>
                   <td className="px-4 py-3 text-slate-400 text-xs">
-                    {c.date_signature ? new Date(c.date_signature).toLocaleDateString('fr-FR') : '—'}
+                    {c.date_signature ? new Date(c.date_signature).toLocaleDateString('fr-FR') : '-'}
                   </td>
                   <td className="px-4 py-3">
                     <select value={c.statut ?? 'en_attente'} onChange={(e) => handleStatut(c.id_contrat, e.target.value)}
@@ -78,10 +99,18 @@ export default function ContratsPage() {
                     </select>
                   </td>
                   <td className="px-4 py-3">
-                    <button onClick={() => setConfirm({ id: c.id_contrat })}
-                      className="text-xs text-red-500 hover:text-red-700 hover:underline">
-                      Supprimer
-                    </button>
+                    <div className="flex items-center gap-3">
+                      {(c.statut === 'signe' || c.statut === 'termine') && (
+                        <button onClick={() => handleDocument(c.id_contrat)}
+                          className="text-xs text-indigo-500 hover:text-indigo-700 hover:underline">
+                          Document
+                        </button>
+                      )}
+                      <button onClick={() => setConfirm({ id: c.id_contrat })}
+                        className="text-xs text-red-500 hover:text-red-700 hover:underline">
+                        Supprimer
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { MapContainer, TileLayer, GeoJSON, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { Link } from 'react-router-dom'
+import { X, Megaphone, CalendarDays } from 'lucide-react'
 import api from '../services/api'
 
 // Fix icônes Leaflet (bug connu avec bundlers)
@@ -157,7 +158,7 @@ export default function CartePage() {
   const quartierEvenements = evenements.filter((e) => e.id_quartier === selected?.id_quartier)
 
   if (loading) {
-    return <div className="flex items-center justify-center h-full text-gray-400">Chargement de la carte…</div>
+    return <div className="flex items-center justify-center h-full text-gray-400">Chargement de la carte...</div>
   }
 
   return (
@@ -168,7 +169,7 @@ export default function CartePage() {
 
         {usingDemo && (
           <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-xl px-3 py-2 text-xs">
-            Données de démonstration — PostgreSQL non disponible en prod.
+            Données de démonstration - PostgreSQL non disponible en prod.
           </div>
         )}
 
@@ -177,10 +178,10 @@ export default function CartePage() {
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Afficher</p>
           <div className="flex flex-col gap-1">
             {[
-              { key: 'all',        label: 'Tout',         icon: '🗺️' },
-              { key: 'annonces',   label: 'Annonces',     icon: '📋' },
-              { key: 'evenements', label: 'Événements',   icon: '📅' },
-            ].map(({ key, label, icon }) => (
+              { key: 'all',        label: 'Tout' },
+              { key: 'annonces',   label: 'Annonces' },
+              { key: 'evenements', label: 'Événements' },
+            ].map(({ key, label }) => (
               <button
                 key={key}
                 onClick={() => setActiveLayer(key)}
@@ -190,7 +191,7 @@ export default function CartePage() {
                     : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                <span>{icon}</span>{label}
+                {label}
               </button>
             ))}
           </div>
@@ -225,12 +226,14 @@ export default function CartePage() {
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-gray-800 text-sm">{selected.nom}</h3>
-              <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-xs">✕</button>
+              <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-xs">
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
             <div>
               <p className="text-xs text-gray-500 mb-1">
-                Annonces ({annonces.length > 0 ? quartierAnnonces.length : '—'})
+                Annonces ({annonces.length > 0 ? quartierAnnonces.length : '-'})
               </p>
               {quartierAnnonces.slice(0, 3).map((a) => (
                 <Link
@@ -238,7 +241,7 @@ export default function CartePage() {
                   to={`/annonces/${a._id ?? a.id}`}
                   className="flex items-center gap-2 py-1.5 text-xs text-gray-700 hover:text-[#1a4a3a] border-b border-gray-50 last:border-0"
                 >
-                  <span className="text-blue-500 shrink-0">📋</span>
+                  <Megaphone className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                   <span className="truncate">{a.titre}</span>
                 </Link>
               ))}
@@ -249,7 +252,7 @@ export default function CartePage() {
 
             <div>
               <p className="text-xs text-gray-500 mb-1">
-                Événements ({evenements.length > 0 ? quartierEvenements.length : '—'})
+                Événements ({evenements.length > 0 ? quartierEvenements.length : '-'})
               </p>
               {quartierEvenements.slice(0, 3).map((e) => (
                 <Link
@@ -257,7 +260,7 @@ export default function CartePage() {
                   to={`/evenements/${e._id ?? e.id}`}
                   className="flex items-center gap-2 py-1.5 text-xs text-gray-700 hover:text-[#1a4a3a] border-b border-gray-50 last:border-0"
                 >
-                  <span className="text-purple-500 shrink-0">📅</span>
+                  <CalendarDays className="w-3.5 h-3.5 text-purple-500 shrink-0" />
                   <span className="truncate">{e.titre}</span>
                 </Link>
               ))}
@@ -340,7 +343,7 @@ export default function CartePage() {
                           {a.est_payant ? `${a.cout_points} pts` : 'Gratuit'}
                         </span>
                         <Link to={`/annonces/${a._id ?? a.id}`} className="text-xs text-[#2d7a5f] hover:underline">
-                          Voir →
+                          {'Voir ->'}
                         </Link>
                       </div>
                     </div>
@@ -365,14 +368,14 @@ export default function CartePage() {
                   <Popup>
                     <div className="space-y-1 text-sm min-w-[160px]">
                       <p className="font-semibold text-gray-800">{ev.titre}</p>
-                      {ev.lieu && <p className="text-xs text-gray-500">📍 {ev.lieu}</p>}
+                      {ev.lieu && <p className="text-xs text-gray-500">{ev.lieu}</p>}
                       {ev.date_debut && (
                         <p className="text-xs text-gray-500">
-                          🗓 {new Date(ev.date_debut).toLocaleDateString('fr-FR')}
+                          {new Date(ev.date_debut).toLocaleDateString('fr-FR')}
                         </p>
                       )}
                       <Link to={`/evenements/${ev._id ?? ev.id}`} className="text-xs text-[#2d7a5f] hover:underline">
-                        Voir →
+                        {'Voir ->'}
                       </Link>
                     </div>
                   </Popup>

@@ -7,8 +7,14 @@ const swaggerUi   = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
 const errorMiddleware = require('./middlewares/error.middleware');
 const logger      = require('./config/logger');
+const appEvents   = require('./config/events');
 
 const app = express();
+
+// ── Hooks (système d'événements internes) ──────────────────────────────────────
+// Charge les modules de src/hooks/ qui s'abonnent aux événements métier
+// (ex: 'contrat.finalise', 'incident.cree') émis par les controllers.
+require('./hooks')(appEvents);
 
 // ── Sécurité ──────────────────────────────────────────────────────────────────
 app.use(helmet());
@@ -23,7 +29,7 @@ app.use(cors({
 // Limit stricte sur les routes d'auth (anti brute-force)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20,
+  max: 100,
   message: { error: 'Trop de tentatives, réessayez dans 15 minutes' },
   standardHeaders: true,
   legacyHeaders: false,

@@ -5,7 +5,7 @@ const Message         = require('../models/mongo/message.model');
 const validateMongoId = require('../utils/validateMongoId');
 const { getPagination, paginate } = require('../utils/pagination');
 
-// GET /api/conversations  → mes conversations via Neo4j
+// GET /api/conversations  -> mes conversations via Neo4j
 exports.getMes = async (req, res, next) => {
   try {
     const { page, limit, skip } = getPagination(req.query);
@@ -84,7 +84,7 @@ exports.create = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/conversations/:id/messages  → Neo4j → MongoDB
+// GET /api/conversations/:id/messages  -> Neo4j -> MongoDB
 exports.getMessages = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;

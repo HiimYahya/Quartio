@@ -151,7 +151,7 @@ export default function ConversationPage() {
       {/* Header conversation */}
       <div className="flex items-center gap-3 mb-3">
         <button onClick={() => navigate(-1)} className="text-sm text-[#2d7a5f] hover:underline shrink-0">
-          ←
+          {'<-'}
         </button>
         {other && (
           <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -173,7 +173,7 @@ export default function ConversationPage() {
         )}
         {!other && (
           <button onClick={() => navigate(-1)} className="text-sm text-[#2d7a5f] hover:underline">
-            ← Retour aux messages
+            {'<- Retour aux messages'}
           </button>
         )}
       </div>
@@ -182,7 +182,7 @@ export default function ConversationPage() {
       <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {loading ? (
-            <div className="text-center py-8 text-gray-400">Chargement…</div>
+            <div className="text-center py-8 text-gray-400">Chargement...</div>
           ) : messages.length === 0 ? (
             <div className="text-center py-8 text-gray-400">
               Aucun message. Démarrez la conversation !
@@ -236,12 +236,12 @@ export default function ConversationPage() {
             title="Envoyer une image"
             className="shrink-0 px-3 py-2 rounded-xl text-sm border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
-            {uploading ? '…' : '📎'}
+            {uploading ? '...' : ''}
           </button>
           <input
             value={text}
             onChange={handleTextChange}
-            placeholder="Votre message…"
+            placeholder="Votre message..."
             className="flex-1 border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]"
           />
           <button
@@ -249,7 +249,7 @@ export default function ConversationPage() {
             disabled={sending || !text.trim()}
             className="bg-[#1a4a3a] hover:bg-[#0f2e24] text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
           >
-            {sending ? '…' : '→'}
+            {sending ? '...' : '->'}
           </button>
         </form>
       </div>
@@ -271,7 +271,7 @@ function MessageBubble({ msg, own, signaled, onSignaler }) {
             signaled ? 'text-orange-500 opacity-100' : 'text-gray-300 hover:text-red-500 hover:bg-red-50'
           }`}
         >
-          {signaled ? '🚩' : '⚑'}
+          {signaled ? '' : ''}
         </button>
       )}
       <div className={`max-w-xs lg:max-w-sm px-4 py-2.5 rounded-2xl text-sm ${

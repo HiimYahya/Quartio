@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { Megaphone, CalendarDays, Vote, Coins } from 'lucide-react'
 import useAuthStore from '../store/authStore'
 import api from '../services/api'
 
-const StatCard = ({ label, value, icon, to, color }) => (
+const StatCard = ({ label, value, to, color, icon: Icon }) => (
   <Link to={to} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex items-center gap-4">
-    <div className={`w-12 h-12 ${color} rounded-xl flex items-center justify-center text-2xl`}>{icon}</div>
+    <div className={`w-12 h-12 ${color} rounded-xl flex items-center justify-center text-gray-700`}>
+      <Icon className="w-6 h-6" />
+    </div>
     <div>
-      <p className="text-2xl font-bold text-gray-800">{value ?? '…'}</p>
+      <p className="text-2xl font-bold text-gray-800">{value ?? '...'}</p>
       <p className="text-sm text-gray-500">{label}</p>
     </div>
   </Link>
@@ -28,9 +31,9 @@ export default function DashboardPage() {
           api.get('/votes?limit=1'),
         ])
         setStats({
-          annonces:  annonces.value?.data?.pagination?.total  ?? '—',
-          evenements: evenements.value?.data?.pagination?.total ?? '—',
-          votes:     votes.value?.data?.pagination?.total     ?? '—',
+          annonces:  annonces.value?.data?.pagination?.total  ?? '-',
+          evenements: evenements.value?.data?.pagination?.total ?? '-',
+          votes:     votes.value?.data?.pagination?.total     ?? '-',
         })
       } catch {}
     }
@@ -45,12 +48,12 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label={t('dashboard.annonces')}  value={stats.annonces}   icon="📋" to="/annonces"  color="bg-blue-50" />
-        <StatCard label={t('dashboard.events')}    value={stats.evenements} icon="📅" to="/evenements" color="bg-purple-50" />
-        <StatCard label={t('dashboard.votes')}     value={stats.votes}      icon="🗳️" to="/votes"     color="bg-yellow-50" />
+        <StatCard label={t('dashboard.annonces')}  value={stats.annonces}   to="/annonces"  color="bg-blue-50" icon={Megaphone} />
+        <StatCard label={t('dashboard.events')}    value={stats.evenements} to="/evenements" color="bg-purple-50" icon={CalendarDays} />
+        <StatCard label={t('dashboard.votes')}     value={stats.votes}      to="/votes"     color="bg-yellow-50" icon={Vote} />
         <StatCard label={t('dashboard.myPoints')}
-          value={user?.points_solde != null ? `${user.points_solde} ⭐` : '—'}
-          icon="💰" to="/profil" color="bg-amber-50" />
+          value={user?.points_solde != null ? `${user.points_solde} pts` : '-'}
+          to="/profil" color="bg-amber-50" icon={Coins} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -58,13 +61,13 @@ export default function DashboardPage() {
           <h3 className="font-semibold text-gray-800 mb-3">{t('dashboard.quickAccess')}</h3>
           <div className="space-y-2">
             {[
-              { to: '/annonces',   label: t('dashboard.postAd'),     icon: '➕' },
-              { to: '/evenements', label: t('dashboard.seeEvents'),   icon: '📅' },
-              { to: '/incidents',  label: t('dashboard.reportIssue'), icon: '⚠️' },
-              { to: '/votes',      label: t('dashboard.joinVote'),    icon: '🗳️' },
-            ].map(({ to, label, icon }) => (
+              { to: '/annonces',   label: t('dashboard.postAd') },
+              { to: '/evenements', label: t('dashboard.seeEvents') },
+              { to: '/incidents',  label: t('dashboard.reportIssue') },
+              { to: '/votes',      label: t('dashboard.joinVote') },
+            ].map(({ to, label }) => (
               <Link key={to} to={to} className="flex items-center gap-3 p-3 rounded-lg hover:bg-[#f0faf5] transition-colors text-sm text-gray-700">
-                <span>{icon}</span>{label}
+                {label}
               </Link>
             ))}
           </div>

@@ -5,7 +5,7 @@ const pool      = require('../config/db');
 
 const APP_NAME = 'Quartio';
 
-// GET /api/auth/mfa/setup — génère un secret TOTP + QR code (non activé tant que /activate pas appelé)
+// GET /api/auth/mfa/setup - génère un secret TOTP + QR code (non activé tant que /activate pas appelé)
 exports.setup = async (req, res, next) => {
   try {
     const secret = speakeasy.generateSecret({ name: `${APP_NAME} (${req.user.email})`, length: 20 });
@@ -26,7 +26,7 @@ exports.setup = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/auth/mfa/activate — vérifie le premier code TOTP et active le MFA
+// POST /api/auth/mfa/activate - vérifie le premier code TOTP et active le MFA
 exports.activate = async (req, res, next) => {
   try {
     const { code } = req.body;
@@ -63,7 +63,7 @@ exports.activate = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/auth/mfa/disable — désactive le MFA (nécessite un code TOTP valide)
+// POST /api/auth/mfa/disable - désactive le MFA (nécessite un code TOTP valide)
 exports.disable = async (req, res, next) => {
   try {
     const { code } = req.body;
@@ -95,7 +95,7 @@ exports.disable = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/auth/mfa/verify — appelé depuis la page /mfa après login (avec mfa_token)
+// POST /api/auth/mfa/verify - appelé depuis la page /mfa après login (avec mfa_token)
 // Vérifie le code TOTP et retourne le vrai JWT + refresh token
 exports.verify = async (req, res, next) => {
   try {
@@ -165,7 +165,7 @@ exports.verify = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/auth/mfa/verify-action — vérifie un code TOTP pour une action sensible (signature, etc.)
+// POST /api/auth/mfa/verify-action - vérifie un code TOTP pour une action sensible (signature, etc.)
 // Utilisé par les routes protégées (contrats, changement email, etc.)
 exports.verifyAction = async (req, res, next) => {
   try {

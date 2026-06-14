@@ -3,10 +3,12 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import useAuthStore from '../store/authStore'
 import LangSwitcher from '../components/ui/LangSwitcher'
+import PasswordStrengthMeter from '../components/ui/PasswordStrengthMeter'
+import { isPasswordValid, PASSWORD_RULES_MESSAGE } from '../utils/passwordPolicy'
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ nom: '', prenom: '', email: '', mot_de_passe: '' })
-  const { register, loading, error, clearError } = useAuthStore()
+  const { register, loading, error, clearError, setError } = useAuthStore()
   const navigate = useNavigate()
   const { t } = useTranslation()
 
@@ -17,8 +19,16 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    const ok = await register(form)
-    if (ok) navigate(`/verify-email?email=${encodeURIComponent(form.email)}`)
+    if (!isPasswordValid(form.mot_de_passe)) {
+      return setError(PASSWORD_RULES_MESSAGE)
+    }
+    const result = await register(form)
+    if (!result) return
+    if (result.email_verification_required === false) {
+      navigate('/login?verified=1')
+    } else {
+      navigate(`/verify-email?email=${encodeURIComponent(form.email)}`)
+    }
   }
 
   return (
@@ -61,9 +71,10 @@ export default function RegisterPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.password')}</label>
-              <input type="password" name="mot_de_passe" value={form.mot_de_passe} onChange={handleChange} required minLength={8}
+              <input type="password" name="mot_de_passe" value={form.mot_de_passe} onChange={handleChange} required
                 placeholder={t('auth.passwordMin')}
                 className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399] transition" />
+              <PasswordStrengthMeter password={form.mot_de_passe} />
             </div>
             <button type="submit" disabled={loading}
               className="w-full bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-60 mt-2">

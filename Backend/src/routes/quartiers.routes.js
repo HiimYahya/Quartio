@@ -11,7 +11,7 @@ const { createSchema, updateSchema } = require('../validators/quartier.validator
 router.get('/',    ctrl.getAll);
 router.get('/:id', ctrl.getById);
 
-// Écriture — admin uniquement
+// Écriture - admin uniquement
 router.post('/',    auth, role('admin'), validate(createSchema), ctrl.create);
 router.put('/:id',  auth, role('admin'), validate(updateSchema), ctrl.update);
 router.delete('/:id', auth, role('admin'), ctrl.remove);

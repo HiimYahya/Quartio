@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { MailCheck } from 'lucide-react'
 import api from '../services/api'
 
 export default function ForgotPasswordPage() {
@@ -34,13 +35,13 @@ export default function ForgotPasswordPage() {
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           {sent ? (
             <div className="text-center py-2">
-              <div className="text-5xl mb-4">📧</div>
+              <MailCheck className="w-12 h-12 text-[#34d399] mx-auto mb-3" />
               <h2 className="text-xl font-semibold text-[#1a4a3a] mb-3">Email envoyé</h2>
               <p className="text-gray-500 text-sm mb-6">
                 Si cet email est associé à un compte Quartio, vous recevrez un lien de réinitialisation sous quelques minutes. Vérifiez également vos spams.
               </p>
               <Link to="/login" className="text-[#2d7a5f] text-sm font-medium hover:underline">
-                ← Retour à la connexion
+                {'<- Retour à la connexion'}
               </Link>
             </div>
           ) : (
@@ -68,12 +69,12 @@ export default function ForgotPasswordPage() {
                 </div>
                 <button type="submit" disabled={loading}
                   className="w-full bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-60">
-                  {loading ? 'Envoi…' : 'Envoyer le lien de réinitialisation'}
+                  {loading ? 'Envoi...' : 'Envoyer le lien de réinitialisation'}
                 </button>
               </form>
 
               <p className="text-center text-sm text-gray-400 mt-5">
-                <Link to="/login" className="hover:underline">← Retour à la connexion</Link>
+                <Link to="/login" className="hover:underline">{'<- Retour à la connexion'}</Link>
               </p>
             </>
           )}

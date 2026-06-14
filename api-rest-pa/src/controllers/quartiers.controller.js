@@ -167,7 +167,7 @@ exports.remove = async (req, res, next) => {
   }
 };
 
-// GET /api/quartiers/:id/habitants  (auth) — via Neo4j
+// GET /api/quartiers/:id/habitants  (auth) - via Neo4j
 exports.getHabitants = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -200,7 +200,7 @@ exports.getHabitants = async (req, res, next) => {
   }
 };
 
-// GET /api/quartiers/:id/annonces  — via Neo4j → MongoDB
+// GET /api/quartiers/:id/annonces  - via Neo4j -> MongoDB
 exports.getAnnonces = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -228,7 +228,7 @@ exports.getAnnonces = async (req, res, next) => {
   }
 };
 
-// GET /api/quartiers/:id/evenements  — via Neo4j → MongoDB
+// GET /api/quartiers/:id/evenements  - via Neo4j -> MongoDB
 exports.getEvenements = async (req, res, next) => {
   try {
     const { id } = req.params;

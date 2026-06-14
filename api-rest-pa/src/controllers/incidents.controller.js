@@ -3,9 +3,10 @@ const Incident        = require('../models/mongo/incident.model');
 const validateMongoId = require('../utils/validateMongoId');
 const { getPagination, paginate } = require('../utils/pagination');
 const { emitAlert }   = require('../socket/index');
+const appEvents       = require('../config/events');
 
 // GET /api/incidents?page=1&limit=20&statut=ouvert&priorite=haute  (admin, modérateur)
-// GET /api/incidents?signalements=true  → messages signalés uniquement (avec contenu + auteur)
+// GET /api/incidents?signalements=true  -> messages signalés uniquement (avec contenu + auteur)
 exports.getAll = async (req, res, next) => {
   try {
     const { page, limit, skip } = getPagination(req.query);
@@ -73,6 +74,11 @@ exports.create = async (req, res, next) => {
         statut:   incident.statut,
       });
     }
+
+    // Événement métier (pour les hooks)
+    appEvents.emit('incident.cree', {
+      incidentId: incident._id.toString(), priorite: incident.priorite,
+    });
 
     res.status(201).json(incident);
   } catch (err) { next(err); }

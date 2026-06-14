@@ -1,0 +1,15 @@
+{
+  "name": "quartio-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tests E2E Playwright pour Quartio (Frontoffice + Backoffice)",
+  "scripts": {
+    "test": "playwright test",
+    "test:front": "playwright test --project=frontoffice",
+    "test:back": "playwright test --project=backoffice",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}

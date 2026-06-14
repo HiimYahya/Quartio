@@ -132,7 +132,7 @@ router.get('/:id/habitants', auth, ctrl.getHabitants);
  * @swagger
  * /api/quartiers/{id}/annonces:
  *   get:
- *     summary: Annonces du quartier (Neo4j → MongoDB)
+ *     summary: Annonces du quartier (Neo4j -> MongoDB)
  *     tags: [Quartiers]
  *     security: []
  *     parameters:
@@ -154,7 +154,7 @@ router.get('/:id/annonces', ctrl.getAnnonces);
  * @swagger
  * /api/quartiers/{id}/evenements:
  *   get:
- *     summary: Événements du quartier (Neo4j → MongoDB)
+ *     summary: Événements du quartier (Neo4j -> MongoDB)
  *     tags: [Quartiers]
  *     security: []
  *     parameters:

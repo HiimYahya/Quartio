@@ -1,21 +1,26 @@
 const express = require('express');
+const fs      = require('fs');
+const path    = require('path');
 const router  = express.Router();
 
-router.use('/auth',          require('./auth.routes'));
-router.use('/auth/mfa',      require('./mfa.routes'));
-router.use('/utilisateurs',  require('./utilisateurs.routes'));
-router.use('/quartiers',     require('./quartiers.routes'));
-router.use('/annonces',      require('./annonces.routes'));
-router.use('/evenements',    require('./evenements.routes'));
-router.use('/votes',         require('./votes.routes'));
-router.use('/conversations', require('./conversations.routes'));
-router.use('/messages',      require('./messages.routes'));
-router.use('/contrats',      require('./contrats.routes'));
-router.use('/transactions',  require('./transactions.routes'));
-router.use('/incidents',      require('./incidents.routes'));
-router.use('/notifications',  require('./notifications.routes'));
-router.use('/rgpd',           require('./rgpd.routes'));
-router.use('/stats',          require('./stats.routes'));
-router.use('/query',          require('./query.routes'));
+// ── Route registry ───────────────────────────────────────────────────────────
+// Convention : chaque fichier `<nom>.routes.js` de ce dossier est monté
+// automatiquement sur `/<nom>` (ex: `annonces.routes.js` -> `/api/annonces`).
+// Pour les cas où le chemin de montage diffère du nom de fichier, ajouter une
+// entrée dans ROUTE_OVERRIDES.
+//
+// Un nouveau module (ex: `taches.routes.js`) n'a donc besoin d'aucune
+// modification de ce fichier : il est chargé et monté automatiquement.
+const ROUTE_OVERRIDES = {
+  'mfa.routes.js': '/auth/mfa',
+};
+
+fs.readdirSync(__dirname)
+  .filter((file) => file.endsWith('.routes.js'))
+  .sort()
+  .forEach((file) => {
+    const mountPath = ROUTE_OVERRIDES[file] || `/${file.replace('.routes.js', '')}`;
+    router.use(mountPath, require(path.join(__dirname, file)));
+  });
 
 module.exports = router;

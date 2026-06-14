@@ -60,13 +60,13 @@ export default function MfaSection({ user, onStatusChange }) {
           <p className="text-xs text-gray-500 mt-0.5">Sécurisez votre compte avec Google Authenticator ou Authy.</p>
         </div>
         <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${mfaActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-          {mfaActive ? '✓ Activé' : 'Désactivé'}
+          {mfaActive ? 'Activé' : 'Désactivé'}
         </span>
       </div>
 
       {success && (
         <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-3 text-sm">
-          ✅ {success}
+          {success}
         </div>
       )}
       {error && (
@@ -79,7 +79,7 @@ export default function MfaSection({ user, onStatusChange }) {
           {!mfaActive ? (
             <button onClick={startSetup} disabled={loading}
               className="w-full bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-medium py-2.5 rounded-lg text-sm transition-colors disabled:opacity-60">
-              {loading ? 'Chargement…' : 'Activer le MFA'}
+              {loading ? 'Chargement...' : 'Activer le MFA'}
             </button>
           ) : (
             <button onClick={() => { setStep('disable'); setError(null); setSuccess(null); setTimeout(() => codeRef.current?.focus(), 100) }}
@@ -128,7 +128,7 @@ export default function MfaSection({ user, onStatusChange }) {
               </button>
               <button type="submit" disabled={loading || code.length !== 6}
                 className="flex-1 bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-medium py-2.5 rounded-lg text-sm disabled:opacity-60">
-                {loading ? 'Activation…' : 'Activer'}
+                {loading ? 'Activation...' : 'Activer'}
               </button>
             </div>
           </form>
@@ -158,7 +158,7 @@ export default function MfaSection({ user, onStatusChange }) {
             </button>
             <button type="submit" disabled={loading || code.length !== 6}
               className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 rounded-lg text-sm disabled:opacity-60">
-              {loading ? 'Désactivation…' : 'Désactiver'}
+              {loading ? 'Désactivation...' : 'Désactiver'}
             </button>
           </div>
         </form>

@@ -60,7 +60,7 @@ exports.export = async (req, res, next) => {
       Message.find({ id_utilisateur_pg: uid, est_supprime: false }).lean(),
     ]);
 
-    // ── Neo4j — relations sociales ────────────────────────────────────────────
+    // ── Neo4j - relations sociales ────────────────────────────────────────────
     const session = driver.session();
     let relations = [];
     try {
@@ -102,7 +102,7 @@ exports.export = async (req, res, next) => {
 };
 
 // DELETE /api/rgpd/delete-account
-// Suppression totale du compte — nécessite un code MFA si activé, sinon confirmation par mot de passe
+// Suppression totale du compte - nécessite un code MFA si activé, sinon confirmation par mot de passe
 exports.deleteAccount = async (req, res, next) => {
   try {
     const uid  = req.user.id;
@@ -132,7 +132,7 @@ exports.deleteAccount = async (req, res, next) => {
 
     // ── Suppression cascade ────────────────────────────────────────────────────
 
-    // MongoDB : anonymiser les messages (RGPD — préserve la cohérence des conversations)
+    // MongoDB : anonymiser les messages (RGPD - préserve la cohérence des conversations)
     await Message.updateMany(
       { id_utilisateur_pg: uid },
       { $set: { contenu: '[Message supprimé]', est_supprime: true } }

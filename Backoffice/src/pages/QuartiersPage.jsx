@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom'
 import { useEffect, useRef, useState } from 'react'
+import { MapPin } from 'lucide-react'
 import {
   MapContainer, TileLayer, Polygon, Polyline,
   CircleMarker, Tooltip, useMapEvents,
@@ -26,7 +27,7 @@ const COLORS = ['#4f46e5', '#0891b2', '#059669', '#d97706', '#dc2626']
 //
 //   L'ancienne approche slice(0,-2) était fausse dès qu'un déplacement avait eu
 //   lieu : un déplacement ne change pas le nombre de points, donc slice(0,-2)
-//   retirait 2 points là où 1 seul avait été ajouté → forme finale incorrecte.
+//   retirait 2 points là où 1 seul avait été ajouté -> forme finale incorrecte.
 //
 // Pourquoi stopPropagation sur les CircleMarkers ?
 //   Le clic sur un CircleMarker remonte (bubbling Leaflet) jusqu'à la carte.
@@ -67,8 +68,8 @@ function DrawingLayer({ isDrawing, onComplete }) {
     setSelection(null)
   }
 
-  // Clavier : Backspace/Delete → annule la dernière opération (ou supprime le point sélectionné)
-  //           Escape → désélectionne
+  // Clavier : Backspace/Delete -> annule la dernière opération (ou supprime le point sélectionné)
+  //           Escape -> désélectionne
   useEffect(() => {
     if (!isDrawing) return
     const onKey = (e) => {
@@ -96,13 +97,13 @@ function DrawingLayer({ isDrawing, onComplete }) {
     click(e) {
       if (!isDrawing) return
       if (selectedIdxRef.current !== null) {
-        // Déplace le point sélectionné — commit() sauvegarde l'état avant le déplacement
+        // Déplace le point sélectionné - commit() sauvegarde l'état avant le déplacement
         const next = [...pointsRef.current]
         next[selectedIdxRef.current] = [e.latlng.lat, e.latlng.lng]
         commit(next)
         setSelection(null)
       } else {
-        // Ajoute un nouveau point — commit() sauvegarde l'état avant l'ajout
+        // Ajoute un nouveau point - commit() sauvegarde l'état avant l'ajout
         commit([...pointsRef.current, [e.latlng.lat, e.latlng.lng]])
       }
     },
@@ -160,7 +161,7 @@ function DrawingLayer({ isDrawing, onComplete }) {
   )
 }
 
-// ─── GeoJSON string → positions Leaflet ──────────────────────────────────────
+// ─── GeoJSON string -> positions Leaflet ──────────────────────────────────────
 const parseGeo = (g) => {
   if (!g) return null
   try {
@@ -185,7 +186,7 @@ const detectOverlap = (geoStr, quartiers, excludeId = null) => {
 // ─── Modal portail ────────────────────────────────────────────────────────────
 // Rendu via createPortal directement dans document.body.
 // Sans ça, la modal se retrouve dans le contexte de stacking de Leaflet
-// (z-index ~400–700) et passe derrière la carte malgré son z-index élevé.
+// (z-index ~400-700) et passe derrière la carte malgré son z-index élevé.
 function Modal({ children }) {
   return createPortal(
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4"
@@ -319,7 +320,7 @@ export default function QuartiersPage() {
 
                 {overlapError && (
                   <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-2 text-xs text-red-700 space-y-1">
-                    <p className="font-semibold">⚠️ Chevauchement détecté</p>
+                    <p className="font-semibold">Chevauchement détecté</p>
                     <p>{overlapError}</p>
                   </div>
                 )}
@@ -329,11 +330,11 @@ export default function QuartiersPage() {
                     <button type="button"
                       onClick={() => { setDrawMode(true); setOverlapError(null); setOverlapIds([]) }}
                       className="w-full flex items-center justify-center gap-2 border border-dashed border-indigo-300 text-indigo-600 hover:bg-indigo-50 rounded-lg py-2.5 text-sm transition">
-                      ✏️ {form.geometrie ? 'Redessiner la zone' : 'Dessiner la zone sur la carte'}
+                      {form.geometrie ? 'Redessiner la zone' : 'Dessiner la zone sur la carte'}
                     </button>
                     {form.geometrie && !overlapError && (
                       <div className="flex items-center justify-between bg-green-50 rounded-lg px-3 py-2">
-                        <span className="text-xs text-green-700 font-medium">✓ Zone définie — aucun chevauchement</span>
+                        <span className="text-xs text-green-700 font-medium">Zone définie - aucun chevauchement</span>
                         <button type="button"
                           onClick={() => { setForm((f) => ({ ...f, geometrie: '' })); setOverlapIds([]) }}
                           className="text-xs text-red-400 hover:text-red-600">Effacer</button>
@@ -344,12 +345,12 @@ export default function QuartiersPage() {
                   <div className="space-y-2">
                     <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2 text-xs text-indigo-700 space-y-1">
                       <p className="font-semibold">Mode dessin actif</p>
-                      <p>• Clic → poser un point</p>
-                      <p>• Clic sur un point → le sélectionner <span className="opacity-60">(devient orange)</span></p>
-                      <p>• Clic sur la carte → déplacer le point sélectionné</p>
-                      <p>• ⌫ Backspace → supprimer le dernier point</p>
-                      <p>• Échap → désélectionner</p>
-                      <p>• Double-clic → fermer le polygone</p>
+                      <p>{'- Clic -> poser un point'}</p>
+                      <p>{'- Clic sur un point -> le sélectionner '}<span className="opacity-60">(devient orange)</span></p>
+                      <p>{'- Clic sur la carte -> déplacer le point sélectionné'}</p>
+                      <p>{'- Backspace -> supprimer le dernier point'}</p>
+                      <p>{'- Échap -> désélectionner'}</p>
+                      <p>{'- Double-clic -> fermer le polygone'}</p>
                     </div>
                     <button type="button" onClick={() => { setDrawMode(false); setOverlapIds([]) }}
                       className="w-full text-xs text-slate-500 hover:text-slate-700 py-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 transition">
@@ -366,7 +367,7 @@ export default function QuartiersPage() {
                 </button>
                 <button type="submit" disabled={submitting || !form.nom.trim() || drawMode}
                   className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-sm transition disabled:opacity-50">
-                  {submitting ? 'Sauvegarde…' : editTarget ? 'Modifier' : 'Créer'}
+                  {submitting ? 'Sauvegarde...' : editTarget ? 'Modifier' : 'Créer'}
                 </button>
               </div>
             </form>
@@ -376,9 +377,10 @@ export default function QuartiersPage() {
         {/* Liste */}
         <div className="flex-1 space-y-2">
           {loading ? (
-            <p className="text-center text-sm text-slate-400 py-6">Chargement…</p>
+            <p className="text-center text-sm text-slate-400 py-6">Chargement...</p>
           ) : quartiers.length === 0 ? (
             <div className="text-center py-8 bg-white rounded-xl border border-slate-100">
+              <MapPin className="w-8 h-8 text-slate-300 mx-auto mb-3" />
               <p className="text-slate-400 text-sm">Aucun quartier défini.</p>
             </div>
           ) : quartiers.map((q, i) => {
@@ -397,7 +399,7 @@ export default function QuartiersPage() {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-slate-800 text-sm truncate">{q.nom}</p>
                   <p className={`text-xs ${isConflict ? 'text-red-500' : 'text-slate-400'}`}>
-                    {isConflict ? '⚠️ En conflit' : q.geometrie ? '✓ Zone définie' : 'Aucune zone'}
+                    {isConflict ? 'En conflit' : q.geometrie ? 'Zone définie' : 'Aucune zone'}
                   </p>
                 </div>
                 <div className="flex gap-2 shrink-0">
@@ -441,7 +443,7 @@ export default function QuartiersPage() {
                 }}>
                 <Tooltip sticky>
                   {q.nom}
-                  {isConflict ? ' ⚠️ En conflit' : ''}
+                  {isConflict ? ' En conflit' : ''}
                   {isEditing ? ' (modification en cours)' : ''}
                 </Tooltip>
               </Polygon>
@@ -452,7 +454,7 @@ export default function QuartiersPage() {
         </MapContainer>
       </div>
 
-      {/* ── Modal suppression — rendue via portal pour passer au-dessus de Leaflet ── */}
+      {/* ── Modal suppression - rendue via portal pour passer au-dessus de Leaflet ── */}
       {confirm && (
         <Modal>
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">

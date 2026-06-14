@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Users } from 'lucide-react'
 import api from '../services/api'
 
 const ROLE_COLORS = {
@@ -78,7 +79,7 @@ export default function UtilisateursPage() {
     <div className="space-y-4">
       <div className="flex gap-3 flex-wrap">
         <input value={search} onChange={(e) => setSearch(e.target.value)}
-          placeholder="Rechercher un utilisateur…"
+          placeholder="Rechercher un utilisateur..."
           className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 flex-1 min-w-48" />
         <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}
           className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
@@ -95,9 +96,10 @@ export default function UtilisateursPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-slate-400">Chargement…</div>
+        <div className="text-center py-12 text-slate-400">Chargement...</div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl border border-slate-100">
+          <Users className="w-8 h-8 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-400">Aucun utilisateur trouvé.</p>
         </div>
       ) : (
@@ -133,7 +135,7 @@ export default function UtilisateursPage() {
                   </td>
                   <td className="px-4 py-3 text-slate-500">{u.points_solde ?? 0} pts</td>
                   <td className="px-4 py-3 text-slate-400 text-xs">
-                    {u.date_inscription ? new Date(u.date_inscription).toLocaleDateString('fr-FR') : '—'}
+                    {u.date_inscription ? new Date(u.date_inscription).toLocaleDateString('fr-FR') : '-'}
                   </td>
                   <td className="px-4 py-3">
                     <button onClick={() => setConfirm(u)}
@@ -203,7 +205,7 @@ export default function UtilisateursPage() {
                 </button>
                 <button type="submit" disabled={saving}
                   className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-sm transition disabled:opacity-60">
-                  {saving ? 'Création…' : 'Créer'}
+                  {saving ? 'Création...' : 'Créer'}
                 </button>
               </div>
             </form>

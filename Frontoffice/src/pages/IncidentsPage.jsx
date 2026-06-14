@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { AlertTriangle } from 'lucide-react'
 import api from '../services/api'
 
 const PRIORITE_COLORS = {
@@ -100,10 +101,10 @@ export default function IncidentsPage() {
       )}
 
       {loading ? (
-        <div className="text-center py-12 text-gray-400">Chargement…</div>
+        <div className="text-center py-12 text-gray-400">Chargement...</div>
       ) : incidents.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
-          <p className="text-4xl mb-3">✅</p>
+          <AlertTriangle className="w-8 h-8 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500">{t('incidents.noIncidents')}</p>
         </div>
       ) : (
@@ -118,7 +119,7 @@ export default function IncidentsPage() {
               </div>
               {inc.description && <p className="text-sm text-gray-500 line-clamp-2">{inc.description}</p>}
               <p className="text-xs text-gray-400 mt-2">
-                {t('incidents.reportedOn', { date: inc.created_at ? new Date(inc.created_at).toLocaleDateString('fr-FR') : '—' })}
+                {t('incidents.reportedOn', { date: inc.created_at ? new Date(inc.created_at).toLocaleDateString('fr-FR') : '-' })}
               </p>
             </div>
           ))}

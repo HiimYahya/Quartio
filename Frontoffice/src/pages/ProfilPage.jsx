@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Coins, MapPin, Info, CheckCircle2, AlertCircle, Download } from 'lucide-react'
 import useAuthStore from '../store/authStore'
 import api from '../services/api'
 import LangSwitcher from '../components/ui/LangSwitcher'
 import MfaSection from '../components/ui/MfaSection'
+import SecuritySection from '../components/ui/SecuritySection'
 
 export default function ProfilPage() {
   const { user, fetchMe, logout } = useAuthStore()
@@ -78,12 +80,12 @@ export default function ProfilPage() {
         <div>
           <p className="text-white/60 text-sm mb-1">{t('profile.balance')}</p>
           <p className="text-4xl font-bold">
-            {user?.points_solde ?? '—'}
+            {user?.points_solde ?? '-'}
             <span className="text-xl font-normal text-white/70 ml-2">{t('common.pts')}</span>
           </p>
           <p className="text-white/50 text-xs mt-2">{t('profile.balanceHint')}</p>
         </div>
-        <div className="text-6xl opacity-30">⭐</div>
+        <Coins className="w-12 h-12 text-white/30" />
       </div>
 
       {/* Mon quartier */}
@@ -92,10 +94,10 @@ export default function ProfilPage() {
 
         {/* Quartier actuel */}
         {qLoading ? (
-          <p className="text-sm text-gray-400">Chargement…</p>
+          <p className="text-sm text-gray-400">Chargement...</p>
         ) : quartier ? (
           <div className="flex items-center gap-3 bg-[#f0faf5] rounded-xl px-4 py-3">
-            <span className="text-2xl">🏘️</span>
+            <MapPin className="w-5 h-5 text-[#1a4a3a] shrink-0" />
             <div>
               <p className="font-semibold text-[#1a4a3a]">{quartier.nom}</p>
               <p className="text-xs text-gray-500">Votre quartier actuel</p>
@@ -103,7 +105,7 @@ export default function ProfilPage() {
           </div>
         ) : (
           <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-500">
-            <span className="text-xl">📍</span>
+            <Info className="w-5 h-5 shrink-0" />
             Vous n'êtes rattaché à aucun quartier pour le moment.
           </div>
         )}
@@ -127,12 +129,15 @@ export default function ProfilPage() {
 
           {/* Résultat de la détection */}
           {detectResult && (
-            <div className={`rounded-lg px-4 py-3 text-sm ${
+            <div className={`flex items-center gap-2 rounded-lg px-4 py-3 text-sm ${
               detectResult.type === 'success'
                 ? 'bg-green-50 border border-green-200 text-green-700'
                 : 'bg-red-50 border border-red-200 text-red-700'
             }`}>
-              {detectResult.type === 'success' ? '✓ ' : '⚠️ '}{detectResult.message}
+              {detectResult.type === 'success'
+                ? <CheckCircle2 className="w-4 h-4 shrink-0" />
+                : <AlertCircle className="w-4 h-4 shrink-0" />}
+              {detectResult.message}
             </div>
           )}
 
@@ -141,7 +146,7 @@ export default function ProfilPage() {
             disabled={detecting || !adresse.trim()}
             className="w-full bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-medium py-2.5 rounded-lg transition-colors disabled:opacity-60 text-sm"
           >
-            {detecting ? 'Recherche en cours…' : 'Trouver mon quartier'}
+            {detecting ? 'Recherche en cours...' : 'Trouver mon quartier'}
           </button>
         </form>
       </div>
@@ -160,7 +165,7 @@ export default function ProfilPage() {
                 <div>
                   <p className="text-sm text-gray-700">{tx.motif ?? t('profile.transaction')}</p>
                   <p className="text-xs text-gray-400">
-                    {tx.date ? new Date(tx.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                    {tx.date ? new Date(tx.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
                   </p>
                 </div>
                 <span className={`font-semibold text-sm ${tx.montant >= 0 ? 'text-green-600' : 'text-red-500'}`}>
@@ -215,8 +220,11 @@ export default function ProfilPage() {
         </form>
       </div>
 
-      {/* Sécurité — MFA */}
+      {/* Sécurité - MFA */}
       <MfaSection user={user} onStatusChange={fetchMe} />
+
+      {/* Sécurité - mot de passe, email, téléphone, sessions */}
+      <SecuritySection user={user} onEmailChanged={fetchMe} onLogout={logout} />
 
       {/* Langue */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
@@ -250,7 +258,7 @@ function RgpdSection({ user, onDelete }) {
       a.download = `quartio-mes-donnees-${user?.id}.json`
       a.click()
       URL.revokeObjectURL(url)
-    } catch { /* silencieux — l'utilisateur verra l'absence de téléchargement */ }
+    } catch { /* silencieux - l'utilisateur verra l'absence de téléchargement */ }
   }
 
   const handleDelete = async (e) => {
@@ -282,9 +290,10 @@ function RgpdSection({ user, onDelete }) {
 
       <button
         onClick={handleExport}
-        className="w-full border border-[#1a4a3a] text-[#1a4a3a] hover:bg-[#f0faf5] font-medium py-2.5 rounded-lg text-sm transition-colors"
+        className="w-full border border-[#1a4a3a] text-[#1a4a3a] hover:bg-[#f0faf5] font-medium py-2.5 rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
       >
-        ⬇ Exporter mes données (JSON)
+        <Download className="w-4 h-4" />
+        Exporter mes données (JSON)
       </button>
 
       {deleteStep === null && (
@@ -298,7 +307,7 @@ function RgpdSection({ user, onDelete }) {
 
       {deleteStep === 'confirm' && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
-          <p className="text-sm font-semibold text-red-700">⚠️ Cette action est irréversible</p>
+          <p className="text-sm font-semibold text-red-700">Cette action est irréversible</p>
           <p className="text-xs text-red-600">
             Toutes vos données personnelles seront supprimées définitivement.
             Vos messages seront anonymisés. Vos contrats seront conservés sans votre identité (obligation légale).
@@ -333,7 +342,7 @@ function RgpdSection({ user, onDelete }) {
             maxLength={user?.mfa_actif ? 6 : undefined}
             value={credential}
             onChange={(e) => { setCredential(e.target.value); setError(null) }}
-            placeholder={user?.mfa_actif ? '123456' : '••••••••'}
+            placeholder={user?.mfa_actif ? '123456' : '--------'}
             className="w-full border border-red-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
             autoFocus
           />
@@ -350,7 +359,7 @@ function RgpdSection({ user, onDelete }) {
               disabled={loading}
               className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 rounded-lg text-sm disabled:opacity-60"
             >
-              {loading ? 'Suppression…' : 'Supprimer définitivement'}
+              {loading ? 'Suppression...' : 'Supprimer définitivement'}
             </button>
           </div>
         </form>

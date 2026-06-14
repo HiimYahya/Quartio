@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
+import { CheckCircle2 } from 'lucide-react'
 import api from '../services/api'
 
 const RESEND_COOLDOWN = 60
@@ -107,9 +108,9 @@ export default function VerifyEmailPage() {
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           {success ? (
             <div className="text-center py-4">
-              <div className="text-5xl mb-4">✅</div>
+              <CheckCircle2 className="w-12 h-12 text-[#34d399] mx-auto mb-3" />
               <h2 className="text-xl font-semibold text-[#1a4a3a] mb-2">Email vérifié !</h2>
-              <p className="text-gray-500 text-sm">Redirection vers la connexion…</p>
+              <p className="text-gray-500 text-sm">Redirection vers la connexion...</p>
             </div>
           ) : (
             <>
@@ -142,12 +143,12 @@ export default function VerifyEmailPage() {
                 <p className="text-center text-xs text-gray-400 mb-4">
                   {expireLeft > 0
                     ? <>Ce code expire dans <span className="font-medium text-gray-600">{fmt(expireLeft)}</span></>
-                    : <span className="text-red-500">Ce code a expiré — renvoyez-en un nouveau</span>}
+                    : <span className="text-red-500">Ce code a expiré - renvoyez-en un nouveau</span>}
                 </p>
 
                 <button type="submit" disabled={loading || expireLeft <= 0}
                   className="w-full bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-60">
-                  {loading ? 'Vérification…' : 'Vérifier le code'}
+                  {loading ? 'Vérification...' : 'Vérifier le code'}
                 </button>
               </form>
 
@@ -157,7 +158,7 @@ export default function VerifyEmailPage() {
                   disabled={resendCooldown > 0 || resending}
                   className="text-sm text-[#2d7a5f] hover:underline disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed">
                   {resending
-                    ? 'Envoi…'
+                    ? 'Envoi...'
                     : resendCooldown > 0
                       ? `Renvoyer un code (${resendCooldown}s)`
                       : 'Renvoyer un nouveau code'}
@@ -165,7 +166,7 @@ export default function VerifyEmailPage() {
               </div>
 
               <p className="text-center text-sm text-gray-400 mt-4">
-                <Link to="/login" className="hover:underline">← Retour à la connexion</Link>
+                <Link to="/login" className="hover:underline">{'<- Retour à la connexion'}</Link>
               </p>
             </>
           )}

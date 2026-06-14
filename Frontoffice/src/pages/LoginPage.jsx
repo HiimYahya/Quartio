@@ -50,13 +50,13 @@ export default function LoginPage() {
 
           {verified && (
             <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-3 mb-4 text-sm">
-              ✅ Email vérifié — vous pouvez maintenant vous connecter.
+              Email vérifié - vous pouvez maintenant vous connecter.
             </div>
           )}
 
           {reset && (
             <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-3 mb-4 text-sm">
-              ✅ Mot de passe mis à jour — connectez-vous avec votre nouveau mot de passe.
+              Mot de passe mis à jour - connectez-vous avec votre nouveau mot de passe.
             </div>
           )}
 
@@ -71,7 +71,7 @@ export default function LoginPage() {
                 <Link
                   to={`/verify-email?email=${encodeURIComponent(unverifiedEmail)}`}
                   className="underline font-medium">
-                  Vérifier maintenant →
+                  {'Vérifier maintenant ->'}
                 </Link>
               </p>
             </div>
@@ -92,7 +92,7 @@ export default function LoginPage() {
                 </Link>
               </div>
               <input type="password" name="mot_de_passe" value={form.mot_de_passe} onChange={handleChange} required
-                placeholder="••••••••"
+                placeholder="--------"
                 className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399] focus:border-transparent transition" />
             </div>
             <button type="submit" disabled={loading}

@@ -13,7 +13,7 @@ export default function LangSwitcher({ compact = false }) {
         className="flex items-center gap-1 text-xs font-medium text-white/60 hover:text-white transition-colors px-2 py-1 rounded-lg hover:bg-white/10"
         title="Changer de langue / Switch language"
       >
-        <span>{current === 'fr' ? '🇫🇷' : '🇬🇧'}</span>
+        <span>{current === 'fr' ? '' : ''}</span>
         <span className="uppercase">{current === 'fr' ? 'EN' : 'FR'}</span>
       </button>
     )
@@ -31,7 +31,7 @@ export default function LangSwitcher({ compact = false }) {
               : 'text-gray-500 hover:text-gray-700'
           }`}
         >
-          <span>{lang === 'fr' ? '🇫🇷' : '🇬🇧'}</span>
+          <span>{lang === 'fr' ? '' : ''}</span>
           {lang === 'fr' ? 'Français' : 'English'}
         </button>
       ))}

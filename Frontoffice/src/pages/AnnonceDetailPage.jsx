@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { Coins } from 'lucide-react'
 import api from '../services/api'
 import useAuthStore from '../store/authStore'
 
@@ -32,7 +33,7 @@ export default function AnnonceDetailPage() {
       const { data } = await api.post(`/annonces/${id}/contrat`)
       navigate(`/contrats/${data.id_contrat}`)
     } catch (err) {
-      // Contrat déjà existant → redirection directe
+      // Contrat déjà existant -> redirection directe
       if (err.response?.data?.id_contrat) {
         navigate(`/contrats/${err.response.data.id_contrat}`)
         return
@@ -43,13 +44,13 @@ export default function AnnonceDetailPage() {
     }
   }
 
-  if (loading) return <div className="text-center py-12 text-gray-400">Chargement…</div>
+  if (loading) return <div className="text-center py-12 text-gray-400">Chargement...</div>
   if (!annonce) return null
 
   return (
     <div className="max-w-2xl space-y-5">
       <button onClick={() => navigate(-1)} className="text-sm text-[#2d7a5f] hover:underline">
-        ← Retour aux annonces
+        {'<- Retour aux annonces'}
       </button>
 
       {/* Carte principale */}
@@ -80,7 +81,7 @@ export default function AnnonceDetailPage() {
           </div>
           {estPayant ? (
             <div className="flex items-center gap-1.5 bg-[#1a4a3a]/10 text-[#1a4a3a] font-bold px-3 py-1.5 rounded-xl">
-              <span>⭐</span>
+              <Coins className="w-4 h-4" />
               <span>{annonce.cout_points} points</span>
             </div>
           ) : (
@@ -111,11 +112,11 @@ export default function AnnonceDetailPage() {
             className="w-full bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {creating ? (
-              'Création du contrat…'
+              'Création du contrat...'
             ) : annonce.statut !== 'active' ? (
               'Annonce non disponible'
             ) : estPayant ? (
-              <><span>⭐</span> Accepter ce service ({annonce.cout_points} pts)</>
+              <>Accepter ce service ({annonce.cout_points} pts)</>
             ) : (
               'Accepter ce service (gratuit)'
             )}

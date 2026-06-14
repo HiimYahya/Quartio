@@ -101,7 +101,7 @@ exports.remove = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/annonces/:id/contrat  → crée un contrat depuis une annonce payante
+// POST /api/annonces/:id/contrat  -> crée un contrat depuis une annonce payante
 // L'utilisateur connecté devient l'acheteur, l'auteur de l'annonce le vendeur.
 exports.creerContrat = async (req, res, next) => {
   try {
@@ -174,7 +174,7 @@ exports.creerContrat = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/annonces/:id/contrat  → Neo4j [:GENERE] → PostgreSQL
+// GET /api/annonces/:id/contrat  -> Neo4j [:GENERE] -> PostgreSQL
 exports.getContrat = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;

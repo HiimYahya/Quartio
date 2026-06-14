@@ -1,4 +1,5 @@
 const pool      = require('../config/db');
+const { driver } = require('../config/neo4j');
 const Annonce   = require('../models/mongo/annonce.model');
 const Evenement = require('../models/mongo/evenement.model');
 const Incident  = require('../models/mongo/incident.model');
@@ -115,5 +116,55 @@ exports.getStats = async (req, res, next) => {
       incidents_urgents: incidentsUrgents,
       incidents_by_status: incidentsByStatus.map((i) => ({ statut: i._id, count: i.count })),
     });
+  } catch (err) { next(err); }
+};
+
+// GET /api/stats/heatmap  (admin, modérateur)
+// Niveau d'activité par quartier sur les 30 derniers jours :
+// nombre d'habitants ([:HABITE]) + annonces + événements + incidents publiés par ces habitants
+exports.getHeatmap = async (req, res, next) => {
+  try {
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const { rows: quartiers } = await pool.query(
+      'SELECT id_quartier, nom, geometrie FROM quartier ORDER BY id_quartier'
+    );
+
+    const session = driver.session();
+    const habitantsParQuartier = new Map();
+    try {
+      const result = await session.run(
+        'MATCH (u:Utilisateur)-[:HABITE]->(q:Quartier) RETURN q.pg_id AS qid, u.pg_id AS uid'
+      );
+      for (const record of result.records) {
+        const qid = record.get('qid');
+        if (!habitantsParQuartier.has(qid)) habitantsParQuartier.set(qid, []);
+        habitantsParQuartier.get(qid).push(record.get('uid'));
+      }
+    } finally {
+      await session.close();
+    }
+
+    const heatmap = await Promise.all(quartiers.map(async (q) => {
+      const uids = habitantsParQuartier.get(q.id_quartier) ?? [];
+      let annonces = 0, evenements = 0, incidents = 0;
+      if (uids.length > 0) {
+        [annonces, evenements, incidents] = await Promise.all([
+          Annonce.countDocuments({ id_utilisateur_pg: { $in: uids }, date_publication: { $gte: since } }),
+          Evenement.countDocuments({ id_utilisateur_pg: { $in: uids }, createdAt: { $gte: since } }),
+          Incident.countDocuments({ id_utilisateur_pg: { $in: uids }, date_signalement: { $gte: since } }),
+        ]);
+      }
+      return {
+        id_quartier: q.id_quartier,
+        nom: q.nom,
+        geometrie: q.geometrie,
+        habitants: uids.length,
+        annonces, evenements, incidents,
+        score: uids.length + annonces + evenements + incidents,
+      };
+    }));
+
+    res.json(heatmap);
   } catch (err) { next(err); }
 };

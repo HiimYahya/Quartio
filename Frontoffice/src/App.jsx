@@ -64,7 +64,7 @@ export default function App() {
             <Route path="/messages/:id"  element={<ConversationPage />} />
             <Route path="/contrats"      element={<ContratsPage />} />
             <Route path="/contrats/:id"  element={
-              <Suspense fallback={<div className="p-8 text-center text-gray-400">Chargement…</div>}>
+              <Suspense fallback={<div className="p-8 text-center text-gray-400">Chargement...</div>}>
                 <ContratDetailPage />
               </Suspense>
             } />

@@ -1,6 +1,19 @@
-const pool = require('../config/db');
+const bcrypt    = require('bcrypt');
+const speakeasy = require('speakeasy');
+const pool   = require('../config/db');
+const mailer = require('../config/mailer');
 const { driver } = require('../config/neo4j');
 const { getPagination, paginate } = require('../utils/pagination');
+
+// Vérifie le code MFA si l'utilisateur l'a activé. Retourne un message d'erreur ou null.
+const checkMfaIfActive = async (user, mfa_code) => {
+  if (!user.mfa_actif) return null;
+  if (!mfa_code) return 'Code MFA requis';
+  const valid = speakeasy.totp.verify({
+    secret: user.mfa_secret, encoding: 'base32', token: mfa_code, window: 1,
+  });
+  return valid ? null : 'Code MFA invalide';
+};
 
 // GET /api/utilisateurs  (admin)
 exports.getAll = async (req, res, next) => {
@@ -20,6 +33,45 @@ exports.getAll = async (req, res, next) => {
       [...values, limit, skip]
     );
     res.json(paginate(result.rows, parseInt(total), page, limit));
+  } catch (err) { next(err); }
+};
+
+// GET /api/utilisateurs/voisins-fiables  (auth)
+// Voisins ayant le plus de contrats finalisés avec l'utilisateur connecté ([:A_AIDE] dans les deux sens)
+exports.voisinsFiables = async (req, res, next) => {
+  try {
+    const uid = req.user.id;
+    const session = driver.session();
+    let voisins = [];
+    try {
+      const result = await session.run(
+        `MATCH (me:Utilisateur {pg_id: $uid})-[:A_AIDE]-(voisin:Utilisateur)
+         WHERE voisin.pg_id <> $uid
+         RETURN voisin.pg_id AS pg_id, count(*) AS score
+         ORDER BY score DESC LIMIT 10`,
+        { uid }
+      );
+      voisins = result.records.map((r) => ({
+        id_utilisateur: r.get('pg_id'),
+        score: r.get('score').toNumber ? r.get('score').toNumber() : r.get('score'),
+      }));
+    } finally {
+      await session.close();
+    }
+
+    if (voisins.length === 0) return res.json([]);
+
+    const ids = voisins.map((v) => v.id_utilisateur);
+    const { rows } = await pool.query(
+      `SELECT id_utilisateur, nom, prenom, points_solde FROM utilisateur WHERE id_utilisateur = ANY($1)`,
+      [ids]
+    );
+    const byId = new Map(rows.map((r) => [r.id_utilisateur, r]));
+    const data = voisins
+      .map((v) => byId.has(v.id_utilisateur) ? { ...byId.get(v.id_utilisateur), score: v.score } : null)
+      .filter(Boolean);
+
+    res.json(data);
   } catch (err) { next(err); }
 };
 
@@ -61,6 +113,124 @@ exports.update = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// PUT /api/utilisateurs/:id/password  (soi-même)
+exports.changePassword = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (req.user.id !== parseInt(id)) return res.status(403).json({ error: 'Accès refusé' });
+
+    const { ancien_mot_de_passe, nouveau_mot_de_passe, mfa_code } = req.body;
+
+    const { rows } = await pool.query('SELECT * FROM utilisateur WHERE id_utilisateur = $1', [id]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    const u = rows[0];
+
+    const match = await bcrypt.compare(ancien_mot_de_passe, u.mot_de_passe);
+    if (!match) return res.status(400).json({ error: 'Mot de passe actuel incorrect' });
+
+    const mfaError = await checkMfaIfActive(u, mfa_code);
+    if (mfaError) return res.status(400).json({ error: mfaError });
+
+    const hash = await bcrypt.hash(nouveau_mot_de_passe, 10);
+    await pool.query('UPDATE utilisateur SET mot_de_passe = $1 WHERE id_utilisateur = $2', [hash, id]);
+
+    // Déconnecte toutes les sessions par sécurité (l'utilisateur devra se reconnecter)
+    await pool.query('UPDATE refresh_token SET est_revoque = TRUE WHERE id_utilisateur = $1', [id]);
+
+    res.json({ message: 'Mot de passe modifié. Vous avez été déconnecté de toutes les sessions.' });
+  } catch (err) { next(err); }
+};
+
+// PUT /api/utilisateurs/:id/email  (soi-même)
+exports.changeEmail = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (req.user.id !== parseInt(id)) return res.status(403).json({ error: 'Accès refusé' });
+
+    const { nouvel_email, mfa_code } = req.body;
+
+    const { rows } = await pool.query('SELECT * FROM utilisateur WHERE id_utilisateur = $1', [id]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    const u = rows[0];
+
+    if (nouvel_email === u.email) return res.status(400).json({ error: 'Cet email est déjà le vôtre' });
+
+    const existing = await pool.query('SELECT id_utilisateur FROM utilisateur WHERE email = $1', [nouvel_email]);
+    if (existing.rows.length > 0) return res.status(409).json({ error: 'Cet email est déjà utilisé' });
+
+    const mfaError = await checkMfaIfActive(u, mfa_code);
+    if (mfaError) return res.status(400).json({ error: mfaError });
+
+    await pool.query(
+      'UPDATE utilisateur SET email = $1, email_verifie = FALSE WHERE id_utilisateur = $2',
+      [nouvel_email, id]
+    );
+
+    // Envoie un nouveau code de vérification pour le nouvel email
+    const code     = String(Math.floor(100000 + Math.random() * 900000));
+    const expireAt = new Date(Date.now() + 15 * 60 * 1000);
+    await pool.query(
+      'INSERT INTO email_verification (id_utilisateur, code, expire_le) VALUES ($1, $2, $3)',
+      [id, code, expireAt]
+    );
+    mailer.sendVerificationEmail(nouvel_email, u.prenom, code).catch(() => {});
+
+    res.json({ message: 'Email modifié. Un code de vérification vous a été envoyé.', email_verification_required: true });
+  } catch (err) { next(err); }
+};
+
+// PUT /api/utilisateurs/:id/telephone  (soi-même)
+exports.changeTelephone = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (req.user.id !== parseInt(id)) return res.status(403).json({ error: 'Accès refusé' });
+
+    const { telephone, mfa_code } = req.body;
+
+    const { rows } = await pool.query('SELECT * FROM utilisateur WHERE id_utilisateur = $1', [id]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    const u = rows[0];
+
+    const mfaError = await checkMfaIfActive(u, mfa_code);
+    if (mfaError) return res.status(400).json({ error: mfaError });
+
+    const result = await pool.query(
+      `UPDATE utilisateur SET telephone = $1 WHERE id_utilisateur = $2
+       RETURNING id_utilisateur, nom, prenom, email, telephone, role, points_solde, langue`,
+      [telephone || null, id]
+    );
+    res.json(result.rows[0]);
+  } catch (err) { next(err); }
+};
+
+// GET /api/utilisateurs/:id/sessions  (soi-même)
+// Liste les sessions actives (refresh tokens non révoqués et non expirés)
+exports.getSessions = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (req.user.id !== parseInt(id)) return res.status(403).json({ error: 'Accès refusé' });
+
+    const { rows } = await pool.query(
+      `SELECT id, cree_le, expire_le FROM refresh_token
+       WHERE id_utilisateur = $1 AND est_revoque = FALSE AND expire_le > NOW()
+       ORDER BY cree_le DESC`,
+      [id]
+    );
+    res.json(rows);
+  } catch (err) { next(err); }
+};
+
+// DELETE /api/utilisateurs/:id/sessions  (soi-même) - "Déconnecter partout"
+exports.revokeSessions = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (req.user.id !== parseInt(id)) return res.status(403).json({ error: 'Accès refusé' });
+
+    await pool.query('UPDATE refresh_token SET est_revoque = TRUE WHERE id_utilisateur = $1', [id]);
+    res.json({ message: 'Toutes les sessions ont été déconnectées.' });
+  } catch (err) { next(err); }
+};
+
 // DELETE /api/utilisateurs/:id  (admin)
 exports.remove = async (req, res, next) => {
   try {
@@ -86,7 +256,7 @@ exports.remove = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/utilisateurs/:id/quartier  → Neo4j [:HABITE]
+// POST /api/utilisateurs/:id/quartier  -> Neo4j [:HABITE]
 exports.addQuartier = async (req, res, next) => {
   try {
     const userId = parseInt(req.params.id);
@@ -115,7 +285,7 @@ exports.addQuartier = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// DELETE /api/utilisateurs/:id/quartier/:idQ  → Neo4j
+// DELETE /api/utilisateurs/:id/quartier/:idQ  -> Neo4j
 exports.removeQuartier = async (req, res, next) => {
   try {
     const userId = parseInt(req.params.id);
@@ -177,10 +347,10 @@ exports.getTransactions = async (req, res, next) => {
 //
 // Algorithme : on lance un rayon horizontal vers la droite depuis le point.
 // On compte combien de fois ce rayon coupe les arêtes du polygone.
-//   - Nombre impair  → le point est DEDANS
-//   - Nombre pair    → le point est DEHORS
+//   - Nombre impair  -> le point est DEDANS
+//   - Nombre pair    -> le point est DEHORS
 //
-// ring : tableau de [lng, lat] (format GeoJSON — attention, ordre inversé vs Leaflet)
+// ring : tableau de [lng, lat] (format GeoJSON - attention, ordre inversé vs Leaflet)
 function pointInPolygon(lat, lng, ring) {
   let inside = false;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
@@ -196,7 +366,7 @@ function pointInPolygon(lat, lng, ring) {
   return inside;
 }
 
-// GET /api/utilisateurs/:id/quartiers → récupère le/les quartier(s) de l'utilisateur
+// GET /api/utilisateurs/:id/quartiers -> récupère le/les quartier(s) de l'utilisateur
 exports.getQuartiers = async (req, res, next) => {
   try {
     const userId = parseInt(req.params.id);
@@ -255,7 +425,7 @@ exports.detectQuartier = async (req, res, next) => {
     const geoData = await geoRes.json();
 
     if (!geoData.length) {
-      return res.status(422).json({ error: 'Adresse introuvable — vérifiez votre saisie' });
+      return res.status(422).json({ error: 'Adresse introuvable - vérifiez votre saisie' });
     }
 
     const lat = parseFloat(geoData[0].lat);
@@ -275,7 +445,7 @@ exports.detectQuartier = async (req, res, next) => {
           found = q;
           break;
         }
-      } catch { /* géométrie invalide — on ignore */ }
+      } catch { /* géométrie invalide - on ignore */ }
     }
 
     if (!found) {

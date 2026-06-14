@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { ShieldCheck } from 'lucide-react'
 import useAuthStore from '../store/authStore'
 
 export default function MfaVerifyPage() {
@@ -57,7 +58,7 @@ export default function MfaVerifyPage() {
 
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <div className="text-center mb-6">
-            <div className="w-14 h-14 bg-[#f0faf5] rounded-2xl flex items-center justify-center mx-auto mb-3 text-3xl">🔐</div>
+            <ShieldCheck className="w-10 h-10 text-[#1a4a3a] mx-auto mb-2" />
             <h2 className="text-xl font-semibold text-gray-800">Code d'authentification</h2>
             <p className="text-sm text-gray-500 mt-1">Entrez le code à 6 chiffres de votre application d'authentification.</p>
           </div>
@@ -85,12 +86,12 @@ export default function MfaVerifyPage() {
 
             <button type="submit" disabled={loading}
               className="w-full bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-60">
-              {loading ? 'Vérification…' : 'Vérifier'}
+              {loading ? 'Vérification...' : 'Vérifier'}
             </button>
           </form>
 
           <p className="text-center text-sm text-gray-400 mt-5">
-            <Link to="/login" className="hover:underline">← Retour à la connexion</Link>
+            <Link to="/login" className="hover:underline">{'<- Retour à la connexion'}</Link>
           </p>
         </div>
       </div>

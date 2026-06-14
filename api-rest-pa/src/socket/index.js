@@ -1,7 +1,7 @@
 const { Server } = require('socket.io');
 const jwt        = require('jsonwebtoken');
 
-// Map userId (PG int) → Set de socketIds
+// Map userId (PG int) -> Set de socketIds
 const onlineUsers = new Map();
 
 let io = null;

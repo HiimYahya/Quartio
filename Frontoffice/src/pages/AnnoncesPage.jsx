@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Megaphone } from 'lucide-react'
 import api from '../services/api'
 import useQuartiers from '../hooks/useQuartiers'
 
@@ -162,16 +163,16 @@ export default function AnnoncesPage() {
             disabled={submitting}
             className="bg-[#1a4a3a] hover:bg-[#0f2e24] text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors disabled:opacity-60"
           >
-            {submitting ? 'Publication…' : 'Publier'}
+            {submitting ? 'Publication...' : 'Publier'}
           </button>
         </form>
       )}
 
       {loading ? (
-        <div className="text-center py-12 text-gray-400">Chargement…</div>
+        <div className="text-center py-12 text-gray-400">Chargement...</div>
       ) : annonces.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
-          <p className="text-4xl mb-3">📋</p>
+          <Megaphone className="w-8 h-8 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500">Aucune annonce pour le moment.</p>
         </div>
       ) : (

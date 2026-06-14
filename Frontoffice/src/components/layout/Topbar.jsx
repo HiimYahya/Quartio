@@ -31,7 +31,6 @@ export default function Topbar() {
             className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-700 text-sm font-semibold px-3 py-1.5 rounded-full hover:bg-amber-100 transition-colors"
             title="Mon solde de points"
           >
-            <span>⭐</span>
             <span>{user.points_solde} pts</span>
           </Link>
         )}

@@ -1,5 +1,6 @@
 const request = require('supertest');
 const app     = require('../src/app');
+const { registerAndVerify } = require('./helpers');
 
 describe('GET /api/quartiers', () => {
   it('retourne une liste paginée de quartiers', async () => {
@@ -29,11 +30,8 @@ describe('POST /api/quartiers (admin)', () => {
   let adminToken;
 
   beforeAll(async () => {
-    // Connexion avec le compte admin du seed
-    const res = await request(app)
-      .post('/api/auth/login')
-      .send({ email: 'admin@test.com', mot_de_passe: 'password123' });
-    adminToken = res.body.access_token;
+    const admin = await registerAndVerify({ nom: 'Admin', prenom: 'Test', role: 'admin' });
+    adminToken = admin.access_token;
   });
 
   it('crée un quartier (admin)', async () => {
@@ -53,6 +51,89 @@ describe('POST /api/quartiers (admin)', () => {
       .send({ nom: 'Quartier sans auth' });
 
     expect(res.status).toBe(401);
+  });
+});
+
+describe('Détection de chevauchement de zones (Turf.js)', () => {
+  let adminToken;
+  let quartierAId;
+  let quartierCId;
+
+  const geoA = JSON.stringify({
+    type: 'Feature',
+    geometry: { type: 'Polygon', coordinates: [[[100, 0], [101, 0], [101, 1], [100, 1], [100, 0]]] },
+  });
+  const geoBOverlap = JSON.stringify({
+    type: 'Feature',
+    geometry: { type: 'Polygon', coordinates: [[[100.5, 0.5], [101.5, 0.5], [101.5, 1.5], [100.5, 1.5], [100.5, 0.5]]] },
+  });
+  const geoC = JSON.stringify({
+    type: 'Feature',
+    geometry: { type: 'Polygon', coordinates: [[[110, 10], [111, 10], [111, 11], [110, 11], [110, 10]]] },
+  });
+
+  beforeAll(async () => {
+    const admin = await registerAndVerify({ nom: 'AdminGeo', prenom: 'Test', role: 'admin' });
+    adminToken = admin.access_token;
+
+    const resA = await request(app)
+      .post('/api/quartiers')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ nom: `QuartierA_${Date.now()}`, geometrie: geoA });
+    quartierAId = resA.body.id_quartier;
+  });
+
+  afterAll(async () => {
+    // Nettoyage : ces quartiers ont une géométrie fixe, on les supprime pour
+    // ne pas fausser la détection de chevauchement des prochaines exécutions.
+    for (const id of [quartierAId, quartierCId]) {
+      if (id) {
+        await request(app).delete(`/api/quartiers/${id}`).set('Authorization', `Bearer ${adminToken}`);
+      }
+    }
+  });
+
+  it('crée un quartier avec une géométrie', async () => {
+    expect(quartierAId).toBeDefined();
+  });
+
+  it('refuse une zone qui chevauche un quartier existant', async () => {
+    const res = await request(app)
+      .post('/api/quartiers')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ nom: `QuartierB_${Date.now()}`, geometrie: geoBOverlap });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toMatch(/chevauche/);
+  });
+
+  it('accepte une zone qui ne chevauche aucun quartier', async () => {
+    const res = await request(app)
+      .post('/api/quartiers')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ nom: `QuartierC_${Date.now()}`, geometrie: geoC });
+
+    expect(res.status).toBe(201);
+    quartierCId = res.body.id_quartier;
+  });
+
+  it('refuse la modification d\'un quartier si la nouvelle géométrie chevauche un autre', async () => {
+    const res = await request(app)
+      .put(`/api/quartiers/${quartierCId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ geometrie: geoBOverlap });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toMatch(/chevauche/);
+  });
+
+  it('autorise la modification d\'un quartier en gardant sa propre géométrie (pas d\'auto-conflit)', async () => {
+    const res = await request(app)
+      .put(`/api/quartiers/${quartierAId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ nom: `QuartierA_renomme_${Date.now()}`, geometrie: geoA });
+
+    expect(res.status).toBe(200);
   });
 });
 

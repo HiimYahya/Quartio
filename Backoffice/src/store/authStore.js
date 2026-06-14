@@ -4,6 +4,7 @@ import api from '../services/api'
 const useAuthStore = create((set) => ({
   admin: null,
   token: localStorage.getItem('admin_token') || null,
+  mfaToken: null,
   loading: false,
   error: null,
 
@@ -11,6 +12,10 @@ const useAuthStore = create((set) => ({
     set({ loading: true, error: null })
     try {
       const { data } = await api.post('/auth/login', { email, mot_de_passe })
+      if (data.mfa_required) {
+        set({ loading: false, mfaToken: data.mfa_token, error: null })
+        return { mfaRequired: true }
+      }
       if (!['admin', 'moderateur'].includes(data.utilisateur?.role)) {
         set({ error: 'Accès réservé aux administrateurs et modérateurs.', loading: false })
         return false
@@ -20,6 +25,24 @@ const useAuthStore = create((set) => ({
       return true
     } catch (err) {
       set({ error: err.response?.data?.error || 'Identifiants incorrects', loading: false })
+      return false
+    }
+  },
+
+  verifyMfa: async (code) => {
+    set({ loading: true, error: null })
+    const { mfaToken } = useAuthStore.getState()
+    try {
+      const { data } = await api.post('/auth/mfa/verify', { mfa_token: mfaToken, code })
+      if (!['admin', 'moderateur'].includes(data.utilisateur?.role)) {
+        set({ error: 'Accès réservé aux administrateurs et modérateurs.', loading: false, mfaToken: null })
+        return false
+      }
+      localStorage.setItem('admin_token', data.access_token)
+      set({ token: data.access_token, admin: data.utilisateur, mfaToken: null, loading: false })
+      return true
+    } catch (err) {
+      set({ error: err.response?.data?.error || 'Code invalide', loading: false })
       return false
     }
   },

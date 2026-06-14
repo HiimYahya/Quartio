@@ -3,24 +3,49 @@ import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
+import { MapContainer, TileLayer, Polygon, Tooltip as LeafletTooltip } from 'react-leaflet'
 import api from '../services/api'
 
 const COLORS = ['#6366f1', '#34d399', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16']
+
+// ─── GeoJSON string -> positions Leaflet ──────────────────────────────────────
+const parseGeo = (g) => {
+  if (!g) return null
+  try {
+    const coords = JSON.parse(g)?.geometry?.coordinates?.[0]
+    return coords ? coords.map(([lng, lat]) => [lat, lng]) : null
+  } catch { return null }
+}
+
+// ─── Couleur en fonction du score relatif (0 -> bleu pâle, max -> rouge intense) ──
+const heatColor = (score, maxScore) => {
+  if (maxScore <= 0) return '#94a3b8'
+  const ratio = Math.min(score / maxScore, 1)
+  // interpolation entre bleu (#60a5fa) et rouge (#dc2626)
+  const from = [96, 165, 250]
+  const to   = [220, 38, 38]
+  const rgb  = from.map((c, i) => Math.round(c + (to[i] - c) * ratio))
+  return `rgb(${rgb.join(',')})`
+}
 
 export default function StatistiquesPage() {
   const [data, setData]     = useState(null)
   const [loading, setLoading] = useState(true)
   const [period, setPeriod]   = useState('weekly') // 'weekly' only for now
+  const [heatmap, setHeatmap] = useState([])
 
   useEffect(() => {
     api.get('/stats')
       .then(({ data }) => setData(data))
       .catch(console.error)
       .finally(() => setLoading(false))
+    api.get('/stats/heatmap')
+      .then(({ data }) => setHeatmap(Array.isArray(data) ? data : []))
+      .catch(() => setHeatmap([]))
   }, [])
 
   if (loading) return (
-    <div className="flex items-center justify-center h-64 text-slate-400">Chargement des statistiques…</div>
+    <div className="flex items-center justify-center h-64 text-slate-400">Chargement des statistiques...</div>
   )
   if (!data) return (
     <div className="flex items-center justify-center h-64 text-red-400">Erreur de chargement</div>
@@ -50,7 +75,7 @@ export default function StatistiquesPage() {
           { label: 'Taux complétion contrats', value: `${kpis.taux_completion ?? 0}%`, color: 'text-purple-600' },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-white rounded-xl p-5 shadow-sm border border-slate-100 text-center">
-            <p className={`text-2xl font-bold ${color}`}>{value ?? '—'}</p>
+            <p className={`text-2xl font-bold ${color}`}>{value ?? '-'}</p>
             <p className="text-xs text-slate-500 mt-1">{label}</p>
           </div>
         ))}
@@ -88,6 +113,51 @@ export default function StatistiquesPage() {
             />
           </LineChart>
         </ResponsiveContainer>
+      </div>
+
+      {/* Carte de chaleur des activités par quartier */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
+        <h3 className="font-semibold text-slate-700 mb-1">Activité par quartier (30 derniers jours)</h3>
+        <p className="text-xs text-slate-400 mb-4">
+          Score = habitants + annonces + événements + incidents publiés par les habitants
+        </p>
+        {heatmap.length === 0 || heatmap.every((h) => !parseGeo(h.geometrie)) ? (
+          <p className="text-sm text-slate-400 text-center py-6">Aucune zone de quartier définie</p>
+        ) : (
+          <>
+            <div className="rounded-xl overflow-hidden border border-slate-200" style={{ height: 360 }}>
+              <MapContainer center={[48.8566, 2.3522]} zoom={12} style={{ height: '100%', width: '100%' }}>
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                />
+                {(() => {
+                  const maxScore = Math.max(...heatmap.map((h) => h.score), 1)
+                  return heatmap.map((h) => {
+                    const coords = parseGeo(h.geometrie)
+                    if (!coords) return null
+                    return (
+                      <Polygon key={h.id_quartier} positions={coords}
+                        pathOptions={{ color: heatColor(h.score, maxScore), fillOpacity: 0.5, weight: 2 }}>
+                        <LeafletTooltip sticky>
+                          <strong>{h.nom}</strong><br />
+                          {h.habitants} habitant(s)<br />
+                          {h.annonces} annonce(s), {h.evenements} événement(s), {h.incidents} incident(s)<br />
+                          Score : {h.score}
+                        </LeafletTooltip>
+                      </Polygon>
+                    )
+                  })
+                })()}
+              </MapContainer>
+            </div>
+            <div className="flex items-center justify-end gap-2 mt-3 text-xs text-slate-400">
+              <span>Faible activité</span>
+              <span className="inline-block w-16 h-2 rounded-full" style={{ background: 'linear-gradient(to right, #60a5fa, #dc2626)' }} />
+              <span>Forte activité</span>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -152,7 +222,7 @@ export default function StatistiquesPage() {
 
       {/* Classement utilisateurs */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
-        <h3 className="font-semibold text-slate-700 mb-4">🏆 Classement utilisateurs par points</h3>
+        <h3 className="font-semibold text-slate-700 mb-4">Classement utilisateurs par points</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -168,7 +238,7 @@ export default function StatistiquesPage() {
                 <tr key={u.id_utilisateur} className="hover:bg-slate-50 transition-colors">
                   <td className="py-3">
                     <span className={`text-sm font-bold ${i === 0 ? 'text-yellow-500' : i === 1 ? 'text-slate-400' : i === 2 ? 'text-amber-600' : 'text-slate-300'}`}>
-                      {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`}
+                      {i === 0 ? '' : i === 1 ? '' : i === 2 ? '' : `${i + 1}`}
                     </span>
                   </td>
                   <td className="py-3">

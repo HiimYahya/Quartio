@@ -6,8 +6,9 @@ const { getPagination, paginate } = require('../utils/pagination');
 const { createNotification } = require('../utils/notify');
 const { emitAlert }          = require('../socket/index');
 const ContratDocument        = require('../models/mongo/contratdocument.model');
+const appEvents               = require('../config/events');
 
-// GET /api/contrats  → mes contrats (vendeur ou acheteur)
+// GET /api/contrats  -> mes contrats (vendeur ou acheteur)
 exports.getMes = async (req, res, next) => {
   try {
     const { page, limit, skip } = getPagination(req.query);
@@ -32,7 +33,7 @@ exports.getMes = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/contrats/:id  (auth — participant ou admin)
+// GET /api/contrats/:id  (auth - participant ou admin)
 exports.getById = async (req, res, next) => {
   try {
     const { rows } = await pool.query(
@@ -94,12 +95,12 @@ exports.create = async (req, res, next) => {
 
 // PUT /api/contrats/:id/signer
 // Chaque participant signe de son côté.
-// Quand les 2 ont signé → finalisation automatique :
+// Quand les 2 ont signé -> finalisation automatique :
 //   - débit des points de l'acheteur
 //   - crédit des points au vendeur
 //   - création des transactions PostgreSQL
-//   - statut contrat → 'termine'
-//   - statut annonce → 'archivee'
+//   - statut contrat -> 'termine'
+//   - statut annonce -> 'archivee'
 exports.signer = async (req, res, next) => {
   try {
     const contratId = parseInt(req.params.id);
@@ -154,6 +155,21 @@ exports.signer = async (req, res, next) => {
       [contratId]
     );
 
+    // Relation Neo4j : le signataire a signé ce contrat
+    {
+      const session = driver.session();
+      try {
+        await session.run(
+          `MERGE (u:Utilisateur {pg_id: $uid})
+           MERGE (c:Contrat {pg_id: $cid})
+           MERGE (u)-[:SIGNE]->(c)`,
+          { uid, cid: contratId }
+        );
+      } finally {
+        await session.close();
+      }
+    }
+
     // Archive la signature (et le PDF signé si fourni) dans MongoDB
     if (signature_dataurl || pdf_base64) {
       const mongoUpdate = {
@@ -195,7 +211,7 @@ exports.signer = async (req, res, next) => {
         );
         const txDebit = await pool.query(
           `INSERT INTO transaction_points (montant, motif) VALUES ($1, $2) RETURNING *`,
-          [-points, `Paiement service — contrat #${contratId}`]
+          [-points, `Paiement service - contrat #${contratId}`]
         );
 
         // 2. Crédit vendeur
@@ -205,7 +221,7 @@ exports.signer = async (req, res, next) => {
         );
         const txCredit = await pool.query(
           `INSERT INTO transaction_points (montant, motif) VALUES ($1, $2) RETURNING *`,
-          [points, `Encaissement service — contrat #${contratId}`]
+          [points, `Encaissement service - contrat #${contratId}`]
         );
 
         // 3. Relations Neo4j transactions
@@ -217,7 +233,8 @@ exports.signer = async (req, res, next) => {
              MERGE (vendeur:Utilisateur  {pg_id: $vid})
              MERGE (td:Transaction {pg_id: $tdid}) MERGE (td)-[:EST_POUR]->(acheteur)
              MERGE (tc:Transaction {pg_id: $tcid}) MERGE (tc)-[:EST_POUR]->(vendeur)
-             MERGE (c)-[:LIE_A]->(td) MERGE (c)-[:LIE_A]->(tc)`,
+             MERGE (c)-[:LIE_A]->(td) MERGE (c)-[:LIE_A]->(tc)
+             MERGE (vendeur)-[:A_AIDE]->(acheteur)`,
             {
               cid:  contratId,
               aid:  c.id_acheteur, vid: c.id_vendeur,
@@ -228,9 +245,23 @@ exports.signer = async (req, res, next) => {
         } finally {
           await session.close();
         }
+      } else {
+        // Service gratuit : on garde la trace de l'entraide sans transaction de points
+        const session = driver.session();
+        try {
+          await session.run(
+            `MERGE (c:Contrat {pg_id: $cid})
+             MERGE (acheteur:Utilisateur {pg_id: $aid})
+             MERGE (vendeur:Utilisateur  {pg_id: $vid})
+             MERGE (vendeur)-[:A_AIDE]->(acheteur)`,
+            { cid: contratId, aid: c.id_acheteur, vid: c.id_vendeur }
+          );
+        } finally {
+          await session.close();
+        }
       }
 
-      // 4. Statut contrat → termine
+      // 4. Statut contrat -> termine
       await pool.query(
         `UPDATE contrat SET statut = 'termine', date_signature = NOW() WHERE id_contrat = $1`,
         [contratId]
@@ -249,6 +280,11 @@ exports.signer = async (req, res, next) => {
         `Le contrat #${contratId} est finalisé.${points > 0 ? ` ${points} points ont été transférés.` : ''}`,
         String(contratId), 'contrat'
       );
+
+      // 7. Événement métier (pour les hooks)
+      appEvents.emit('contrat.finalise', {
+        contratId, idVendeur: c.id_vendeur, idAcheteur: c.id_acheteur, points,
+      });
     } else {
       // Notifier l'autre partie que la signature est en attente
       const autreId = isVendeur ? c.id_acheteur : c.id_vendeur;
@@ -271,7 +307,7 @@ exports.signer = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/contrats/:id/document  (auth — participant ou admin)
+// GET /api/contrats/:id/document  (auth - participant ou admin)
 // Retourne le document archivé dans MongoDB : PDF signé (base64), hash SHA-256, signatures
 exports.getDocument = async (req, res, next) => {
   try {

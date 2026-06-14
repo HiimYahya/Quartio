@@ -3,12 +3,46 @@ const jwt    = require('jsonwebtoken');
 const crypto = require('crypto');
 const pool   = require('../config/db');
 const mailer = require('../config/mailer');
+const { driver } = require('../config/neo4j');
+const { PASSWORD_PATTERN, PASSWORD_MESSAGE } = require('../validators/auth.validator');
 
 const REFRESH_EXPIRES_DAYS = 7;
+const WELCOME_POINTS = 100;
 
 const generateRefreshToken = () => crypto.randomBytes(64).toString('hex');
 
 const generateOtp = () => String(Math.floor(100000 + Math.random() * 900000));
+
+// Active le compte et crédite les points de bienvenue (utilisé par verifyEmail et,
+// si SKIP_EMAIL_VERIFICATION=true, directement par register pour les besoins de test).
+const creditWelcomeAndVerify = async (userId) => {
+  await pool.query('BEGIN');
+  await pool.query(
+    'UPDATE utilisateur SET email_verifie = TRUE, points_solde = points_solde + $2 WHERE id_utilisateur = $1',
+    [userId, WELCOME_POINTS]
+  );
+  const tx = await pool.query(
+    `INSERT INTO transaction_points (montant, motif) VALUES ($1, $2) RETURNING id_transaction`,
+    [WELCOME_POINTS, 'Points de bienvenue']
+  );
+  await pool.query(
+    'UPDATE email_verification SET utilise = TRUE WHERE id_utilisateur = $1',
+    [userId]
+  );
+  await pool.query('COMMIT');
+
+  const session = driver.session();
+  try {
+    await session.run(
+      `MERGE (t:Transaction {pg_id: $tid})
+       MERGE (u:Utilisateur {pg_id: $uid})
+       MERGE (t)-[:EST_POUR]->(u)`,
+      { tid: tx.rows[0].id_transaction, uid: userId }
+    );
+  } finally {
+    await session.close();
+  }
+};
 
 // POST /api/auth/register
 exports.register = async (req, res, next) => {
@@ -43,6 +77,16 @@ exports.register = async (req, res, next) => {
 
     // Envoi de l'email (non-bloquant : on ne fait pas échouer l'inscription si l'email rate)
     mailer.sendVerificationEmail(email, prenom, code).catch(() => {});
+
+    // SKIP_EMAIL_VERIFICATION=true (dev/test uniquement) : le compte est activé
+    // immédiatement, sans saisir le code OTP - pas d'envoi SMTP requis.
+    if (process.env.SKIP_EMAIL_VERIFICATION === 'true') {
+      await creditWelcomeAndVerify(user.id_utilisateur);
+      return res.status(201).json({
+        utilisateur: { ...user, email_verifie: true },
+        email_verification_required: false,
+      });
+    }
 
     res.status(201).json({
       utilisateur: user,
@@ -83,17 +127,8 @@ exports.verifyEmail = async (req, res, next) => {
       return res.status(400).json({ error: 'Code invalide ou expiré' });
     }
 
-    // Active le compte et invalide tous les codes
-    await pool.query('BEGIN');
-    await pool.query(
-      'UPDATE utilisateur SET email_verifie = TRUE WHERE id_utilisateur = $1',
-      [user.id_utilisateur]
-    );
-    await pool.query(
-      'UPDATE email_verification SET utilise = TRUE WHERE id_utilisateur = $1',
-      [user.id_utilisateur]
-    );
-    await pool.query('COMMIT');
+    // Active le compte, crédite les points de bienvenue et invalide tous les codes
+    await creditWelcomeAndVerify(user.id_utilisateur);
 
     // Email de bienvenue
     mailer.sendWelcomeEmail(email, user.prenom).catch(() => {});
@@ -170,7 +205,7 @@ exports.login = async (req, res, next) => {
       });
     }
 
-    // MFA activé → retourner un token temporaire, pas le vrai JWT
+    // MFA activé -> retourner un token temporaire, pas le vrai JWT
     if (user.mfa_actif && user.mfa_secret) {
       const mfaToken = jwt.sign(
         { id: user.id_utilisateur, email: user.email, role: user.role, type: 'mfa' },
@@ -187,7 +222,7 @@ exports.login = async (req, res, next) => {
       { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
     );
 
-    // Refresh token (longue durée — 7 jours)
+    // Refresh token (longue durée - 7 jours)
     const refreshToken = generateRefreshToken();
     const expireAt     = new Date();
     expireAt.setDate(expireAt.getDate() + REFRESH_EXPIRES_DAYS);
@@ -257,8 +292,8 @@ exports.resetPassword = async (req, res, next) => {
     if (!token || !mot_de_passe) {
       return res.status(400).json({ error: 'Token et nouveau mot de passe requis' });
     }
-    if (mot_de_passe.length < 8) {
-      return res.status(400).json({ error: 'Le mot de passe doit faire au moins 8 caractères' });
+    if (!PASSWORD_PATTERN.test(mot_de_passe)) {
+      return res.status(400).json({ error: PASSWORD_MESSAGE });
     }
 
     const tokenResult = await pool.query(
@@ -345,7 +380,7 @@ exports.logout = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/auth/sso-token — génère un JWT court (5 min) pour l'app Java Desktop
+// GET /api/auth/sso-token - génère un JWT court (5 min) pour l'app Java Desktop
 exports.ssoToken = async (req, res, next) => {
   try {
     const token = jwt.sign(

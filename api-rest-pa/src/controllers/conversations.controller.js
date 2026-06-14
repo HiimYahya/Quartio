@@ -7,7 +7,7 @@ const validateMongoId = require('../utils/validateMongoId');
 const { getPagination, paginate } = require('../utils/pagination');
 const { emitNewMessage } = require('../socket/index');
 
-// GET /api/conversations  → mes conversations enrichies (dernier message + non lus)
+// GET /api/conversations  -> mes conversations enrichies (dernier message + non lus)
 exports.getMes = async (req, res, next) => {
   try {
     const { page, limit, skip } = getPagination(req.query);
@@ -128,7 +128,7 @@ exports.create = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/conversations/:id/messages — marque les messages de l'autre comme lus
+// GET /api/conversations/:id/messages - marque les messages de l'autre comme lus
 exports.getMessages = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
@@ -203,7 +203,7 @@ exports.envoyerMessage = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/conversations/:id/messages/media — upload d'une image (Cloudinary)
+// POST /api/conversations/:id/messages/media - upload d'une image (Cloudinary)
 exports.envoyerMessageMedia = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;

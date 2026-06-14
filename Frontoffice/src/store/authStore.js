@@ -47,19 +47,19 @@ const useAuthStore = create((set) => ({
   register: async (payload) => {
     set({ loading: true, error: null });
     try {
-      await api.post('/auth/register', payload);
+      const { data } = await api.post('/auth/register', payload);
       set({ loading: false });
-      return true;
+      return data;
     } catch (err) {
       set({ error: err.response?.data?.error || "Erreur d'inscription", loading: false });
-      return false;
+      return null;
     }
   },
 
   fetchMe: async () => {
     try {
       const { data } = await api.get('/auth/me');
-      // normalise id_utilisateur → id
+      // normalise id_utilisateur -> id
       const user = { ...data, id: data.id ?? data.id_utilisateur };
       set({ user });
     } catch {
@@ -75,6 +75,7 @@ const useAuthStore = create((set) => ({
   },
 
   clearError: () => set({ error: null }),
+  setError: (error) => set({ error }),
 }));
 
 export default useAuthStore;

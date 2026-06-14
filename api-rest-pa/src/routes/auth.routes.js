@@ -26,7 +26,7 @@ const { registerSchema, loginSchema } = require('../validators/auth.validator');
  *               email:        { type: string, format: email }
  *               mot_de_passe: { type: string, minLength: 8 }
  *     responses:
- *       201: { description: Compte créé — vérification email requise }
+ *       201: { description: Compte créé - vérification email requise }
  *       409: { description: Email déjà utilisé }
  */
 router.post('/register', validate(registerSchema), ctrl.register);
