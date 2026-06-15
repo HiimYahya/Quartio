@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { ShieldCheck, Lock, Mail, Phone, Monitor } from 'lucide-react'
 import api from '../../services/api'
 import PasswordStrengthMeter from './PasswordStrengthMeter'
 import { isPasswordValid, PASSWORD_RULES_MESSAGE } from '../../utils/passwordPolicy'
@@ -6,11 +7,14 @@ import { isPasswordValid, PASSWORD_RULES_MESSAGE } from '../../utils/passwordPol
 export default function SecuritySection({ user, onEmailChanged, onLogout }) {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-6">
-      <div>
-        <h3 className="font-semibold text-gray-800">Sécurité du compte</h3>
-        <p className="text-xs text-gray-500 mt-0.5">
-          Gérez votre mot de passe, votre email, votre téléphone et vos sessions actives.
-        </p>
+      <div className="flex items-center gap-2">
+        <ShieldCheck className="w-5 h-5 text-[#2d7a5f]" />
+        <div>
+          <h3 className="font-semibold text-gray-800">Sécurité du compte</h3>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Gérez votre mot de passe, votre email, votre téléphone et vos sessions actives.
+          </p>
+        </div>
       </div>
 
       <ChangePasswordForm user={user} onLogout={onLogout} />
@@ -27,7 +31,9 @@ export default function SecuritySection({ user, onEmailChanged, onLogout }) {
 function MfaCodeField({ value, onChange }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">Code MFA (application d'authentification)</label>
+      <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
+        <ShieldCheck className="w-3.5 h-3.5 text-gray-400" /> Code MFA (application d'authentification)
+      </label>
       <input
         type="text" inputMode="numeric" maxLength={6}
         value={value}
@@ -73,18 +79,27 @@ function ChangePasswordForm({ user, onLogout }) {
       <h4 className="text-sm font-semibold text-gray-700">Changer le mot de passe</h4>
       {success && <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg px-3 py-2 text-sm">{success}</div>}
       {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-sm">{error}</div>}
-      <input type="password" value={ancien} onChange={(e) => setAncien(e.target.value)}
-        placeholder="Mot de passe actuel"
-        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]" />
+      <div className="relative">
+        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input type="password" value={ancien} onChange={(e) => setAncien(e.target.value)}
+          placeholder="Mot de passe actuel"
+          className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]" />
+      </div>
       <div>
-        <input type="password" value={nouveau} onChange={(e) => setNouveau(e.target.value)}
-          placeholder="Nouveau mot de passe"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]" />
+        <div className="relative">
+          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input type="password" value={nouveau} onChange={(e) => setNouveau(e.target.value)}
+            placeholder="Nouveau mot de passe"
+            className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]" />
+        </div>
         <PasswordStrengthMeter password={nouveau} />
       </div>
-      <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)}
-        placeholder="Confirmer le nouveau mot de passe"
-        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]" />
+      <div className="relative">
+        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)}
+          placeholder="Confirmer le nouveau mot de passe"
+          className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]" />
+      </div>
       {user?.mfa_actif && <MfaCodeField value={mfaCode} onChange={setMfaCode} />}
       <button type="submit" disabled={loading || !ancien || !nouveau || !confirm}
         className="bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors disabled:opacity-60">
@@ -125,9 +140,12 @@ function ChangeEmailForm({ user, onEmailChanged }) {
       <p className="text-xs text-gray-400">Email actuel : {user?.email}</p>
       {success && <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg px-3 py-2 text-sm">{success}</div>}
       {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-sm">{error}</div>}
-      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-        placeholder="Nouvel email"
-        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]" />
+      <div className="relative">
+        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+          placeholder="Nouvel email"
+          className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]" />
+      </div>
       {user?.mfa_actif && <MfaCodeField value={mfaCode} onChange={setMfaCode} />}
       <button type="submit" disabled={loading || !email}
         className="bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors disabled:opacity-60">
@@ -166,9 +184,12 @@ function ChangeTelephoneForm({ user }) {
       <h4 className="text-sm font-semibold text-gray-700">Changer le téléphone</h4>
       {success && <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg px-3 py-2 text-sm">{success}</div>}
       {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-sm">{error}</div>}
-      <input type="tel" value={telephone ?? ''} onChange={(e) => setTelephone(e.target.value)}
-        placeholder="Numéro de téléphone"
-        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]" />
+      <div className="relative">
+        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input type="tel" value={telephone ?? ''} onChange={(e) => setTelephone(e.target.value)}
+          placeholder="Numéro de téléphone"
+          className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]" />
+      </div>
       {user?.mfa_actif && <MfaCodeField value={mfaCode} onChange={setMfaCode} />}
       <button type="submit" disabled={loading}
         className="bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors disabled:opacity-60">
@@ -214,14 +235,18 @@ function ActiveSessions({ user, onLogout }) {
         <div className="space-y-2">
           {sessions.map((s) => (
             <div key={s.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-600">
-              <span>Session ouverte le {new Date(s.cree_le).toLocaleString('fr-FR')}</span>
+              <span className="flex items-center gap-2">
+                <Monitor className="w-4 h-4 text-gray-400 shrink-0" />
+                Session ouverte le {new Date(s.cree_le).toLocaleString('fr-FR')}
+              </span>
               <span className="text-xs text-gray-400">Expire le {new Date(s.expire_le).toLocaleDateString('fr-FR')}</span>
             </div>
           ))}
         </div>
       )}
       <button onClick={handleRevokeAll} disabled={revoking || sessions.length === 0}
-        className="border border-red-200 text-red-600 hover:bg-red-50 font-medium py-2 px-4 rounded-lg text-sm transition-colors disabled:opacity-60">
+        className="flex items-center gap-1.5 border border-red-200 text-red-600 hover:bg-red-50 font-medium py-2 px-4 rounded-lg text-sm transition-colors disabled:opacity-60">
+        <LogOut className="w-4 h-4" />
         {revoking ? 'Déconnexion...' : 'Déconnecter toutes les sessions'}
       </button>
     </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, ArrowLeft } from 'lucide-react'
 import api from '../services/api'
 import PasswordStrengthMeter from '../components/ui/PasswordStrengthMeter'
 import { isPasswordValid, PASSWORD_RULES_MESSAGE } from '../utils/passwordPolicy'
@@ -97,7 +97,7 @@ export default function ResetPasswordPage() {
               </form>
 
               <p className="text-center text-sm text-gray-400 mt-5">
-                <Link to="/login" className="hover:underline">{'<- Retour à la connexion'}</Link>
+                <Link to="/login" className="hover:underline inline-flex items-center gap-1.5"><ArrowLeft className="w-3.5 h-3.5" /> Retour à la connexion</Link>
               </p>
             </>
           )}

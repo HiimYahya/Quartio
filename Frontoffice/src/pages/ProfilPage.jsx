@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Coins, MapPin, Info, CheckCircle2, AlertCircle, Download } from 'lucide-react'
+import { Coins, MapPin, Info, CheckCircle2, AlertCircle, Download, ShieldAlert, Trash2 } from 'lucide-react'
 import useAuthStore from '../store/authStore'
 import api from '../services/api'
 import LangSwitcher from '../components/ui/LangSwitcher'
@@ -279,7 +279,9 @@ function RgpdSection({ user, onDelete }) {
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
-      <h3 className="font-semibold text-gray-800">Mes données (RGPD)</h3>
+      <h3 className="flex items-center gap-2 font-semibold text-gray-800">
+        <ShieldAlert className="w-4 h-4 text-[#2d7a5f]" /> Mes données (RGPD)
+      </h3>
       <p className="text-xs text-gray-500">
         Conformément au RGPD, vous pouvez accéder à toutes vos données ou demander la suppression de votre compte.
       </p>
@@ -299,8 +301,9 @@ function RgpdSection({ user, onDelete }) {
       {deleteStep === null && (
         <button
           onClick={() => { setDeleteStep('confirm'); setError(null) }}
-          className="w-full border border-red-300 text-red-600 hover:bg-red-50 font-medium py-2.5 rounded-lg text-sm transition-colors"
+          className="w-full flex items-center justify-center gap-2 border border-red-300 text-red-600 hover:bg-red-50 font-medium py-2.5 rounded-lg text-sm transition-colors"
         >
+          <Trash2 className="w-4 h-4" />
           Supprimer mon compte
         </button>
       )}

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import SignatureCanvas from 'react-signature-canvas'
 import { PDFDocument, rgb } from 'pdf-lib'
-import { CheckCircle2, Info, Upload, X } from 'lucide-react'
+import { CheckCircle2, Info, Upload, X, ArrowRight, ArrowLeft, Check } from 'lucide-react'
 import api from '../services/api'
 import useAuthStore from '../store/authStore'
 
@@ -275,8 +275,8 @@ export default function ContratDetailPage() {
     <div className="max-w-2xl space-y-4">
 
       {/* Retour */}
-      <button onClick={() => navigate(-1)} className="text-sm text-[#2d7a5f] hover:underline">
-        {'<- Retour aux contrats'}
+      <button onClick={() => navigate(-1)} className="text-sm text-[#2d7a5f] hover:underline inline-flex items-center gap-1.5">
+        <ArrowLeft className="w-4 h-4" /> Retour aux contrats
       </button>
 
       {/* En-tête contrat */}
@@ -431,7 +431,7 @@ export default function ContratDetailPage() {
                 <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
                   step > n ? 'bg-[#34d399] text-white' : ''
                 }`}>
-                  {step > n ? '' : n}
+                  {step > n ? <Check className="w-3 h-3" /> : n}
                 </span>
                 {label}
               </button>
@@ -458,9 +458,9 @@ export default function ContratDetailPage() {
           {canSign && (
             <button
               onClick={() => setStep(2)}
-              className="w-full bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-medium py-2.5 rounded-xl transition-colors"
+              className="w-full bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-medium py-2.5 rounded-xl transition-colors flex items-center justify-center gap-1.5"
             >
-              {'Continuer ->'}
+              Continuer <ArrowRight className="w-4 h-4" />
             </button>
           )}
         </div>
@@ -506,14 +506,14 @@ export default function ContratDetailPage() {
           )}
 
           <div className="flex gap-3">
-            <button onClick={() => setStep(1)} className="flex-1 border border-gray-300 text-gray-700 font-medium py-2.5 rounded-xl hover:bg-gray-50 transition-colors">
-              {'<- Retour'}
+            <button onClick={() => setStep(1)} className="flex-1 border border-gray-300 text-gray-700 font-medium py-2.5 rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5">
+              <ArrowLeft className="w-4 h-4" /> Retour
             </button>
             <button
               onClick={() => setStep(3)}
-              className="flex-1 bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-medium py-2.5 rounded-xl transition-colors"
+              className="flex-1 bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-medium py-2.5 rounded-xl transition-colors flex items-center justify-center gap-1.5"
             >
-              {pdfFile ? 'Continuer ->' : 'Passer cette étape ->'}
+              {pdfFile ? 'Continuer' : 'Passer cette étape'} <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -628,8 +628,8 @@ export default function ContratDetailPage() {
             >
               Effacer
             </button>
-            <button onClick={() => setStep(2)} className="border border-gray-300 text-gray-700 font-medium py-2 px-4 rounded-xl hover:bg-gray-50 transition-colors text-sm">
-              {'<- Retour'}
+            <button onClick={() => setStep(2)} className="border border-gray-300 text-gray-700 font-medium py-2 px-4 rounded-xl hover:bg-gray-50 transition-colors text-sm flex items-center gap-1.5">
+              <ArrowLeft className="w-4 h-4" /> Retour
             </button>
             <button
               onClick={() => handleSign()}

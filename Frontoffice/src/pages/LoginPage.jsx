@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { Mail, Lock, ArrowRight, CheckCircle2 } from 'lucide-react'
 import useAuthStore from '../store/authStore'
 import LangSwitcher from '../components/ui/LangSwitcher'
 
@@ -49,13 +50,15 @@ export default function LoginPage() {
           <h2 className="text-xl font-semibold text-gray-800 mb-6">{t('auth.login')}</h2>
 
           {verified && (
-            <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-3 mb-4 text-sm">
+            <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-3 mb-4 text-sm flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
               Email vérifié - vous pouvez maintenant vous connecter.
             </div>
           )}
 
           {reset && (
-            <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-3 mb-4 text-sm">
+            <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-3 mb-4 text-sm flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
               Mot de passe mis à jour - connectez-vous avec votre nouveau mot de passe.
             </div>
           )}
@@ -70,8 +73,8 @@ export default function LoginPage() {
               <p>Vérifiez votre boîte mail et entrez le code reçu.{' '}
                 <Link
                   to={`/verify-email?email=${encodeURIComponent(unverifiedEmail)}`}
-                  className="underline font-medium">
-                  {'Vérifier maintenant ->'}
+                  className="underline font-medium inline-flex items-center gap-1">
+                  Vérifier maintenant <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </p>
             </div>
@@ -80,9 +83,12 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.email')}</label>
-              <input type="email" name="email" value={form.email} onChange={handleChange} required
-                placeholder="votre@email.com"
-                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399] focus:border-transparent transition" />
+              <div className="relative">
+                <Mail className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input type="email" name="email" value={form.email} onChange={handleChange} required
+                  placeholder="votre@email.com"
+                  className="w-full border border-gray-300 rounded-lg pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399] focus:border-transparent transition" />
+              </div>
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
@@ -91,9 +97,12 @@ export default function LoginPage() {
                   Mot de passe oublié ?
                 </Link>
               </div>
-              <input type="password" name="mot_de_passe" value={form.mot_de_passe} onChange={handleChange} required
-                placeholder="--------"
-                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399] focus:border-transparent transition" />
+              <div className="relative">
+                <Lock className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input type="password" name="mot_de_passe" value={form.mot_de_passe} onChange={handleChange} required
+                  placeholder="--------"
+                  className="w-full border border-gray-300 rounded-lg pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399] focus:border-transparent transition" />
+              </div>
             </div>
             <button type="submit" disabled={loading}
               className="w-full bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-60 mt-2">

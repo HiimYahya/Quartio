@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CalendarDays } from 'lucide-react'
+import { CalendarDays, Pencil } from 'lucide-react'
 import api from '../services/api'
 
 const STATUT_COLORS = {
@@ -8,6 +8,14 @@ const STATUT_COLORS = {
 }
 
 const EMPTY_FORM = { titre: '', description: '', type: '', date_debut: '', date_fin: '', lieu: '', capacite_max: '', id_quartier: '' }
+
+const toLocalInput = (d) => {
+  if (!d) return ''
+  const date = new Date(d)
+  if (isNaN(date.getTime())) return ''
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
 
 export default function EvenementsPage() {
   const [items,      setItems]      = useState([])
@@ -18,6 +26,10 @@ export default function EvenementsPage() {
   const [form,       setForm]       = useState(EMPTY_FORM)
   const [saving,     setSaving]     = useState(false)
   const [formError,  setFormError]  = useState(null)
+  const [editTarget, setEditTarget] = useState(null)
+  const [editForm,   setEditForm]   = useState(EMPTY_FORM)
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError,  setEditError]  = useState(null)
 
   const load = () => {
     api.get('/evenements')
@@ -72,6 +84,46 @@ export default function EvenementsPage() {
     }
   }
 
+  const openEdit = (ev) => {
+    const id = ev.id ?? ev._id
+    setEditTarget({ id, titre: ev.titre })
+    setEditForm({
+      titre:        ev.titre ?? '',
+      description:  ev.description ?? '',
+      type:         ev.type ?? '',
+      date_debut:   toLocalInput(ev.date_debut),
+      date_fin:     toLocalInput(ev.date_fin),
+      lieu:         ev.lieu ?? '',
+      capacite_max: ev.capacite_max ?? '',
+      id_quartier:  ev.id_quartier ?? '',
+    })
+    setEditError(null)
+  }
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault()
+    setEditSaving(true)
+    setEditError(null)
+    try {
+      const payload = {
+        titre:        editForm.titre,
+        description:  editForm.description || null,
+        type:         editForm.type || null,
+        date_debut:   editForm.date_debut,
+        date_fin:     editForm.date_fin || null,
+        lieu:         editForm.lieu || null,
+        capacite_max: editForm.capacite_max ? Number(editForm.capacite_max) : null,
+      }
+      await api.put(`/evenements/${editTarget.id}`, payload)
+      setItems((v) => v.map((x) => (x.id ?? x._id) === editTarget.id ? { ...x, ...payload } : x))
+      setEditTarget(null)
+    } catch (err) {
+      setEditError(err.response?.data?.error ?? 'Erreur lors de la modification')
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -123,13 +175,76 @@ export default function EvenementsPage() {
                       </select>
                     </td>
                     <td className="px-4 py-3">
-                      <button onClick={() => setConfirm({ id, titre: ev.titre })} className="text-xs text-red-500 hover:underline">Supprimer</button>
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => openEdit(ev)} className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 hover:underline">
+                          <Pencil className="w-3.5 h-3.5" />
+                          Modifier
+                        </button>
+                        <button onClick={() => setConfirm({ id, titre: ev.titre })} className="text-xs text-red-500 hover:underline">Supprimer</button>
+                      </div>
                     </td>
                   </tr>
                 )
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Modal modification */}
+      {editTarget && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-xl max-h-[90vh] overflow-y-auto">
+            <h3 className="font-semibold text-slate-800 mb-4">Modifier l'événement</h3>
+            {editError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-3">{editError}</p>}
+            <form onSubmit={handleEditSubmit} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Titre *</label>
+                <input required value={editForm.titre} onChange={(e) => setEditForm((f) => ({ ...f, titre: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Description</label>
+                <textarea rows={2} value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Date début *</label>
+                  <input required type="datetime-local" value={editForm.date_debut} onChange={(e) => setEditForm((f) => ({ ...f, date_debut: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Date fin</label>
+                  <input type="datetime-local" value={editForm.date_fin} onChange={(e) => setEditForm((f) => ({ ...f, date_fin: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Lieu</label>
+                  <input value={editForm.lieu} onChange={(e) => setEditForm((f) => ({ ...f, lieu: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Capacité max</label>
+                  <input type="number" min={1} value={editForm.capacite_max} onChange={(e) => setEditForm((f) => ({ ...f, capacite_max: e.target.value }))}
+                    placeholder="Illimitée"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setEditTarget(null)}
+                  className="flex-1 border border-slate-300 text-slate-700 py-2 rounded-lg text-sm hover:bg-slate-50 transition">
+                  Annuler
+                </button>
+                <button type="submit" disabled={editSaving}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-sm transition disabled:opacity-60">
+                  {editSaving ? 'Enregistrement...' : 'Enregistrer'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

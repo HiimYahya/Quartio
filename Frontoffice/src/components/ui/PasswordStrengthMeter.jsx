@@ -1,3 +1,4 @@
+import { Check, X } from 'lucide-react'
 import { PASSWORD_RULES } from '../../utils/passwordPolicy'
 
 const LABELS = ['Très faible', 'Faible', 'Moyen', 'Fort', 'Très fort']
@@ -18,8 +19,9 @@ export default function PasswordStrengthMeter({ password }) {
       <p className="text-xs text-gray-500 mb-1">{LABELS[score]}</p>
       <ul className="text-xs text-gray-400 space-y-0.5">
         {PASSWORD_RULES.map(({ label, test }) => (
-          <li key={label} className={test(password) ? 'text-green-600' : ''}>
-            - {label}
+          <li key={label} className={`flex items-center gap-1.5 ${test(password) ? 'text-green-600' : ''}`}>
+            {test(password) ? <Check className="w-3 h-3 shrink-0" /> : <X className="w-3 h-3 shrink-0 text-gray-300" />}
+            {label}
           </li>
         ))}
       </ul>

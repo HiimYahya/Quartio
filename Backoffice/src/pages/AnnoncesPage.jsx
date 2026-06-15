@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Megaphone } from 'lucide-react'
+import { Megaphone, Pencil } from 'lucide-react'
 import api from '../services/api'
 
 const STATUT_COLORS = {
@@ -20,6 +20,10 @@ export default function AnnoncesPage() {
   const [form,       setForm]       = useState(EMPTY_FORM)
   const [saving,     setSaving]     = useState(false)
   const [formError,  setFormError]  = useState(null)
+  const [editTarget, setEditTarget] = useState(null)
+  const [editForm,   setEditForm]   = useState(EMPTY_FORM)
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError,  setEditError]  = useState(null)
 
   const load = () => {
     api.get('/annonces')
@@ -70,6 +74,44 @@ export default function AnnoncesPage() {
       setFormError(err.response?.data?.error ?? 'Erreur lors de la création')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const openEdit = (a) => {
+    const id = a.id ?? a._id
+    setEditTarget({ id, titre: a.titre })
+    setEditForm({
+      titre:       a.titre ?? '',
+      description: a.description ?? '',
+      type:        a.type ?? 'offre',
+      est_payant:  !!a.est_payant,
+      cout_points: a.cout_points ?? 0,
+      categorie:   a.categorie ?? '',
+      id_quartier: a.id_quartier ?? '',
+    })
+    setEditError(null)
+  }
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault()
+    setEditSaving(true)
+    setEditError(null)
+    try {
+      const payload = {
+        titre:       editForm.titre,
+        description: editForm.description || null,
+        type:        editForm.type || null,
+        est_payant:  editForm.est_payant,
+        cout_points: editForm.est_payant ? Number(editForm.cout_points) : 0,
+        categorie:   editForm.categorie || null,
+      }
+      await api.put(`/annonces/${editTarget.id}`, payload)
+      setItems((v) => v.map((x) => (x.id ?? x._id) === editTarget.id ? { ...x, ...payload } : x))
+      setEditTarget(null)
+    } catch (err) {
+      setEditError(err.response?.data?.error ?? 'Erreur lors de la modification')
+    } finally {
+      setEditSaving(false)
     }
   }
 
@@ -135,7 +177,11 @@ export default function AnnoncesPage() {
                         <option value="archivee">Archivée</option>
                       </select>
                     </td>
-                    <td className="px-4 py-3 flex gap-3">
+                    <td className="px-4 py-3 flex items-center gap-3">
+                      <button onClick={() => openEdit(a)} className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 hover:underline">
+                        <Pencil className="w-3.5 h-3.5" />
+                        Modifier
+                      </button>
                       <button onClick={() => handleStatut(id, 'archivee')} className="text-xs text-slate-400 hover:text-slate-600 hover:underline">
                         Archiver
                       </button>
@@ -148,6 +194,67 @@ export default function AnnoncesPage() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Modal modification */}
+      {editTarget && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-xl max-h-[90vh] overflow-y-auto">
+            <h3 className="font-semibold text-slate-800 mb-4">Modifier l'annonce</h3>
+            {editError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-3">{editError}</p>}
+            <form onSubmit={handleEditSubmit} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Titre *</label>
+                <input required value={editForm.titre} onChange={(e) => setEditForm((f) => ({ ...f, titre: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Description</label>
+                <textarea rows={3} value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Type</label>
+                  <select value={editForm.type} onChange={(e) => setEditForm((f) => ({ ...f, type: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="offre">Offre</option>
+                    <option value="demande">Demande</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Catégorie</label>
+                  <input value={editForm.categorie} onChange={(e) => setEditForm((f) => ({ ...f, categorie: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                  <input type="checkbox" checked={editForm.est_payant} onChange={(e) => setEditForm((f) => ({ ...f, est_payant: e.target.checked }))}
+                    className="rounded" />
+                  Payant
+                </label>
+                {editForm.est_payant && (
+                  <div className="flex items-center gap-2">
+                    <input type="number" min={0} value={editForm.cout_points} onChange={(e) => setEditForm((f) => ({ ...f, cout_points: e.target.value }))}
+                      className="w-24 border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    <span className="text-xs text-slate-500">pts</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setEditTarget(null)}
+                  className="flex-1 border border-slate-300 text-slate-700 py-2 rounded-lg text-sm hover:bg-slate-50 transition">
+                  Annuler
+                </button>
+                <button type="submit" disabled={editSaving}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-sm transition disabled:opacity-60">
+                  {editSaving ? 'Enregistrement...' : 'Enregistrer'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

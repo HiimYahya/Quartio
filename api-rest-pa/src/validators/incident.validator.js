@@ -8,6 +8,9 @@ const createSchema = Joi.object({
 });
 
 const updateSchema = Joi.object({
+  titre:           Joi.string().min(2).max(200),
+  description:     Joi.string().allow('', null),
+  type:            Joi.string().max(50).allow('', null),
   statut:          Joi.string().valid('ouvert', 'en_cours', 'resolu', 'ferme'),
   priorite:        Joi.string().valid('basse', 'normale', 'haute', 'critique'),
   date_resolution: Joi.date().allow(null),

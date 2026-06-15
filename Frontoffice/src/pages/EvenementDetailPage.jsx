@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { CalendarDays, MapPin, Users } from 'lucide-react'
+import { CalendarDays, MapPin, Users, ArrowLeft } from 'lucide-react'
 import api from '../services/api'
 import useAuthStore from '../store/authStore'
 
@@ -60,8 +60,8 @@ export default function EvenementDetailPage() {
 
   return (
     <div className="max-w-2xl space-y-5">
-      <button onClick={() => navigate(-1)} className="text-sm text-[#2d7a5f] hover:underline">
-        {'<- Retour aux événements'}
+      <button onClick={() => navigate(-1)} className="text-sm text-[#2d7a5f] hover:underline inline-flex items-center gap-1.5">
+        <ArrowLeft className="w-4 h-4" /> Retour aux événements
       </button>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">

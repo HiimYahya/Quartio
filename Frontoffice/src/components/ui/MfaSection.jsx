@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { ShieldCheck, ShieldOff, QrCode, KeyRound } from 'lucide-react'
 import api from '../../services/api'
 
 export default function MfaSection({ user, onStatusChange }) {
@@ -55,9 +56,12 @@ export default function MfaSection({ user, onStatusChange }) {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h3 className="font-semibold text-gray-800">Authentification à deux facteurs (MFA)</h3>
-          <p className="text-xs text-gray-500 mt-0.5">Sécurisez votre compte avec Google Authenticator ou Authy.</p>
+        <div className="flex items-center gap-2">
+          {mfaActive ? <ShieldCheck className="w-5 h-5 text-green-600 shrink-0" /> : <ShieldOff className="w-5 h-5 text-gray-400 shrink-0" />}
+          <div>
+            <h3 className="font-semibold text-gray-800">Authentification à deux facteurs (MFA)</h3>
+            <p className="text-xs text-gray-500 mt-0.5">Sécurisez votre compte avec Google Authenticator ou Authy.</p>
+          </div>
         </div>
         <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${mfaActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
           {mfaActive ? 'Activé' : 'Désactivé'}
@@ -78,12 +82,14 @@ export default function MfaSection({ user, onStatusChange }) {
         <div>
           {!mfaActive ? (
             <button onClick={startSetup} disabled={loading}
-              className="w-full bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-medium py-2.5 rounded-lg text-sm transition-colors disabled:opacity-60">
+              className="w-full flex items-center justify-center gap-2 bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-medium py-2.5 rounded-lg text-sm transition-colors disabled:opacity-60">
+              <ShieldCheck className="w-4 h-4" />
               {loading ? 'Chargement...' : 'Activer le MFA'}
             </button>
           ) : (
             <button onClick={() => { setStep('disable'); setError(null); setSuccess(null); setTimeout(() => codeRef.current?.focus(), 100) }}
-              className="w-full border border-red-200 text-red-600 hover:bg-red-50 font-medium py-2.5 rounded-lg text-sm transition-colors">
+              className="w-full flex items-center justify-center gap-2 border border-red-200 text-red-600 hover:bg-red-50 font-medium py-2.5 rounded-lg text-sm transition-colors">
+              <ShieldOff className="w-4 h-4" />
               Désactiver le MFA
             </button>
           )}
@@ -93,7 +99,8 @@ export default function MfaSection({ user, onStatusChange }) {
       {/* ── Étape setup : affichage QR code ──────────────────────────────────── */}
       {step === 'setup' && (
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">
+          <p className="flex items-center gap-1.5 text-sm text-gray-600">
+            <QrCode className="w-4 h-4 shrink-0 text-gray-400" />
             1. Scannez ce QR code avec <strong>Google Authenticator</strong> ou <strong>Authy</strong>.
           </p>
           {qrCode && (
@@ -107,7 +114,8 @@ export default function MfaSection({ user, onStatusChange }) {
               <p className="font-mono text-sm font-bold tracking-widest text-gray-800 break-all">{secret}</p>
             </div>
           )}
-          <p className="text-sm text-gray-600">
+          <p className="flex items-center gap-1.5 text-sm text-gray-600">
+            <KeyRound className="w-4 h-4 shrink-0 text-gray-400" />
             2. Entrez le code à 6 chiffres affiché par l'application pour confirmer.
           </p>
           <form onSubmit={activate} className="space-y-3">

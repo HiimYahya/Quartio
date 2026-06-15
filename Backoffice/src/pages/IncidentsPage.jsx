@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Pencil, Trash2 } from 'lucide-react'
 import api from '../services/api'
 
 const STATUT_LABELS  = { ouvert: 'Ouvert', en_cours: 'En cours', resolu: 'Résolu', ferme: 'Fermé' }
@@ -23,6 +23,10 @@ export default function IncidentsPage() {
   const [form,       setForm]       = useState(EMPTY_FORM)
   const [saving,     setSaving]     = useState(false)
   const [formError,  setFormError]  = useState(null)
+  const [editTarget, setEditTarget] = useState(null)
+  const [editForm,   setEditForm]   = useState(EMPTY_FORM)
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError,  setEditError]  = useState(null)
 
   const load = () => {
     api.get('/incidents')
@@ -67,6 +71,39 @@ export default function IncidentsPage() {
       setFormError(err.response?.data?.error ?? 'Erreur lors de la création')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const openEdit = (inc) => {
+    const id = inc.id ?? inc._id
+    setEditTarget({ id, titre: inc.titre })
+    setEditForm({
+      titre:       inc.titre ?? '',
+      description: inc.description ?? '',
+      type:        inc.type ?? '',
+      priorite:    inc.priorite ?? 'normale',
+    })
+    setEditError(null)
+  }
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault()
+    setEditSaving(true)
+    setEditError(null)
+    try {
+      const payload = {
+        titre:       editForm.titre,
+        description: editForm.description || null,
+        type:        editForm.type || null,
+        priorite:    editForm.priorite,
+      }
+      await api.put(`/incidents/${editTarget.id}`, payload)
+      setIncidents((inc) => inc.map((i) => (i.id ?? i._id) === editTarget.id ? { ...i, ...payload } : i))
+      setEditTarget(null)
+    } catch (err) {
+      setEditError(err.response?.data?.error ?? 'Erreur lors de la modification')
+    } finally {
+      setEditSaving(false)
     }
   }
 
@@ -126,13 +163,71 @@ export default function IncidentsPage() {
                         <option key={val} value={val}>{lab}</option>
                       ))}
                     </select>
+                    <button onClick={() => openEdit(inc)}
+                      className="text-xs text-indigo-500 hover:text-indigo-700 px-2 py-1.5 rounded hover:bg-indigo-50 transition flex items-center gap-1">
+                      <Pencil className="w-3.5 h-3.5" />
+                      Modifier
+                    </button>
                     <button onClick={() => setConfirm({ id, titre: inc.titre })}
-                      className="text-xs text-red-400 hover:text-red-600 px-2 py-1.5 rounded hover:bg-red-50 transition"></button>
+                      className="text-xs text-red-400 hover:text-red-600 px-2 py-1.5 rounded hover:bg-red-50 transition flex items-center gap-1">
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Supprimer
+                    </button>
                   </div>
                 </div>
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Modal modification */}
+      {editTarget && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
+            <h3 className="font-semibold text-slate-800 mb-4">Modifier l'incident</h3>
+            {editError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-3">{editError}</p>}
+            <form onSubmit={handleEditSubmit} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Titre *</label>
+                <input required value={editForm.titre} onChange={(e) => setEditForm((f) => ({ ...f, titre: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Description</label>
+                <textarea rows={3} value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Type</label>
+                  <input value={editForm.type} onChange={(e) => setEditForm((f) => ({ ...f, type: e.target.value }))}
+                    placeholder="voirie, éclairage..."
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Priorité</label>
+                  <select value={editForm.priorite} onChange={(e) => setEditForm((f) => ({ ...f, priorite: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="basse">Basse</option>
+                    <option value="normale">Normale</option>
+                    <option value="haute">Haute</option>
+                    <option value="critique">Critique</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setEditTarget(null)}
+                  className="flex-1 border border-slate-300 text-slate-700 py-2 rounded-lg text-sm hover:bg-slate-50 transition">
+                  Annuler
+                </button>
+                <button type="submit" disabled={editSaving}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-sm transition disabled:opacity-60">
+                  {editSaving ? 'Enregistrement...' : 'Enregistrer'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

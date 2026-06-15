@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { User, Mail, Lock } from 'lucide-react'
 import useAuthStore from '../store/authStore'
 import LangSwitcher from '../components/ui/LangSwitcher'
 import PasswordStrengthMeter from '../components/ui/PasswordStrengthMeter'
@@ -55,25 +56,37 @@ export default function RegisterPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.firstName')}</label>
-                <input type="text" name="prenom" value={form.prenom} onChange={handleChange} required placeholder="Jean"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399] transition" />
+                <div className="relative">
+                  <User className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input type="text" name="prenom" value={form.prenom} onChange={handleChange} required placeholder="Jean"
+                    className="w-full border border-gray-300 rounded-lg pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399] transition" />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.lastName')}</label>
-                <input type="text" name="nom" value={form.nom} onChange={handleChange} required placeholder="Dupont"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399] transition" />
+                <div className="relative">
+                  <User className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input type="text" name="nom" value={form.nom} onChange={handleChange} required placeholder="Dupont"
+                    className="w-full border border-gray-300 rounded-lg pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399] transition" />
+                </div>
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.email')}</label>
-              <input type="email" name="email" value={form.email} onChange={handleChange} required placeholder="votre@email.com"
-                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399] transition" />
+              <div className="relative">
+                <Mail className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input type="email" name="email" value={form.email} onChange={handleChange} required placeholder="votre@email.com"
+                  className="w-full border border-gray-300 rounded-lg pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399] transition" />
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.password')}</label>
-              <input type="password" name="mot_de_passe" value={form.mot_de_passe} onChange={handleChange} required
-                placeholder={t('auth.passwordMin')}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399] transition" />
+              <div className="relative">
+                <Lock className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input type="password" name="mot_de_passe" value={form.mot_de_passe} onChange={handleChange} required
+                  placeholder={t('auth.passwordMin')}
+                  className="w-full border border-gray-300 rounded-lg pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399] transition" />
+              </div>
               <PasswordStrengthMeter password={form.mot_de_passe} />
             </div>
             <button type="submit" disabled={loading}

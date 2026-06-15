@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { ArrowLeft, Send, Image as ImageIcon, Flag, Loader2 } from 'lucide-react'
 import api from '../services/api'
 import useAuthStore from '../store/authStore'
 import useSocketStore from '../store/socketStore'
@@ -150,8 +151,8 @@ export default function ConversationPage() {
 
       {/* Header conversation */}
       <div className="flex items-center gap-3 mb-3">
-        <button onClick={() => navigate(-1)} className="text-sm text-[#2d7a5f] hover:underline shrink-0">
-          {'<-'}
+        <button onClick={() => navigate(-1)} className="text-sm text-[#2d7a5f] hover:underline shrink-0 flex items-center gap-1">
+          <ArrowLeft className="w-4 h-4" />
         </button>
         {other && (
           <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -172,8 +173,9 @@ export default function ConversationPage() {
           </div>
         )}
         {!other && (
-          <button onClick={() => navigate(-1)} className="text-sm text-[#2d7a5f] hover:underline">
-            {'<- Retour aux messages'}
+          <button onClick={() => navigate(-1)} className="text-sm text-[#2d7a5f] hover:underline flex items-center gap-1.5">
+            <ArrowLeft className="w-4 h-4" />
+            Retour aux messages
           </button>
         )}
       </div>
@@ -234,9 +236,9 @@ export default function ConversationPage() {
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
             title="Envoyer une image"
-            className="shrink-0 px-3 py-2 rounded-xl text-sm border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="shrink-0 px-3 py-2 rounded-xl text-sm border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50 flex items-center justify-center"
           >
-            {uploading ? '...' : ''}
+            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4 text-gray-500" />}
           </button>
           <input
             value={text}
@@ -247,9 +249,9 @@ export default function ConversationPage() {
           <button
             type="submit"
             disabled={sending || !text.trim()}
-            className="bg-[#1a4a3a] hover:bg-[#0f2e24] text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+            className="bg-[#1a4a3a] hover:bg-[#0f2e24] text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center"
           >
-            {sending ? '...' : '->'}
+            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
         </form>
       </div>
@@ -271,7 +273,7 @@ function MessageBubble({ msg, own, signaled, onSignaler }) {
             signaled ? 'text-orange-500 opacity-100' : 'text-gray-300 hover:text-red-500 hover:bg-red-50'
           }`}
         >
-          {signaled ? '' : ''}
+          <Flag className="w-3.5 h-3.5" />
         </button>
       )}
       <div className={`max-w-xs lg:max-w-sm px-4 py-2.5 rounded-2xl text-sm ${

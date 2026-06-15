@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, ArrowLeft } from 'lucide-react'
 import api from '../services/api'
 
 const RESEND_COOLDOWN = 60
@@ -166,7 +166,7 @@ export default function VerifyEmailPage() {
               </div>
 
               <p className="text-center text-sm text-gray-400 mt-4">
-                <Link to="/login" className="hover:underline">{'<- Retour à la connexion'}</Link>
+                <Link to="/login" className="hover:underline inline-flex items-center gap-1.5"><ArrowLeft className="w-3.5 h-3.5" /> Retour à la connexion</Link>
               </p>
             </>
           )}

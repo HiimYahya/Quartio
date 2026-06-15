@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { MailCheck } from 'lucide-react'
+import { MailCheck, ArrowLeft, Mail } from 'lucide-react'
 import api from '../services/api'
 
 export default function ForgotPasswordPage() {
@@ -40,8 +40,8 @@ export default function ForgotPasswordPage() {
               <p className="text-gray-500 text-sm mb-6">
                 Si cet email est associé à un compte Quartio, vous recevrez un lien de réinitialisation sous quelques minutes. Vérifiez également vos spams.
               </p>
-              <Link to="/login" className="text-[#2d7a5f] text-sm font-medium hover:underline">
-                {'<- Retour à la connexion'}
+              <Link to="/login" className="text-[#2d7a5f] text-sm font-medium hover:underline inline-flex items-center gap-1.5">
+                <ArrowLeft className="w-4 h-4" /> Retour à la connexion
               </Link>
             </div>
           ) : (
@@ -58,14 +58,17 @@ export default function ForgotPasswordPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Adresse email</label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => { setEmail(e.target.value); setError(null) }}
-                    required
-                    placeholder="votre@email.com"
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399] transition"
-                  />
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => { setEmail(e.target.value); setError(null) }}
+                      required
+                      placeholder="votre@email.com"
+                      className="w-full border border-gray-300 rounded-lg pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399] transition"
+                    />
+                  </div>
                 </div>
                 <button type="submit" disabled={loading}
                   className="w-full bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-60">
@@ -74,7 +77,7 @@ export default function ForgotPasswordPage() {
               </form>
 
               <p className="text-center text-sm text-gray-400 mt-5">
-                <Link to="/login" className="hover:underline">{'<- Retour à la connexion'}</Link>
+                <Link to="/login" className="hover:underline inline-flex items-center gap-1.5"><ArrowLeft className="w-3.5 h-3.5" /> Retour à la connexion</Link>
               </p>
             </>
           )}

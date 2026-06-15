@@ -1,4 +1,5 @@
 import { useLocation, Link } from 'react-router-dom'
+import { Coins } from 'lucide-react'
 import useAuthStore from '../../store/authStore'
 import useSocketStore from '../../store/socketStore'
 
@@ -31,6 +32,7 @@ export default function Topbar() {
             className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-700 text-sm font-semibold px-3 py-1.5 rounded-full hover:bg-amber-100 transition-colors"
             title="Mon solde de points"
           >
+            <Coins className="w-4 h-4" />
             <span>{user.points_solde} pts</span>
           </Link>
         )}

@@ -1,18 +1,19 @@
 import { NavLink, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { LayoutDashboard, Map, Megaphone, CalendarDays, Vote, MessageSquare, FileText, AlertTriangle, User, LogOut, Coins } from 'lucide-react'
 import useAuthStore from '../../store/authStore'
 import LangSwitcher from '../ui/LangSwitcher'
 
 const NAV_LINKS = [
-  { to: '/dashboard',  key: 'nav.home' },
-  { to: '/carte',      key: 'nav.map' },
-  { to: '/annonces',   key: 'nav.annonces' },
-  { to: '/evenements', key: 'nav.events' },
-  { to: '/votes',      key: 'nav.votes' },
-  { to: '/messages',   key: 'nav.messages' },
-  { to: '/contrats',   key: 'nav.contracts' },
-  { to: '/incidents',  key: 'nav.incidents' },
-  { to: '/profil',     key: 'nav.profile' },
+  { to: '/dashboard',  key: 'nav.home',     icon: LayoutDashboard },
+  { to: '/carte',      key: 'nav.map',      icon: Map },
+  { to: '/annonces',   key: 'nav.annonces', icon: Megaphone },
+  { to: '/evenements', key: 'nav.events',   icon: CalendarDays },
+  { to: '/votes',      key: 'nav.votes',    icon: Vote },
+  { to: '/messages',   key: 'nav.messages', icon: MessageSquare },
+  { to: '/contrats',   key: 'nav.contracts', icon: FileText },
+  { to: '/incidents',  key: 'nav.incidents', icon: AlertTriangle },
+  { to: '/profil',     key: 'nav.profile',  icon: User },
 ]
 
 export default function Sidebar() {
@@ -33,7 +34,7 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {NAV_LINKS.map(({ to, key }) => (
+        {NAV_LINKS.map(({ to, key, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
@@ -45,6 +46,7 @@ export default function Sidebar() {
               }`
             }
           >
+            <Icon className="w-4 h-4 shrink-0" />
             {t(key)}
           </NavLink>
         ))}
@@ -60,6 +62,7 @@ export default function Sidebar() {
               <p className="text-white/60 text-xs">Mon solde</p>
               <p className="text-white font-bold text-lg leading-none">{user.points_solde} pts</p>
             </div>
+            <Coins className="w-6 h-6 text-[#34d399]" />
           </Link>
         )}
         <div className="flex items-center justify-between px-1">
@@ -69,6 +72,7 @@ export default function Sidebar() {
           onClick={logout}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/60 hover:bg-white/10 hover:text-red-400 transition-all duration-150"
         >
+          <LogOut className="w-4 h-4 shrink-0" />
           {t('nav.logout')}
         </button>
       </div>

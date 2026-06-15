@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Megaphone, CalendarDays, Vote, Coins } from 'lucide-react'
+import { Megaphone, CalendarDays, Vote, Coins, AlertTriangle, User, Mail, ShieldCheck, ArrowRight } from 'lucide-react'
 import useAuthStore from '../store/authStore'
 import api from '../services/api'
 
@@ -61,13 +61,15 @@ export default function DashboardPage() {
           <h3 className="font-semibold text-gray-800 mb-3">{t('dashboard.quickAccess')}</h3>
           <div className="space-y-2">
             {[
-              { to: '/annonces',   label: t('dashboard.postAd') },
-              { to: '/evenements', label: t('dashboard.seeEvents') },
-              { to: '/incidents',  label: t('dashboard.reportIssue') },
-              { to: '/votes',      label: t('dashboard.joinVote') },
-            ].map(({ to, label }) => (
+              { to: '/annonces',   label: t('dashboard.postAd'),    icon: Megaphone },
+              { to: '/evenements', label: t('dashboard.seeEvents'), icon: CalendarDays },
+              { to: '/incidents',  label: t('dashboard.reportIssue'), icon: AlertTriangle },
+              { to: '/votes',      label: t('dashboard.joinVote'),  icon: Vote },
+            ].map(({ to, label, icon: Icon }) => (
               <Link key={to} to={to} className="flex items-center gap-3 p-3 rounded-lg hover:bg-[#f0faf5] transition-colors text-sm text-gray-700">
+                <Icon className="w-4 h-4 text-[#2d7a5f] shrink-0" />
                 {label}
+                <ArrowRight className="w-4 h-4 ml-auto text-gray-300" />
               </Link>
             ))}
           </div>
@@ -76,16 +78,16 @@ export default function DashboardPage() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <h3 className="font-semibold text-gray-800 mb-3">{t('dashboard.myAccount')}</h3>
           <div className="space-y-3 text-sm text-gray-600">
-            <div className="flex justify-between">
-              <span>{t('dashboard.name')}</span>
+            <div className="flex justify-between items-center">
+              <span className="flex items-center gap-2"><User className="w-4 h-4 text-gray-400" />{t('dashboard.name')}</span>
               <span className="font-medium text-gray-800">{user?.nom} {user?.prenom}</span>
             </div>
-            <div className="flex justify-between">
-              <span>{t('dashboard.email')}</span>
+            <div className="flex justify-between items-center">
+              <span className="flex items-center gap-2"><Mail className="w-4 h-4 text-gray-400" />{t('dashboard.email')}</span>
               <span className="font-medium text-gray-800">{user?.email}</span>
             </div>
-            <div className="flex justify-between">
-              <span>{t('dashboard.role')}</span>
+            <div className="flex justify-between items-center">
+              <span className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-gray-400" />{t('dashboard.role')}</span>
               <span className="bg-[#1a4a3a]/10 text-[#1a4a3a] text-xs font-medium px-2 py-0.5 rounded-full capitalize">
                 {user?.role ?? t('common.resident')}
               </span>

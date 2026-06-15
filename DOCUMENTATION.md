@@ -21,6 +21,7 @@
 17. [Rôle modérateur (backoffice)](#17-rôle-modérateur-backoffice)
 18. [Langage d'interrogation Quartio-QL](#18-langage-dinterrogation-quartio-ql)
 19. [Documentation Swagger](#19-documentation-swagger)
+20. [Icônes — lucide-react](#20-icônes--lucide-react)
 
 ---
 
@@ -1600,3 +1601,55 @@ http://localhost:3000/api/docs/
 - Routes Stats : montées sur `/api/stats` via `stats.routes.js`
 - Route `/api/evenements/suggestions` déclarée avant `/:id` pour éviter le conflit de routing Express
 - Routes QL : montées sur `/api/query` via `query.routes.js`, accessibles admin + moderateur
+
+---
+
+## 20. Icônes — lucide-react
+
+### Contexte
+
+Lors du nettoyage des emojis dans le code (UI), tous les emojis ont été retirés du Frontoffice et du Backoffice. Pour les emplacements où la suppression de l'emoji laissait un vide visuel gênant (états vides, bannières de statut, cartes de statistiques, écrans de succès, boutons icône), les emojis ont été remplacés par des icônes SVG via la librairie [`lucide-react`](https://lucide.dev/).
+
+### Installation
+
+Ajoutée aux deux applications :
+
+```bash
+# Backoffice (installation classique)
+npm install lucide-react
+
+# Frontoffice (conflit de peer-deps pré-existant avec react-tinder-card / @react-spring/web vs React 19)
+npm install lucide-react --legacy-peer-deps
+```
+
+Version utilisée : `^1.18.0` (déclarée dans `Frontoffice/package.json` et `Backoffice/package.json`).
+
+### Conventions d'utilisation
+
+Les icônes sont importées à l'unité depuis `lucide-react` (tree-shaking automatique) :
+
+```jsx
+import { Megaphone, CalendarDays, Vote, Coins } from 'lucide-react'
+```
+
+Tailles et couleurs standardisées par contexte :
+
+| Contexte | Classes | Exemple |
+|---|---|---|
+| État vide (liste sans résultat) | `w-8 h-8 text-gray-300 mx-auto mb-3` (Frontoffice) / `text-slate-300` (Backoffice) | `<Megaphone className="w-8 h-8 text-gray-300 mx-auto mb-3" />` avant le `<p>Aucune annonce.</p>` |
+| Bloc coloré de `StatCard` (dashboard) | `w-6 h-6` dans un conteneur `flex items-center justify-center` | `<Icon className="w-6 h-6" />` |
+| Écran de succès (confirmation, vérification) | `w-12 h-12 text-[#34d399] mx-auto mb-3` | `<CheckCircle2 className="w-12 h-12 text-[#34d399] mx-auto mb-3" />` |
+| Icône inline (info, lieu, date, participants) | `w-4 h-4 shrink-0` ou `w-5 h-5 shrink-0` | `<MapPin className="w-4 h-4 shrink-0" />` |
+| Bouton icône seul (fermer, supprimer) | `w-4 h-4` à `w-7 h-7` selon le bouton | `<X className="w-4 h-4" />` |
+
+### Principaux emplacements
+
+- **Dashboards** (`Frontoffice/DashboardPage.jsx`, `Backoffice/DashboardPage.jsx`) : icônes des `StatCard` (`Megaphone`, `CalendarDays`, `Vote`, `Coins`, `Users`, `FileText`, `AlertTriangle`)
+- **États vides** des listes (Annonces, Contrats, Événements, Messages, Votes, Incidents, Utilisateurs, Quartiers, Signalements) : icône représentative au-dessus du message "Aucun(e)…"
+- **Écrans de succès** (`ResetPasswordPage`, `VerifyEmailPage`, `ForgotPasswordPage`) : `CheckCircle2` / `MailCheck`
+- **MFA** (`MfaVerifyPage`, `Backoffice/LoginPage`) : `ShieldCheck` devant "Code d'authentification"
+- **SwipeView** (Frontoffice) : `PartyPopper` (fin de liste), `CheckCircle2` (événements rejoints), `X` / `Heart` (boutons swipe), `MapPin` / `CalendarDays` / `Users` (infos événement)
+- **ContratDetailPage** : `CheckCircle2` (bannières "finalisé" / "vous avez signé" / fichier chargé), `Info` (document déjà déposé), `Upload` (zone de dépôt PDF), `X` (suppression du fichier sélectionné)
+- **EvenementDetailPage** : `CalendarDays`, `MapPin`, `Users` devant les informations date/lieu/participants
+- **CartePage** : `X` (fermeture du panneau quartier), `Megaphone` / `CalendarDays` (annonces/événements du quartier sélectionné)
+- **ProfilPage** : `Coins` (solde de points), `MapPin` / `Info` (quartier), `CheckCircle2` / `AlertCircle` (résultat de détection d'adresse), `Download` (export RGPD)

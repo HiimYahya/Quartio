@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { ShieldCheck } from 'lucide-react'
+import { ShieldCheck, ArrowLeft } from 'lucide-react'
 import useAuthStore from '../store/authStore'
 
 export default function MfaVerifyPage() {
@@ -91,7 +91,7 @@ export default function MfaVerifyPage() {
           </form>
 
           <p className="text-center text-sm text-gray-400 mt-5">
-            <Link to="/login" className="hover:underline">{'<- Retour à la connexion'}</Link>
+            <Link to="/login" className="hover:underline inline-flex items-center gap-1.5"><ArrowLeft className="w-3.5 h-3.5" /> Retour à la connexion</Link>
           </p>
         </div>
       </div>

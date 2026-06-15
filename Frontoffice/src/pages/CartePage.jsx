@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { MapContainer, TileLayer, GeoJSON, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { Link } from 'react-router-dom'
-import { X, Megaphone, CalendarDays } from 'lucide-react'
+import { X, Megaphone, CalendarDays, ArrowRight } from 'lucide-react'
 import api from '../services/api'
 
 // Fix icônes Leaflet (bug connu avec bundlers)
@@ -342,8 +342,8 @@ export default function CartePage() {
                         <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full ${a.est_payant ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
                           {a.est_payant ? `${a.cout_points} pts` : 'Gratuit'}
                         </span>
-                        <Link to={`/annonces/${a._id ?? a.id}`} className="text-xs text-[#2d7a5f] hover:underline">
-                          {'Voir ->'}
+                        <Link to={`/annonces/${a._id ?? a.id}`} className="text-xs text-[#2d7a5f] hover:underline inline-flex items-center gap-1">
+                          Voir <ArrowRight className="w-3 h-3" />
                         </Link>
                       </div>
                     </div>
@@ -374,8 +374,8 @@ export default function CartePage() {
                           {new Date(ev.date_debut).toLocaleDateString('fr-FR')}
                         </p>
                       )}
-                      <Link to={`/evenements/${ev._id ?? ev.id}`} className="text-xs text-[#2d7a5f] hover:underline">
-                        {'Voir ->'}
+                      <Link to={`/evenements/${ev._id ?? ev.id}`} className="text-xs text-[#2d7a5f] hover:underline inline-flex items-center gap-1">
+                        Voir <ArrowRight className="w-3 h-3" />
                       </Link>
                     </div>
                   </Popup>

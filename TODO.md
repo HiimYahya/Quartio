@@ -29,8 +29,8 @@
 - ✅ Lien vers la connexion
 - ✅ Après inscription réussie → rediriger vers `/verify-email` (pas `/login`)
 - ⬜ 🟡 Champ téléphone (optionnel)
-- ⬜ 🟡 Indicateur de force du mot de passe (barre colorée)
-- ⬜ 🟡 Règles de mot de passe affichées (8 chars, 1 majuscule, 1 chiffre, 1 spécial)
+- ✅ Indicateur de force du mot de passe (barre colorée)
+- ✅ Règles de mot de passe affichées (8 chars, 1 majuscule, 1 chiffre, 1 spécial)
 - ⬜ Checkbox "J'accepte les CGU" obligatoire avec lien vers `/mentions-legales`
 - ⬜ Confirmation mot de passe (double saisie)
 
@@ -223,12 +223,12 @@
 - ✅ Déconnexion
 - ✅ Switcher de langue
 - ⬜ 🟡 Photo de profil (upload Cloudinary + aperçu instantané)
-- ⬜ 🔴 Section "Sécurité" :
-  - ⬜ Changer le mot de passe (actuel → nouveau → confirmation + MFA)
-  - ⬜ Changer l'email (nouveau email → re-vérification + MFA)
-  - ⬜ Changer le téléphone (+ MFA)
-  - ⬜ Activer/Désactiver le MFA (bouton → modale QR code + instructions)
-  - ⬜ Sessions actives (liste des refresh tokens) + bouton "Déconnecter partout"
+- ✅ Section "Sécurité" :
+  - ✅ Changer le mot de passe (actuel → nouveau → confirmation + MFA)
+  - ✅ Changer l'email (nouveau email → re-vérification + MFA)
+  - ✅ Changer le téléphone (+ MFA)
+  - ✅ Activer/Désactiver le MFA (bouton → modale QR code + instructions)
+  - ✅ Sessions actives (liste des refresh tokens) + bouton "Déconnecter partout"
 - ✅ Section "Mes données (RGPD)" :
   - ⬜ Bouton "Exporter mes données" → télécharge un JSON complet
   - ⬜ Bouton "Supprimer mon compte" (confirmation + MFA obligatoire)
@@ -285,7 +285,7 @@
 #### 🔐 LoginPage (backoffice)
 - ✅ Formulaire email + mot de passe
 - ✅ Vérification `role === 'admin'` avant accès
-- ⬜ 🔴 Écran MFA si activé (code TOTP)
+- ✅ Écran MFA si activé (code TOTP)
 - ⬜ Lien "Mot de passe oublié"
 
 ---
@@ -374,7 +374,7 @@
 #### 📄 ContratsPage (backoffice)
 - ✅ Liste, changement de statut inline
 - ✅ Supprimer avec modale
-- ⬜ 🔴 Voir le PDF signé archivé (bouton "Document" → ouvre l'URL Cloudinary)
+- ✅ Voir le PDF signé archivé (bouton "Document" → ouvre l'URL Cloudinary ou le PDF base64)
 - ⬜ 🟡 Gestion des litiges (colonne + filtre "En litige" + actions admin)
 - ⬜ Infos vendeur/acheteur cliquables (lien vers leur profil)
 
@@ -439,8 +439,8 @@ Le rôle `moderateur` existe en base mais n'est associé à aucune interface ni 
 Le cahier des charges dit **"zones de signature / initiales"**. Les initiales (paraphe) sont différentes d'une signature complète : elles sont placées en bas de chaque page du document pour attester que l'utilisateur a bien lu chaque page.
 
 **Sur ContratDetailPage :**
-- ⬜ 🔴 Permettre de placer des **zones d'initiales** (petit canvas, 2-3 lettres) en bas de chaque page du PDF
-- ⬜ 🔴 Permettre de placer des **zones de signature complète** à un endroit précis (pas seulement en bas à droite de la dernière page)
+- ✅ 🔴 Permettre de placer des **zones d'initiales** (petit canvas, 2-3 lettres) en bas de chaque page du PDF (`ContratDetailPage.jsx`)
+- ✅ 🔴 Permettre de placer des **zones de signature complète** à un endroit précis (pas seulement en bas à droite de la dernière page) (`ContratDetailPage.jsx`)
 - ⬜ 🟡 Interface drag & drop : glisser une zone "Signature" ou "Initiales" sur le PDF avant de l'envoyer à l'autre partie
 - ⬜ Chaque zone est associée à un signataire (vendeur ou acheteur)
 - ⬜ L'autre partie voit les zones qui lui sont destinées et ne peut signer qu'aux bons endroits
@@ -486,7 +486,7 @@ La stack technique précise : **"MongoDB : stockage des documents (contrats, sig
 - ✅ Créer un modèle MongoDB `ContratDocument` : `{ id_contrat_pg, pdf_url, pdf_base64, hash_sha256, signatures: [{id_utilisateur_pg, prenom, nom, dataurl, signed_at, ip}], created_at }`
 - ✅ PostgreSQL garde les métadonnées du contrat (statut, points, parties, dates)
 - ✅ MongoDB stocke les PDFs signés (base64) et les données de signature
-- ⬜ 🔴 Neo4j garde les relations `[:SIGNE]` entre utilisateurs et contrats
+- ✅ Neo4j garde les relations `[:SIGNE]` entre utilisateurs et contrats
 - ✅ `GET /api/contrats/:id/document` → interroge MongoDB pour le PDF archivé (+ hash SHA-256)
 - ✅ **ContratDetailPage** : bouton "Télécharger le contrat signé" visible dès qu'un document est archivé
 
@@ -499,8 +499,8 @@ Le cahier des charges dit : **"il doit être possible de rajouter des modules qu
 Cela s'applique au web (pas seulement à l'app Java).
 
 **Côté API (Node.js) :**
-- ⬜ 🔴 Système de **route registry** : chaque nouveau module dépose son fichier de routes dans `src/routes/` et est chargé automatiquement par `src/routes/index.js` (déjà partiellement le cas — documenter comme pattern officiel)
-- ⬜ 🔴 Système de **hook/events** interne : un module peut s'abonner à des événements (ex: `contrat.finalise`, `incident.cree`) sans modifier les controllers existants
+- ✅ Système de **route registry** : chaque nouveau module dépose son fichier de routes dans `src/routes/` et est chargé automatiquement par `src/routes/index.js` (déjà partiellement le cas — documenter comme pattern officiel)
+- ✅ Système de **hook/events** interne : un module peut s'abonner à des événements (ex: `contrat.finalise`, `incident.cree`) sans modifier les controllers existants
 - ⬜ `POST /api/modules/register` → endpoint pour enregistrer un module externe (optionnel)
 
 **Côté Frontoffice :**
@@ -519,16 +519,16 @@ Cela s'applique au web (pas seulement à l'app Java).
 ## BLOC 1 — Infrastructure de base (prérequis à tout le reste)
 
 ### 1.1 Service email (Nodemailer + Mailtrap/SendGrid)
-- ⬜ 🔴 Choisir et configurer un provider email (Mailtrap pour dev, SendGrid pour prod)
-- ⬜ 🔴 Créer le service `mailer.js` dans l'API (templates HTML)
-- ⬜ 🔴 Variables d'environnement : `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`
-- ⬜ Créer les templates email : vérification, reset mdp, notification contrat, bienvenue
+- ⬜ 🟡 Créer un compte Mailtrap/SendGrid et renseigner `SMTP_USER`/`SMTP_PASS` (action manuelle de l'utilisateur — code déjà prêt)
+- ✅ Créer le service `mailer.js` dans l'API (templates HTML)
+- ✅ Variables d'environnement : `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`
+- ✅ Créer les templates email : vérification, reset mdp, notification contrat, bienvenue
 
 ### 1.2 Cloudinary (stockage images)
-- ⬜ 🟡 Créer un compte Cloudinary et récupérer les credentials
-- ⬜ 🟡 Installer `cloudinary` + `multer` dans l'API
-- ⬜ 🟡 Créer le middleware `upload.middleware.js` (validation type/taille)
-- ⬜ 🟡 Variables d'environnement : `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
+- ⬜ 🟡 Créer un compte Cloudinary et récupérer les credentials (action manuelle de l'utilisateur — variables d'env déjà prêtes)
+- ✅ Installer `cloudinary` + `multer` dans l'API
+- ✅ Créer le middleware `upload.middleware.js` (validation type/taille)
+- ✅ Variables d'environnement : `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
 
 ### 1.3 Multi-environnements Docker
 - ⬜ 🔴 Séparer `docker-compose.dev.yml` / `docker-compose.prod.yml` / `docker-compose.test.yml`
@@ -571,8 +571,8 @@ Cela s'applique au web (pas seulement à l'app Java).
 - ⬜ Backoffice : idem pour les admins
 
 ### 2.4 Validation mot de passe & sécurité front
-- ⬜ 🟡 Indicateur de force du mot de passe sur les formulaires d'inscription et de reset
-- ⬜ 🟡 Règles : min 8 chars, 1 majuscule, 1 chiffre, 1 caractère spécial
+- ✅ Indicateur de force du mot de passe sur les formulaires d'inscription, reset et changement de mot de passe (composant partagé `PasswordStrengthMeter`)
+- ✅ Règles : min 8 chars, 1 majuscule, 1 chiffre, 1 caractère spécial (appliquées front ET back — `PASSWORD_PATTERN`)
 - ⬜ Blocage après N tentatives de connexion échouées (N=5, durée 15 min) côté front (déjà côté back)
 - ⬜ Message d'erreur générique pour login (ne pas indiquer si email existe ou non)
 
@@ -656,8 +656,8 @@ Cela s'applique au web (pas seulement à l'app Java).
 - ⬜ Frontoffice : afficher la date d'expiration sur chaque annonce
 
 ### 6.4 Système de points complet
-- ⬜ 🔴 Points offerts à l'inscription (ex: 100 pts de bienvenue)
-- ⬜ 🔴 L'auteur d'une annonce définit le coût en points — le service doit être décrit explicitement
+- ✅ Points offerts à l'inscription (100 pts de bienvenue, crédités à la vérification de l'email)
+- ✅ L'auteur d'une annonce définit le coût en points — le service doit être décrit explicitement
 - ⬜ Dashboard : historique complet des points avec motif (gain/perte)
 - ⬜ Backoffice : pouvoir créditer/débiter manuellement un compte
 
@@ -701,9 +701,9 @@ Cela s'applique au web (pas seulement à l'app Java).
   WHERE NOT (me)-[:PARTICIPE]->(e2)
   RETURN e2, count(voisin) AS score ORDER BY score DESC LIMIT 5
   ```
-- ⬜ 🔴 Frontoffice EvenementsPage : section "Suggestions pour vous" basée sur Neo4j
-- ⬜ Enregistrer `(u)-[:A_AIDE]->(v)` quand un contrat est finalisé entre deux utilisateurs
-- ⬜ `GET /api/utilisateurs/voisins-fiables` → voisins ayant le plus de contrats finalisés avec moi
+- ✅ Frontoffice EvenementsPage : section "Suggestions pour vous" basée sur Neo4j
+- ✅ Enregistrer `(u)-[:A_AIDE]->(v)` quand un contrat est finalisé entre deux utilisateurs
+- ✅ `GET /api/utilisateurs/voisins-fiables` → voisins ayant le plus de contrats finalisés avec moi
 
 ### 8.2 Swipe et intérêt
 - ⬜ 🟡 Enregistrer chaque swipe droite (`[:A_AIME]`) et gauche (`[:A_IGNORE]`) dans Neo4j
@@ -739,10 +739,10 @@ Cela s'applique au web (pas seulement à l'app Java).
 - ⬜ Badges / récompenses (ex: "100 pts", "5 services rendus")
 
 ### 10.3 Paramètres avancés
-- ⬜ 🔴 Modification email (avec re-vérification email + MFA)
-- ⬜ 🔴 Modification téléphone (avec MFA)
-- ⬜ 🔴 Modification mot de passe (avec MFA)
-- ⬜ Page dédiée "Sécurité" : activer/désactiver MFA, voir les sessions actives, déconnecter toutes les sessions
+- ✅ Modification email (avec re-vérification email + MFA)
+- ✅ Modification téléphone (avec MFA)
+- ✅ Modification mot de passe (avec MFA)
+- ✅ Page dédiée "Sécurité" : activer/désactiver MFA, voir les sessions actives, déconnecter toutes les sessions
 - ⬜ Préférences notifications (email / in-app, par type)
 
 ---
@@ -752,7 +752,7 @@ Cela s'applique au web (pas seulement à l'app Java).
 ### 11.1 Dashboard statistiques réelles
 - ✅ KPIs : nb utilisateurs, nouveaux 30j, points circulant, contrats en attente, taux complétion
 - ✅ Graphiques d'activité (nouveaux utilisateurs, annonces, événements par semaine)
-- ⬜ 🔴 Carte de chaleur des activités par quartier
+- ✅ Carte de chaleur des activités par quartier
 - ⬜ Exporter les stats en CSV
 
 ### 11.2 Modération
@@ -794,22 +794,22 @@ Cela s'applique au web (pas seulement à l'app Java).
 ## BLOC 14 — Tests 🔴 (demandés explicitement)
 
 ### 14.1 Tests unitaires API
-- ⬜ 🔴 Setup Jest + Supertest (déjà dans `package.json`)
-- ⬜ 🔴 Tests auth : register, login, refresh, logout, verify-email, reset-password, MFA
-- ⬜ 🔴 Tests contrats : création, signature, finalisation, points transférés
-- ⬜ 🔴 Tests quartiers : CRUD, chevauchement détecté, ray casting
-- ⬜ 🔴 Tests annonces : CRUD, création contrat depuis annonce
-- ⬜ 🔴 Tests points : débit/crédit corrects après finalisation contrat
-- ⬜ Tests langage maison : lexer, parser, transpilation
+- ✅ 🔴 Setup Jest + Supertest (déjà dans `package.json`) — `tests/helpers.js` + `tests/jest.setup.js` (connexion Mongo) ajoutés
+- ✅ 🔴 Tests auth : register, login, refresh, logout, verify-email, reset-password, MFA
+- ✅ 🔴 Tests contrats : création, signature, finalisation, points transférés
+- ✅ 🔴 Tests quartiers : CRUD (pagination, création admin, 401, 404), chevauchement détecté (Turf.js), ray casting (`tests/ray-casting.test.js`, géocodage mocké)
+- ✅ 🔴 Tests annonces : CRUD, création contrat depuis annonce (testé dans `contrats.test.js`)
+- ✅ 🔴 Tests points : débit/crédit corrects après finalisation contrat (testé dans `contrats.test.js`)
+- ✅ Tests langage maison : lexer, parser, transpilation (`tests/quartio-ql.test.js`, 32 tests)
 
 ### 14.2 Tests d'intégration
-- ⬜ 🔴 Flux complet : inscription → vérification email → connexion → publication annonce → acceptation → signature double → finalisation
-- ⬜ 🔴 Base de données de test isolée (variables d'env `NODE_ENV=test`)
+- ✅ 🔴 Flux complet : inscription → vérification email → connexion → publication annonce → acceptation → signature double → finalisation (`tests/contrats.test.js`, via `registerAndVerify`)
+- ✅ 🔴 Base de données de test isolée (variables d'env `NODE_ENV=test`) — `tests/env.setup.js` bascule PG sur `pa_db_test` et Mongo sur `pa_db_test` ; voir `.env.example` pour la création de la base (Neo4j reste partagé, limitation Community Edition mono-base)
 
 ### 14.3 Tests E2E (Playwright)
-- ⬜ 🔴 Frontoffice : inscription, connexion, publier une annonce, accepter un service, signer un contrat
-- ⬜ 🔴 Backoffice : connexion admin, créer un quartier sur la carte, gérer les incidents
-- ⬜ 🔴 Rapport de tests HTML généré automatiquement
+- ✅ 🔴 Frontoffice : inscription, connexion, publier une annonce, accepter un service, signer un contrat (`e2e/tests/frontoffice.spec.js`)
+- ✅ 🔴 Backoffice : connexion admin, créer un quartier sur la carte, gérer les incidents (`e2e/tests/backoffice.spec.js`)
+- ✅ 🔴 Rapport de tests HTML généré automatiquement (`e2e/playwright-report/`, `npm run report`)
 
 ### 14.4 CI/CD
 - ⬜ 🟡 GitHub Actions : pipeline sur chaque push → lint + tests + build Docker
@@ -845,19 +845,19 @@ Cela s'applique au web (pas seulement à l'app Java).
 ## BLOC 16 — Documentation 🔴 (demandée explicitement)
 
 ### 16.1 Schémas d'architecture
-- ⬜ 🔴 Schéma d'architecture globale (conteneurs Docker, flux de données)
-- ⬜ 🔴 Schéma de la base PostgreSQL (entités, relations)
-- ⬜ 🔴 Schéma MongoDB (collections, documents types)
-- ⬜ 🔴 Schéma Neo4j (nœuds, relations, propriétés)
-- ⬜ 🔴 Diagramme de séquence : flux d'inscription + vérification email + MFA
-- ⬜ 🔴 Diagramme de séquence : flux contrat complet (annonce → contrat → signature → finalisation)
+- ✅ 🔴 Schéma d'architecture globale (conteneurs Docker, flux de données) (`ARCHITECTURE.md`)
+- ✅ 🔴 Schéma de la base PostgreSQL (entités, relations) (`ARCHITECTURE.md`)
+- ✅ 🔴 Schéma MongoDB (collections, documents types) (`ARCHITECTURE.md`)
+- ✅ 🔴 Schéma Neo4j (nœuds, relations, propriétés) (`ARCHITECTURE.md`)
+- ✅ 🔴 Diagramme de séquence : flux d'inscription + vérification email + MFA (`ARCHITECTURE.md`)
+- ✅ 🔴 Diagramme de séquence : flux contrat complet (annonce → contrat → signature → finalisation) (`ARCHITECTURE.md`)
 
 ### 16.2 Documentation API
 - ✅ Swagger complet (68 endpoints, 20 schémas)
 - ⬜ Ajouter les nouvelles routes (email verify, reset password, MFA, RGPD, upload media)
 
 ### 16.3 Documentation des tests
-- ⬜ 🔴 Fichier `TESTS.md` : liste des cas testés, comment lancer les tests, résultats attendus
+- ✅ 🔴 Fichier `TESTS.md` : liste des cas testés, comment lancer les tests, résultats attendus
 
 ### 16.4 README principal
 - ⬜ 🟡 README.md complet : présentation, stack, lancer en local, comptes de test, architecture
