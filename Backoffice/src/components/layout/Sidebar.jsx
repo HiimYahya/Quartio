@@ -14,6 +14,7 @@ const ALL_LINKS = [
   { to: '/evenements',   label: 'Événements',   roles: ['admin'] },
   { to: '/annonces',     label: 'Annonces' },
   { to: '/contrats',     label: 'Contrats',     roles: ['admin'] },
+  { to: '/litiges',      label: 'Litiges',      roles: ['admin'] },
 ]
 
 export default function Sidebar() {

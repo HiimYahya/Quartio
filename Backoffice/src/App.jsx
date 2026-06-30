@@ -15,6 +15,7 @@ import VotesPage       from './pages/VotesPage'
 import EvenementsPage  from './pages/EvenementsPage'
 import AnnoncesPage    from './pages/AnnoncesPage'
 import ContratsPage      from './pages/ContratsPage'
+import LitigesPage       from './pages/LitigesPage'
 import StatistiquesPage  from './pages/StatistiquesPage'
 import ConsolePage       from './pages/ConsolePage'
 
@@ -41,6 +42,7 @@ export default function App() {
             <Route path="/evenements"   element={<EvenementsPage />} />
             <Route path="/annonces"     element={<AnnoncesPage />} />
             <Route path="/contrats"      element={<ContratsPage />} />
+            <Route path="/litiges"       element={<LitigesPage />} />
             <Route path="/statistiques" element={<StatistiquesPage />} />
             <Route path="/console"      element={<ConsolePage />} />
           </Route>

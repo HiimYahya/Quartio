@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react'
 import { FileText } from 'lucide-react'
 import api from '../services/api'
 
-const STATUT_LABELS = { en_attente: 'En attente', signe: 'Signé', annule: 'Annulé', termine: 'Terminé' }
+const STATUT_LABELS = { en_attente: 'En attente', signe: 'Signé', annule: 'Annulé', termine: 'Terminé', litige: 'En litige' }
 const STATUT_COLORS = {
   en_attente: 'bg-yellow-100 text-yellow-700',
   signe:      'bg-green-100 text-green-700',
   annule:     'bg-red-100 text-red-600',
   termine:    'bg-slate-100 text-slate-500',
+  litige:     'bg-orange-100 text-orange-700',
 }
 
 export default function ContratsPage() {

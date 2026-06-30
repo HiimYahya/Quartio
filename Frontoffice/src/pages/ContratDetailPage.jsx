@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import SignatureCanvas from 'react-signature-canvas'
 import { PDFDocument, rgb } from 'pdf-lib'
-import { CheckCircle2, Info, Upload, X, ArrowRight, ArrowLeft, Check } from 'lucide-react'
+import { CheckCircle2, Info, Upload, X, ArrowRight, ArrowLeft, Check, Ban, AlertTriangle } from 'lucide-react'
 import api from '../services/api'
 import useAuthStore from '../store/authStore'
 
@@ -11,12 +11,14 @@ const STATUS_LABELS = {
   signe:      'Signature(s) reçue(s)',
   annule:     'Annulé',
   termine:    'Finalisé',
+  litige:     'En litige',
 }
 const STATUS_COLORS = {
   en_attente: 'bg-yellow-100 text-yellow-700 border-yellow-200',
   signe:      'bg-blue-100 text-blue-700 border-blue-200',
   annule:     'bg-red-100 text-red-700 border-red-200',
   termine:    'bg-green-100 text-green-700 border-green-200',
+  litige:     'bg-orange-100 text-orange-700 border-orange-200',
 }
 
 function arrayBufferToBase64(buffer) {
@@ -73,6 +75,12 @@ export default function ContratDetailPage() {
   const [showMfaModal, setShowMfaModal] = useState(false)
   const [mfaCode,    setMfaCode]    = useState('')
 
+  // Annulation / litige
+  const [actionLoading, setActionLoading] = useState(false)
+  const [actionError,   setActionError]   = useState(null)
+  const [showLitige,    setShowLitige]    = useState(false)
+  const [litigeMotif,   setLitigeMotif]   = useState('')
+
   // Emplacement de la signature dans le PDF (GAP2)
   const [sigPage,     setSigPage]     = useState(null) // null = dernière page
   const [sigPosition, setSigPosition] = useState('bottom-right')
@@ -91,6 +99,33 @@ export default function ContratDetailPage() {
     api.get(`/contrats/${id}/document`)
       .then(({ data }) => setDocument_(data))
       .catch(() => setDocument_(null))
+  }
+
+  const reloadContrat = async () => {
+    const { data } = await api.get(`/contrats/${id}`)
+    setContrat(data)
+  }
+
+  const handleAnnuler = async () => {
+    if (!window.confirm('Annuler définitivement ce contrat ?')) return
+    setActionError(null); setActionLoading(true)
+    try {
+      await api.put(`/contrats/${id}/annuler`)
+      await reloadContrat()
+    } catch (e) {
+      setActionError(e.response?.data?.error || 'Annulation impossible')
+    } finally { setActionLoading(false) }
+  }
+
+  const handleOuvrirLitige = async () => {
+    setActionError(null); setActionLoading(true)
+    try {
+      await api.post(`/contrats/${id}/litige`, { motif: litigeMotif })
+      setShowLitige(false); setLitigeMotif('')
+      await reloadContrat()
+    } catch (e) {
+      setActionError(e.response?.data?.error || 'Ouverture du litige impossible')
+    } finally { setActionLoading(false) }
   }
 
   useEffect(() => {
@@ -265,11 +300,17 @@ export default function ContratDetailPage() {
 
   const isVendeur   = contrat.id_vendeur  === user?.id
   const isAcheteur  = contrat.id_acheteur === user?.id
+  const isPartie    = isVendeur || isAcheteur
   const dejaSigné   = (isVendeur && contrat.signe_vendeur) || (isAcheteur && contrat.signe_acheteur)
   const canSign     = (contrat.statut === 'en_attente' || contrat.statut === 'signe')
                       && !dejaSigné
                       && contrat.statut !== 'termine'
                       && contrat.statut !== 'annule'
+  // Annulable tant que l'autre partie n'a pas signé
+  const autreASigné = isVendeur ? contrat.signe_acheteur : contrat.signe_vendeur
+  const canCancel   = isPartie && ['en_attente', 'signe'].includes(contrat.statut) && !autreASigné
+  // Litige possible uniquement sur un contrat terminé
+  const canLitige   = isPartie && contrat.statut === 'termine'
 
   return (
     <div className="max-w-2xl space-y-4">
@@ -322,6 +363,71 @@ export default function ContratDetailPage() {
           <div className="mt-4 flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-xl px-4 py-3 text-sm font-medium">
             <CheckCircle2 className="w-5 h-5 shrink-0" />
             Vous avez signé - en attente de la signature de l'autre partie.
+          </div>
+        )}
+
+        {contrat.statut === 'litige' && (
+          <div className="mt-4 bg-orange-50 border border-orange-200 text-orange-800 rounded-xl px-4 py-3 text-sm">
+            <div className="flex items-center gap-2 font-medium">
+              <AlertTriangle className="w-5 h-5 shrink-0" /> Litige en cours de traitement par un administrateur.
+            </div>
+            {contrat.motif_litige && <p className="mt-1.5 text-orange-700">Motif : {contrat.motif_litige}</p>}
+          </div>
+        )}
+
+        {/* Actions : annulation / litige */}
+        {(canCancel || canLitige) && (
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            {actionError && (
+              <p className="mb-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{actionError}</p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              {canCancel && (
+                <button
+                  onClick={handleAnnuler}
+                  disabled={actionLoading}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
+                >
+                  <Ban className="w-4 h-4" /> Annuler le contrat
+                </button>
+              )}
+              {canLitige && !showLitige && (
+                <button
+                  onClick={() => { setActionError(null); setShowLitige(true) }}
+                  disabled={actionLoading}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-xl border border-orange-200 text-orange-700 hover:bg-orange-50 disabled:opacity-50 transition-colors"
+                >
+                  <AlertTriangle className="w-4 h-4" /> Ouvrir un litige
+                </button>
+              )}
+            </div>
+
+            {canLitige && showLitige && (
+              <div className="mt-3 space-y-2">
+                <textarea
+                  value={litigeMotif}
+                  onChange={(e) => setLitigeMotif(e.target.value)}
+                  rows={3}
+                  placeholder="Décrivez le problème (service non rendu, qualité, etc.) — 5 caractères minimum"
+                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-200"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleOuvrirLitige}
+                    disabled={actionLoading || litigeMotif.trim().length < 5}
+                    className="text-sm font-medium px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50 transition-colors"
+                  >
+                    Envoyer le litige
+                  </button>
+                  <button
+                    onClick={() => { setShowLitige(false); setLitigeMotif(''); setActionError(null) }}
+                    className="text-sm font-medium px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

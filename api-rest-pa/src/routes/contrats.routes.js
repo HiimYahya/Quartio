@@ -5,7 +5,7 @@ const ctrl     = require('../controllers/contrats.controller');
 const auth     = require('../middlewares/auth.middleware');
 const role     = require('../middlewares/role.middleware');
 const validate = require('../middlewares/validate.middleware');
-const { createSchema, statutSchema, signerSchema } = require('../validators/contrat.validator');
+const { createSchema, statutSchema, signerSchema, litigeSchema, resoudreLitigeSchema } = require('../validators/contrat.validator');
 
 /**
  * @swagger
@@ -53,6 +53,9 @@ const { createSchema, statutSchema, signerSchema } = require('../validators/cont
  */
 router.get('/',  auth, ctrl.getMes);
 router.post('/', auth, validate(createSchema), ctrl.create);
+
+// ── Litiges (admin) — AVANT /:id pour éviter la capture de "litiges" comme id ──
+router.get('/litiges', auth, role('admin', 'moderateur'), ctrl.getLitiges);
 
 /**
  * @swagger
@@ -214,5 +217,66 @@ router.put('/:id/statut', auth, role('admin'), validate(statutSchema), ctrl.upda
  *       404: { description: Contrat non trouvé }
  */
 router.delete('/:id', auth, role('admin'), ctrl.remove);
+
+// ── Annulation / litiges ──────────────────────────────────────────────────────
+/**
+ * @swagger
+ * /api/contrats/{id}/annuler:
+ *   put:
+ *     summary: Annuler un contrat (par une des parties, si l'autre n'a pas signé)
+ *     tags: [Contrats]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200: { description: Contrat annulé }
+ *       409: { description: Annulation impossible (statut ou autre partie a signé) }
+ */
+router.put('/:id/annuler', auth, ctrl.annuler);
+
+/**
+ * @swagger
+ * /api/contrats/{id}/litige:
+ *   post:
+ *     summary: Ouvrir un litige sur un contrat terminé (par une des parties)
+ *     tags: [Contrats]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [motif]
+ *             properties:
+ *               motif: { type: string, example: "Le service n'a pas été rendu" }
+ *     responses:
+ *       200: { description: Litige ouvert }
+ *       409: { description: Le contrat n'est pas terminé }
+ */
+router.post('/:id/litige', auth, validate(litigeSchema), ctrl.ouvrirLitige);
+
+/**
+ * @swagger
+ * /api/contrats/{id}/litige/resoudre:
+ *   put:
+ *     summary: Résoudre un litige (admin) — rembourser ou clore
+ *     tags: [Contrats]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [action]
+ *             properties:
+ *               action: { type: string, enum: [rembourser, clore] }
+ *               note:   { type: string }
+ *     responses:
+ *       200: { description: Litige résolu }
+ *       409: { description: Le contrat n'est pas en litige }
+ */
+router.put('/:id/litige/resoudre', auth, role('admin'), validate(resoudreLitigeSchema), ctrl.resoudreLitige);
 
 module.exports = router;

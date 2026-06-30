@@ -38,14 +38,16 @@ CREATE TABLE IF NOT EXISTS contrat (
   id_contrat       SERIAL PRIMARY KEY,
   points_echanges  INTEGER DEFAULT 0,
   statut           VARCHAR(50) DEFAULT 'en_attente'
-                     CHECK (statut IN ('en_attente', 'signe', 'annule', 'termine')),
+                     CHECK (statut IN ('en_attente', 'signe', 'annule', 'termine', 'litige')),
   date_creation    TIMESTAMP DEFAULT NOW(),
   date_signature   TIMESTAMP,
   id_vendeur       INTEGER REFERENCES utilisateur(id_utilisateur) ON DELETE SET NULL,
   id_acheteur      INTEGER REFERENCES utilisateur(id_utilisateur) ON DELETE SET NULL,
   id_annonce_mongo VARCHAR(50),
   signe_vendeur    BOOLEAN DEFAULT FALSE,
-  signe_acheteur   BOOLEAN DEFAULT FALSE
+  signe_acheteur   BOOLEAN DEFAULT FALSE,
+  motif_litige     TEXT,
+  date_litige      TIMESTAMP
 );
 
 -- ── TRANSACTION_POINTS ──────────────────────────────────────

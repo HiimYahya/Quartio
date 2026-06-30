@@ -366,3 +366,169 @@ exports.remove = async (req, res, next) => {
     res.json({ message: 'Contrat supprimé' });
   } catch (err) { next(err); }
 };
+
+// Notifie tous les admins (fire-and-forget)
+const notifierAdmins = async (titre, contenu, id_ressource) => {
+  try {
+    const { rows } = await pool.query("SELECT id_utilisateur FROM utilisateur WHERE role = 'admin'");
+    rows.forEach((a) => createNotification(a.id_utilisateur, 'contrat', titre, contenu, id_ressource, 'contrat'));
+  } catch (_) { /* non bloquant */ }
+};
+
+// PUT /api/contrats/:id/annuler  (auth - une des parties)
+// Règle : possible uniquement si l'autre partie n'a pas encore signé.
+exports.annuler = async (req, res, next) => {
+  try {
+    const contratId = parseInt(req.params.id);
+    const { rows } = await pool.query('SELECT * FROM contrat WHERE id_contrat = $1', [contratId]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Contrat non trouvé' });
+    const c = rows[0];
+
+    const uid = req.user.id;
+    const isVendeur  = uid === c.id_vendeur;
+    const isAcheteur = uid === c.id_acheteur;
+    if (!isVendeur && !isAcheteur) {
+      return res.status(403).json({ error: 'Accès refusé - vous n\'êtes pas partie à ce contrat' });
+    }
+    if (!['en_attente', 'signe'].includes(c.statut)) {
+      return res.status(409).json({ error: `Un contrat ${c.statut} ne peut pas être annulé` });
+    }
+    // L'autre partie a-t-elle déjà signé ?
+    const autreASigne = isVendeur ? c.signe_acheteur : c.signe_vendeur;
+    if (autreASigne) {
+      return res.status(409).json({ error: 'L\'autre partie a déjà signé : annulation impossible (ouvrez un litige)' });
+    }
+
+    const { rows: upd } = await pool.query(
+      "UPDATE contrat SET statut = 'annule' WHERE id_contrat = $1 RETURNING *", [contratId]
+    );
+
+    const autreId = isVendeur ? c.id_acheteur : c.id_vendeur;
+    if (autreId) {
+      createNotification(autreId, 'contrat', 'Contrat annulé',
+        `Le contrat #${contratId} a été annulé par l'autre partie.`, String(contratId), 'contrat');
+      emitAlert('contrat', { id_contrat: contratId, message: `Le contrat #${contratId} a été annulé.` }, [autreId]);
+    }
+    res.json(upd[0]);
+  } catch (err) { next(err); }
+};
+
+// POST /api/contrats/:id/litige  (auth - une des parties)
+// Ouvre un litige sur un contrat terminé ; les admins sont notifiés.
+exports.ouvrirLitige = async (req, res, next) => {
+  try {
+    const contratId = parseInt(req.params.id);
+    const { motif } = req.body;
+    const { rows } = await pool.query('SELECT * FROM contrat WHERE id_contrat = $1', [contratId]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Contrat non trouvé' });
+    const c = rows[0];
+
+    const uid = req.user.id;
+    if (uid !== c.id_vendeur && uid !== c.id_acheteur) {
+      return res.status(403).json({ error: 'Accès refusé - vous n\'êtes pas partie à ce contrat' });
+    }
+    if (c.statut !== 'termine') {
+      return res.status(409).json({ error: 'Un litige ne peut être ouvert que sur un contrat terminé' });
+    }
+
+    const { rows: upd } = await pool.query(
+      "UPDATE contrat SET statut = 'litige', motif_litige = $2, date_litige = NOW() WHERE id_contrat = $1 RETURNING *",
+      [contratId, motif]
+    );
+
+    // Notifier l'autre partie + les admins
+    const autreId = uid === c.id_vendeur ? c.id_acheteur : c.id_vendeur;
+    if (autreId) {
+      createNotification(autreId, 'contrat', 'Litige ouvert',
+        `Un litige a été ouvert sur le contrat #${contratId}.`, String(contratId), 'contrat');
+    }
+    notifierAdmins('Nouveau litige', `Litige ouvert sur le contrat #${contratId} : ${motif}`, String(contratId));
+    appEvents.emit('contrat.litige', { contratId, motif, idAuteur: uid });
+
+    res.json(upd[0]);
+  } catch (err) { next(err); }
+};
+
+// GET /api/contrats/litiges  (admin, modérateur)  -> contrats en litige
+exports.getLitiges = async (req, res, next) => {
+  try {
+    const { page, limit, skip } = getPagination(req.query);
+    const countRes = await pool.query("SELECT COUNT(*) FROM contrat WHERE statut = 'litige'");
+    const result = await pool.query(
+      `SELECT c.*,
+              v.nom AS vendeur_nom, v.prenom AS vendeur_prenom,
+              a.nom AS acheteur_nom, a.prenom AS acheteur_prenom
+       FROM contrat c
+       LEFT JOIN utilisateur v ON v.id_utilisateur = c.id_vendeur
+       LEFT JOIN utilisateur a ON a.id_utilisateur = c.id_acheteur
+       WHERE c.statut = 'litige'
+       ORDER BY c.date_litige DESC NULLS LAST LIMIT $1 OFFSET $2`,
+      [limit, skip]
+    );
+    res.json(paginate(result.rows, parseInt(countRes.rows[0].count), page, limit));
+  } catch (err) { next(err); }
+};
+
+// PUT /api/contrats/:id/litige/resoudre  (admin)
+// action = 'rembourser' (rejoue le transfert en sens inverse, statut -> annule)
+//        | 'clore'      (litige rejeté, statut -> termine)
+exports.resoudreLitige = async (req, res, next) => {
+  try {
+    const contratId = parseInt(req.params.id);
+    const { action, note } = req.body;
+    const { rows } = await pool.query('SELECT * FROM contrat WHERE id_contrat = $1', [contratId]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Contrat non trouvé' });
+    const c = rows[0];
+    if (c.statut !== 'litige') {
+      return res.status(409).json({ error: 'Ce contrat n\'est pas en litige' });
+    }
+
+    const points = c.points_echanges || 0;
+
+    if (action === 'rembourser') {
+      if (points > 0 && c.id_acheteur && c.id_vendeur) {
+        // Rembourse l'acheteur, reprend au vendeur (inverse du transfert de finalisation)
+        await pool.query('UPDATE utilisateur SET points_solde = points_solde + $1 WHERE id_utilisateur = $2', [points, c.id_acheteur]);
+        const txRefund = await pool.query(
+          'INSERT INTO transaction_points (montant, motif) VALUES ($1, $2) RETURNING *',
+          [points, `Remboursement litige - contrat #${contratId}`]
+        );
+        await pool.query('UPDATE utilisateur SET points_solde = points_solde - $1 WHERE id_utilisateur = $2', [points, c.id_vendeur]);
+        const txReprise = await pool.query(
+          'INSERT INTO transaction_points (montant, motif) VALUES ($1, $2) RETURNING *',
+          [-points, `Reprise litige - contrat #${contratId}`]
+        );
+        const session = driver.session();
+        try {
+          await session.run(
+            `MERGE (c:Contrat {pg_id: $cid})
+             MERGE (acheteur:Utilisateur {pg_id: $aid})
+             MERGE (vendeur:Utilisateur  {pg_id: $vid})
+             MERGE (tr:Transaction {pg_id: $trid}) MERGE (tr)-[:EST_POUR]->(acheteur)
+             MERGE (tp:Transaction {pg_id: $tpid}) MERGE (tp)-[:EST_POUR]->(vendeur)
+             MERGE (c)-[:LIE_A]->(tr) MERGE (c)-[:LIE_A]->(tp)`,
+            { cid: contratId, aid: c.id_acheteur, vid: c.id_vendeur,
+              trid: txRefund.rows[0].id_transaction, tpid: txReprise.rows[0].id_transaction }
+          );
+        } finally {
+          await session.close();
+        }
+      }
+      await pool.query("UPDATE contrat SET statut = 'annule' WHERE id_contrat = $1", [contratId]);
+    } else {
+      // clore : litige rejeté, le contrat reste terminé
+      await pool.query("UPDATE contrat SET statut = 'termine' WHERE id_contrat = $1", [contratId]);
+    }
+
+    // Notifier les deux parties
+    const msg = action === 'rembourser'
+      ? `Le litige sur le contrat #${contratId} a été tranché : remboursement de ${points} points.`
+      : `Le litige sur le contrat #${contratId} a été clos sans remboursement.`;
+    [c.id_vendeur, c.id_acheteur].filter(Boolean).forEach((id) =>
+      createNotification(id, 'contrat', 'Litige résolu', note ? `${msg} (${note})` : msg, String(contratId), 'contrat')
+    );
+
+    const { rows: final } = await pool.query('SELECT * FROM contrat WHERE id_contrat = $1', [contratId]);
+    res.json(final[0]);
+  } catch (err) { next(err); }
+};
