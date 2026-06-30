@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Vote } from 'lucide-react'
 import api from '../services/api'
+import useAuthStore from '../store/authStore'
 
 const TYPE_LABELS = {
   choix_multiple: 'Choix multiple',
@@ -19,6 +21,15 @@ export default function VotesPage() {
   const [error, setError]           = useState(null)
   const [voted, setVoted]           = useState({})
   const [rankings, setRankings]     = useState({}) // voteId -> [optId, ...]
+  const user = useAuthStore((s) => s.user)
+  const [myQuartiers, setMyQuartiers] = useState([])
+
+  useEffect(() => {
+    if (!user?.id) return
+    api.get(`/utilisateurs/${user.id}/quartiers`)
+      .then(({ data }) => setMyQuartiers(data ?? []))
+      .catch(() => setMyQuartiers([]))
+  }, [user?.id])
 
   const load = async () => {
     setLoading(true)
@@ -117,6 +128,15 @@ export default function VotesPage() {
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-4">
           <h3 className="font-semibold text-gray-800">Nouveau vote</h3>
+          {myQuartiers.length === 0 ? (
+            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              Rejoignez d'abord un quartier dans votre <Link to="/profil" className="underline font-medium">profil</Link> pour créer un vote.
+            </p>
+          ) : (
+            <p className="text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+              Vote proposé dans votre quartier : <span className="font-medium">{myQuartiers[0].nom}</span>
+            </p>
+          )}
           {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-sm">{error}</div>}
 
           <div>
@@ -180,7 +200,7 @@ export default function VotesPage() {
             </div>
           )}
 
-          <button type="submit" disabled={submitting}
+          <button type="submit" disabled={submitting || myQuartiers.length === 0}
             className="bg-[#1a4a3a] hover:bg-[#0f2e24] text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors disabled:opacity-60">
             {submitting ? 'Création...' : 'Créer le vote'}
           </button>

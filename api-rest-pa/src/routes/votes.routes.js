@@ -51,7 +51,7 @@ const { createSchema, updateSchema, voterSchema } = require('../validators/vote.
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Vote' }
  */
-router.get('/', ctrl.getAll);
+router.get('/', auth, ctrl.getAll);
 router.post('/', auth, validate(createSchema), ctrl.create);
 
 /**

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CalendarDays } from 'lucide-react'
 import api from '../services/api'
-import useQuartiers from '../hooks/useQuartiers'
+import useAuthStore from '../store/authStore'
 import SwipeView from '../components/ui/SwipeView'
 
 export default function EvenementsPage() {
@@ -17,7 +17,19 @@ export default function EvenementsPage() {
   })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
-  const quartiers = useQuartiers()
+  const user = useAuthStore((s) => s.user)
+  const [quartiers, setQuartiers] = useState([])  // quartiers de l'utilisateur uniquement
+
+  useEffect(() => {
+    if (!user?.id) return
+    api.get(`/utilisateurs/${user.id}/quartiers`)
+      .then(({ data }) => {
+        const qs = data ?? []
+        setQuartiers(qs)
+        if (qs.length === 1) setForm((f) => ({ ...f, id_quartier: String(qs[0].id_quartier) }))
+      })
+      .catch(() => setQuartiers([]))
+  }, [user?.id])
 
   const load = async () => {
     setLoading(true)
@@ -178,23 +190,33 @@ export default function EvenementsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Quartier *</label>
-            <select
-              value={form.id_quartier}
-              onChange={(e) => setForm((f) => ({ ...f, id_quartier: e.target.value }))}
-              required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]"
-            >
-              <option value="">Sélectionner un quartier</option>
-              {quartiers.map((q) => (
-                <option key={q.id_quartier} value={q.id_quartier}>{q.nom}</option>
-              ))}
-            </select>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Quartier</label>
+            {quartiers.length === 0 ? (
+              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                Rejoignez d'abord un quartier dans votre <Link to="/profil" className="underline font-medium">profil</Link> pour créer un événement.
+              </p>
+            ) : quartiers.length === 1 ? (
+              <p className="text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                Publié dans votre quartier : <span className="font-medium">{quartiers[0].nom}</span>
+              </p>
+            ) : (
+              <select
+                value={form.id_quartier}
+                onChange={(e) => setForm((f) => ({ ...f, id_quartier: e.target.value }))}
+                required
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]"
+              >
+                <option value="">Sélectionner un quartier</option>
+                {quartiers.map((q) => (
+                  <option key={q.id_quartier} value={q.id_quartier}>{q.nom}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || quartiers.length === 0}
             className="bg-[#1a4a3a] hover:bg-[#0f2e24] text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors disabled:opacity-60"
           >
             {submitting ? 'Création...' : 'Créer'}

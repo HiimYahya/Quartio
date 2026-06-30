@@ -9,8 +9,9 @@ const evenementSchema = new mongoose.Schema({
   lieu:         { type: String },
   capacite_max: { type: Number },
   statut:       { type: String, enum: ['planifie', 'en_cours', 'termine', 'annule'], default: 'planifie' },
-  // Référence vers PostgreSQL
+  // Références vers PostgreSQL
   id_utilisateur_pg: { type: Number, required: true },
+  id_quartier:       { type: Number, index: true },
   medias: [{ url: String, type: String }],
 }, { timestamps: true });
 

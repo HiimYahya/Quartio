@@ -21,7 +21,8 @@ const createSchema = Joi.object({
     then:      Joi.array().items(optionSchema).default([]),
     otherwise: Joi.array().items(optionSchema).min(2).required(),
   }),
-  id_themes: Joi.array().items(Joi.number().integer()).default([]),
+  id_themes:   Joi.array().items(Joi.number().integer()).default([]),
+  id_quartier: Joi.number().integer().allow(null), // dérivé du quartier de l'auteur si absent
 });
 
 const updateSchema = Joi.object({

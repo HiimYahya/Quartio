@@ -2,6 +2,7 @@ const pool       = require('../config/db');
 const { driver } = require('../config/neo4j');
 const { getPagination, paginate } = require('../utils/pagination');
 const { emitAlert } = require('../socket/index');
+const { getUserQuartierIds, isPrivileged } = require('../utils/quartiers');
 
 // GET /api/votes?page=1&limit=20&statut=ouvert
 exports.getAll = async (req, res, next) => {
@@ -12,6 +13,14 @@ exports.getAll = async (req, res, next) => {
     const conditions = [];
     const values     = [];
     if (statut) { conditions.push(`statut = $${values.length + 1}`); values.push(statut); }
+
+    // Un habitant ne voit que les votes de son (ses) quartier(s).
+    if (!isPrivileged(req.user)) {
+      const qids = await getUserQuartierIds(req.user.id);
+      if (qids.length === 0) return res.json(paginate([], 0, page, limit));
+      conditions.push(`id_quartier = ANY($${values.length + 1}::int[])`);
+      values.push(qids);
+    }
 
     const where  = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const total  = (await pool.query(`SELECT COUNT(*) FROM vote ${where}`, values)).rows[0].count;
@@ -40,14 +49,27 @@ exports.getById = async (req, res, next) => {
 // POST /api/votes  (auth)
 exports.create = async (req, res, next) => {
   try {
-    const { titre, description, type, type_vote, nb_choix_max, date_debut, date_fin, est_anonyme, options: rawOptions, id_themes } = req.body;
+    const { titre, description, type, type_vote, nb_choix_max, date_debut, date_fin, est_anonyme, options: rawOptions, id_themes, id_quartier } = req.body;
 
     const typeVote = type_vote || 'choix_multiple';
 
+    // Le vote est rattaché au quartier de son auteur (l'admin peut cibler un autre quartier).
+    const wanted = id_quartier ? parseInt(id_quartier) : null;
+    let quartierId;
+    if (isPrivileged(req.user)) {
+      quartierId = wanted;
+    } else {
+      const qids = await getUserQuartierIds(req.user.id);
+      if (qids.length === 0) {
+        return res.status(400).json({ error: "Rejoignez d'abord un quartier (depuis votre profil) pour créer un vote." });
+      }
+      quartierId = (wanted && qids.includes(wanted)) ? wanted : qids[0];
+    }
+
     const voteResult = await pool.query(
-      `INSERT INTO vote (titre, description, type, type_vote, nb_choix_max, date_debut, date_fin, est_anonyme)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-      [titre, description, type, typeVote, nb_choix_max ?? 1, date_debut, date_fin, est_anonyme ?? false]
+      `INSERT INTO vote (titre, description, type, type_vote, nb_choix_max, date_debut, date_fin, est_anonyme, id_quartier)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [titre, description, type, typeVote, nb_choix_max ?? 1, date_debut, date_fin, est_anonyme ?? false, quartierId]
     );
     const vote = voteResult.rows[0];
 
@@ -158,8 +180,17 @@ exports.voter = async (req, res, next) => {
     if (opt.rows.length === 0) return res.status(404).json({ error: 'Option invalide pour ce vote' });
 
     const vote = await pool.query('SELECT * FROM vote WHERE id_vote = $1', [voteId]);
+    if (vote.rows.length === 0) return res.status(404).json({ error: 'Vote non trouvé' });
     if (vote.rows[0].statut !== 'ouvert') {
       return res.status(409).json({ error: 'Ce vote est fermé' });
+    }
+
+    // Un habitant ne peut voter que dans son quartier.
+    if (!isPrivileged(req.user)) {
+      const qids = await getUserQuartierIds(req.user.id);
+      if (!vote.rows[0].id_quartier || !qids.includes(vote.rows[0].id_quartier)) {
+        return res.status(403).json({ error: "Ce vote n'est pas dans votre quartier." });
+      }
     }
 
     const session = driver.session();

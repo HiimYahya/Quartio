@@ -4,6 +4,7 @@ const Evenement       = require('../models/mongo/evenement.model');
 const validateMongoId = require('../utils/validateMongoId');
 const { getPagination, paginate } = require('../utils/pagination');
 const { createNotification }      = require('../utils/notify');
+const { getUserQuartierIds, isPrivileged } = require('../utils/quartiers');
 
 // GET /api/evenements?page=1&limit=20&statut=planifie&date_debut_from=...&date_debut_to=...
 exports.getAll = async (req, res, next) => {
@@ -17,6 +18,13 @@ exports.getAll = async (req, res, next) => {
       filter.date_debut = {};
       if (date_debut_from) filter.date_debut.$gte = new Date(date_debut_from);
       if (date_debut_to)   filter.date_debut.$lte = new Date(date_debut_to);
+    }
+
+    // Un habitant ne voit que les événements de son (ses) quartier(s).
+    if (!isPrivileged(req.user)) {
+      const qids = await getUserQuartierIds(req.user.id);
+      if (qids.length === 0) return res.json(paginate([], 0, page, limit));
+      filter.id_quartier = { $in: qids };
     }
 
     const [data, total] = await Promise.all([
@@ -43,20 +51,34 @@ exports.create = async (req, res, next) => {
   try {
     const { titre, description, type, date_debut, date_fin, lieu, capacite_max, id_quartier } = req.body;
 
+    // Le quartier de l'événement = celui de l'organisateur (les habitants ne créent
+    // que dans leur quartier). L'admin/modérateur peut cibler n'importe quel quartier.
+    const wanted = id_quartier ? parseInt(id_quartier) : null;
+    let quartierId;
+    if (isPrivileged(req.user)) {
+      quartierId = wanted;
+    } else {
+      const qids = await getUserQuartierIds(req.user.id);
+      if (qids.length === 0) {
+        return res.status(400).json({ error: "Rejoignez d'abord un quartier (depuis votre profil) pour créer un événement." });
+      }
+      quartierId = (wanted && qids.includes(wanted)) ? wanted : qids[0];
+    }
+
     const evenement = await Evenement.create({
       titre, description, type, date_debut, date_fin, lieu, capacite_max,
       id_utilisateur_pg: req.user.id,
+      id_quartier: quartierId ?? undefined,
     });
 
     const session = driver.session();
     try {
       await session.run(
         `MERGE (e:Evenement {mongo_id: $mid})
-         MERGE (q:Quartier {pg_id: $qid})
          MERGE (u:Utilisateur {pg_id: $uid})
-         MERGE (e)-[:TIENT_DANS]->(q)
-         MERGE (u)-[:ORGANISE]->(e)`,
-        { mid: evenement._id.toString(), qid: parseInt(id_quartier), uid: req.user.id }
+         MERGE (u)-[:ORGANISE]->(e)
+         ${quartierId ? 'MERGE (q:Quartier {pg_id: $qid}) MERGE (e)-[:TIENT_DANS]->(q)' : ''}`,
+        { mid: evenement._id.toString(), qid: quartierId, uid: req.user.id }
       );
     } finally {
       await session.close();
@@ -110,6 +132,14 @@ exports.participer = async (req, res, next) => {
 
     const evenement = await Evenement.findById(mid);
     if (!evenement) return res.status(404).json({ error: 'Événement non trouvé' });
+
+    // Un habitant ne peut participer qu'aux événements de son quartier.
+    if (!isPrivileged(req.user)) {
+      const qids = await getUserQuartierIds(req.user.id);
+      if (!evenement.id_quartier || !qids.includes(evenement.id_quartier)) {
+        return res.status(403).json({ error: "Cet événement n'est pas dans votre quartier." });
+      }
+    }
 
     if (evenement.capacite_max) {
       const session = driver.session();
@@ -215,6 +245,16 @@ exports.swipe = async (req, res, next) => {
     const { direction } = req.body; // 'right' | 'left'
     if (!['right', 'left'].includes(direction)) {
       return res.status(400).json({ error: 'direction doit être "right" ou "left"' });
+    }
+
+    // Restreint au quartier de l'habitant.
+    if (!isPrivileged(req.user)) {
+      const evenement = await Evenement.findById(req.params.id);
+      if (!evenement) return res.status(404).json({ error: 'Événement non trouvé' });
+      const qids = await getUserQuartierIds(req.user.id);
+      if (!evenement.id_quartier || !qids.includes(evenement.id_quartier)) {
+        return res.status(403).json({ error: "Cet événement n'est pas dans votre quartier." });
+      }
     }
 
     const relation = direction === 'right' ? 'A_AIME' : 'A_IGNORE';

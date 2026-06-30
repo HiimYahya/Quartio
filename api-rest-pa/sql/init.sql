@@ -72,7 +72,8 @@ CREATE TABLE IF NOT EXISTS vote (
                  CHECK (statut IN ('ouvert', 'ferme', 'archive')),
   type_vote    VARCHAR(20) DEFAULT 'choix_multiple'
                  CHECK (type_vote IN ('choix_multiple', 'oui_non', 'classement')),
-  nb_choix_max INTEGER DEFAULT 1
+  nb_choix_max INTEGER DEFAULT 1,
+  id_quartier  INTEGER REFERENCES quartier(id_quartier) ON DELETE CASCADE
 );
 
 -- ── OPTION_VOTE ─────────────────────────────────────────────

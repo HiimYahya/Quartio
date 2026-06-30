@@ -50,7 +50,7 @@ const { createSchema, updateSchema } = require('../validators/evenement.validato
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Evenement' }
  */
-router.get('/', ctrl.getAll);
+router.get('/', auth, ctrl.getAll);
 router.post('/', auth, validate(createSchema), ctrl.create);
 
 // Route fixe AVANT /:id pour éviter la capture par le paramètre dynamique
