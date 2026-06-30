@@ -12,6 +12,41 @@ const Message      = require('../models/mongo/message.model');
 exports.export = async (req, res, next) => {
   try {
     const uid = req.user.id;
+    const toInt = (v) => (v && typeof v.toNumber === 'function' ? v.toNumber() : Number(v));
+
+    // ── Neo4j : ids liés à l'utilisateur (transactions, votes) + relations ──────
+    // Le lien transaction→utilisateur ([:EST_POUR]) et vote→utilisateur ([:REPOND])
+    // est porté par Neo4j, pas par une colonne PostgreSQL.
+    const session = driver.session();
+    let txIds = [], optionIds = [], relations = [];
+    try {
+      const txRes = await session.run(
+        `MATCH (t:Transaction)-[:EST_POUR]->(u:Utilisateur {pg_id: $uid}) RETURN t.pg_id AS pg_id`,
+        { uid }
+      );
+      txIds = txRes.records.map((r) => toInt(r.get('pg_id'))).filter(Number.isFinite);
+
+      const voRes = await session.run(
+        `MATCH (u:Utilisateur {pg_id: $uid})-[:REPOND]->(o:OptionVote) RETURN o.pg_id AS pg_id`,
+        { uid }
+      );
+      optionIds = voRes.records.map((r) => toInt(r.get('pg_id'))).filter(Number.isFinite);
+
+      const relRes = await session.run(
+        `MATCH (u:Utilisateur {pg_id: $uid})-[r]->(n)
+         RETURN type(r) AS relation, labels(n) AS cible, n.pg_id AS cible_pg_id, n.mongo_id AS cible_mongo_id
+         LIMIT 200`,
+        { uid }
+      );
+      relations = relRes.records.map((r) => ({
+        relation:       r.get('relation'),
+        cible:          r.get('cible'),
+        cible_pg_id:    r.get('cible_pg_id'),
+        cible_mongo_id: r.get('cible_mongo_id'),
+      }));
+    } finally {
+      await session.close();
+    }
 
     // ── PostgreSQL ─────────────────────────────────────────────────────────────
     const [profil, contrats, transactions, notifications, votes] = await Promise.all([
@@ -30,25 +65,29 @@ exports.export = async (req, res, next) => {
          ORDER BY c.date_creation DESC`,
         [uid]
       ),
-      pool.query(
-        `SELECT id_transaction, montant, motif, date
-         FROM transaction_points WHERE id_utilisateur = $1
-         ORDER BY date DESC`,
-        [uid]
-      ),
+      txIds.length
+        ? pool.query(
+            `SELECT id_transaction, montant, motif, date
+             FROM transaction_points WHERE id_transaction = ANY($1::int[])
+             ORDER BY date DESC`,
+            [txIds]
+          )
+        : Promise.resolve({ rows: [] }),
       pool.query(
         `SELECT id_notification, type, titre, contenu, id_ressource, type_ressource, est_lue, date_creation
          FROM notification WHERE id_utilisateur = $1
          ORDER BY date_creation DESC`,
         [uid]
       ),
-      pool.query(
-        `SELECT v.id_vote, v.titre, ov.libelle AS option_choisie, ov.id_option
-         FROM vote v
-         JOIN option_vote ov ON ov.id_vote = v.id_vote
-         WHERE ov.id_utilisateur_pg = $1`,
-        [uid]
-      ),
+      optionIds.length
+        ? pool.query(
+            `SELECT v.id_vote, v.titre, ov.libelle AS option_choisie, ov.id_option
+             FROM option_vote ov
+             JOIN vote v ON v.id_vote = ov.id_vote
+             WHERE ov.id_option = ANY($1::int[])`,
+            [optionIds]
+          )
+        : Promise.resolve({ rows: [] }),
     ]);
 
     // ── MongoDB ────────────────────────────────────────────────────────────────
@@ -59,26 +98,6 @@ exports.export = async (req, res, next) => {
       Conversation.find({ participants_pg: uid }).lean(),
       Message.find({ id_utilisateur_pg: uid, est_supprime: false }).lean(),
     ]);
-
-    // ── Neo4j - relations sociales ────────────────────────────────────────────
-    const session = driver.session();
-    let relations = [];
-    try {
-      const result = await session.run(
-        `MATCH (u:Utilisateur {pg_id: $uid})-[r]->(n)
-         RETURN type(r) AS relation, labels(n) AS cible, n.pg_id AS cible_pg_id, n.mongo_id AS cible_mongo_id
-         LIMIT 200`,
-        { uid }
-      );
-      relations = result.records.map((r) => ({
-        relation:       r.get('relation'),
-        cible:          r.get('cible'),
-        cible_pg_id:    r.get('cible_pg_id'),
-        cible_mongo_id: r.get('cible_mongo_id'),
-      }));
-    } finally {
-      await session.close();
-    }
 
     const payload = {
       export_date:   new Date().toISOString(),

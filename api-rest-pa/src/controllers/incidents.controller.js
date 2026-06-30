@@ -12,6 +12,11 @@ exports.getAll = async (req, res, next) => {
     const { page, limit, skip } = getPagination(req.query);
     const { statut, priorite, signalements } = req.query;
 
+    // La vue modération (messages signalés) est réservée aux admin/modérateurs.
+    if (signalements === 'true' && !['admin', 'moderateur'].includes(req.user.role)) {
+      return res.status(403).json({ error: 'Accès refusé - rôle requis : admin ou moderateur' });
+    }
+
     const filter = {};
     if (signalements === 'true') {
       filter.id_message = { $exists: true, $ne: null };

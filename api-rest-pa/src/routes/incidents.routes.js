@@ -65,7 +65,9 @@ const { createSchema, updateSchema } = require('../validators/incident.validator
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Incident' }
  */
-router.get('/',  auth, role('admin', 'moderateur'), ctrl.getAll);
+// Lecture ouverte aux habitants (incidents du quartier) ; la vue modération
+// (?signalements=true) est restreinte aux admin/modérateurs dans le contrôleur.
+router.get('/',  auth, ctrl.getAll);
 router.post('/', auth, validate(createSchema), ctrl.create);
 
 /**
