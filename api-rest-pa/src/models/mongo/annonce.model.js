@@ -10,8 +10,9 @@ const annonceSchema = new mongoose.Schema({
   type_concerne:    { type: String },
   statut:           { type: String, enum: ['active', 'inactive', 'archivee'], default: 'active' },
   date_publication: { type: Date, default: Date.now },
-  // Référence vers PostgreSQL (id de l'utilisateur créateur)
+  // Références vers PostgreSQL
   id_utilisateur_pg: { type: Number, required: true },
+  id_quartier:       { type: Number, index: true },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Annonce', annonceSchema);

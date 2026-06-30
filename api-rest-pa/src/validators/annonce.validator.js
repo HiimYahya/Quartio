@@ -8,7 +8,7 @@ const createSchema = Joi.object({
   cout_points:    Joi.number().integer().min(0).default(0),
   categorie:      Joi.string().max(100).allow('', null),
   type_concerne:  Joi.string().max(100).allow('', null),
-  id_quartier:    Joi.number().integer().required(),
+  id_quartier:    Joi.number().integer().allow(null), // dérivé du quartier de l'auteur si absent
 });
 
 const updateSchema = Joi.object({

@@ -57,7 +57,7 @@ const { createSchema, updateSchema } = require('../validators/annonce.validator'
  *             schema: { $ref: '#/components/schemas/Annonce' }
  *       400: { description: Données invalides }
  */
-router.get('/', ctrl.getAll);
+router.get('/', auth, ctrl.getAll);
 router.post('/', auth, validate(createSchema), ctrl.create);
 
 /**

@@ -3,6 +3,7 @@ const { driver }      = require('../config/neo4j');
 const Annonce         = require('../models/mongo/annonce.model');
 const validateMongoId = require('../utils/validateMongoId');
 const { getPagination, paginate } = require('../utils/pagination');
+const { getUserQuartierIds, isPrivileged } = require('../utils/quartiers');
 
 // GET /api/annonces?page=1&limit=20&statut=active&categorie=...&type=...
 exports.getAll = async (req, res, next) => {
@@ -14,6 +15,13 @@ exports.getAll = async (req, res, next) => {
     if (statut)    filter.statut    = statut;
     if (categorie) filter.categorie = new RegExp(categorie, 'i');
     if (type)      filter.type      = new RegExp(type, 'i');
+
+    // Un habitant ne voit que les annonces de son (ses) quartier(s).
+    if (!isPrivileged(req.user)) {
+      const qids = await getUserQuartierIds(req.user.id);
+      if (qids.length === 0) return res.json(paginate([], 0, page, limit));
+      filter.id_quartier = { $in: qids };
+    }
 
     const [data, total] = await Promise.all([
       Annonce.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
@@ -39,19 +47,32 @@ exports.create = async (req, res, next) => {
   try {
     const { titre, description, type, est_payant, cout_points, categorie, type_concerne, id_quartier } = req.body;
 
+    // L'annonce est rattachée au quartier de son auteur (l'admin peut cibler un autre quartier).
+    const wanted = id_quartier ? parseInt(id_quartier) : null;
+    let quartierId;
+    if (isPrivileged(req.user)) {
+      quartierId = wanted;
+    } else {
+      const qids = await getUserQuartierIds(req.user.id);
+      if (qids.length === 0) {
+        return res.status(400).json({ error: "Rejoignez d'abord un quartier (depuis votre profil) pour publier une annonce." });
+      }
+      quartierId = (wanted && qids.includes(wanted)) ? wanted : qids[0];
+    }
+
     const annonce = await Annonce.create({
       titre, description, type, est_payant, cout_points, categorie, type_concerne,
       id_utilisateur_pg: req.user.id,
+      id_quartier: quartierId ?? undefined,
     });
 
     const session = driver.session();
     try {
       await session.run(
         `MERGE (a:Annonce {mongo_id: $mid})
-         MERGE (q:Quartier {pg_id: $qid})
          MERGE (u:Utilisateur {pg_id: $uid})
-         MERGE (a)-[:APPARTIENT]->(q)`,
-        { mid: annonce._id.toString(), qid: parseInt(id_quartier), uid: req.user.id }
+         ${quartierId ? 'MERGE (q:Quartier {pg_id: $qid}) MERGE (a)-[:APPARTIENT]->(q)' : ''}`,
+        { mid: annonce._id.toString(), qid: quartierId, uid: req.user.id }
       );
     } finally {
       await session.close();
@@ -111,6 +132,14 @@ exports.creerContrat = async (req, res, next) => {
 
     if (annonce.statut !== 'active')
       return res.status(409).json({ error: 'Cette annonce n\'est plus disponible' });
+
+    // Un habitant ne peut accepter qu'une annonce de son quartier.
+    if (!isPrivileged(req.user)) {
+      const qids = await getUserQuartierIds(req.user.id);
+      if (!annonce.id_quartier || !qids.includes(annonce.id_quartier)) {
+        return res.status(403).json({ error: "Cette annonce n'est pas dans votre quartier." });
+      }
+    }
 
     const acheteurId = req.user.id;
     const vendeurId  = annonce.id_utilisateur_pg;
