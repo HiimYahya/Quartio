@@ -21,9 +21,7 @@ import VotesPage from './pages/VotesPage'
 import MessagesPage from './pages/MessagesPage'
 import ConversationPage from './pages/ConversationPage'
 import ContratsPage from './pages/ContratsPage'
-import IncidentsPage from './pages/IncidentsPage'
 import ProfilPage from './pages/ProfilPage'
-import CartePage from './pages/CartePage'
 
 const ContratDetailPage = lazy(() => import('./pages/ContratDetailPage'))
 
@@ -54,7 +52,6 @@ export default function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
             <Route path="/dashboard"     element={<DashboardPage />} />
-            <Route path="/carte"         element={<CartePage />} />
             <Route path="/annonces"      element={<AnnoncesPage />} />
             <Route path="/annonces/:id"  element={<AnnonceDetailPage />} />
             <Route path="/evenements"    element={<EvenementsPage />} />
@@ -68,7 +65,6 @@ export default function App() {
                 <ContratDetailPage />
               </Suspense>
             } />
-            <Route path="/incidents"     element={<IncidentsPage />} />
             <Route path="/profil"        element={<ProfilPage />} />
           </Route>
         </Route>
