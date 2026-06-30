@@ -17,7 +17,10 @@ RUN npm run build
 FROM nginx:alpine
 
 COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# nginx.conf utilise ${PORT} : l'entrypoint officiel l'injecte au démarrage
+# (templates → conf.d). PORT par défaut = 80 pour docker-compose ; Railway l'override.
+COPY nginx.conf /etc/nginx/templates/default.conf.template
+ENV PORT=80
 
 EXPOSE 80
 
