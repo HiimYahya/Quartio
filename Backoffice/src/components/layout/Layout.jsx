@@ -3,6 +3,7 @@ import Sidebar from './Sidebar'
 
 const titles = {
   '/dashboard':    'Dashboard',
+  '/statistiques': 'Statistiques',
   '/utilisateurs': 'Gestion des utilisateurs',
   '/quartiers':    'Gestion des quartiers',
   '/incidents':    'Gestion des incidents',
@@ -10,6 +11,7 @@ const titles = {
   '/evenements':   'Gestion des événements',
   '/annonces':     'Gestion des annonces',
   '/contrats':     'Gestion des contrats',
+  '/console':      'Console Quartio-QL',
 }
 
 export default function Layout() {

@@ -103,7 +103,7 @@ exports.remove = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/evenements/:id/participer  → Neo4j [:PARTICIPE]
+// POST /api/evenements/:id/participer  -> Neo4j [:PARTICIPE]
 exports.participer = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
@@ -173,7 +173,7 @@ exports.seDesinscrire = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/evenements/:id/participants  → Neo4j → PostgreSQL
+// GET /api/evenements/:id/participants  -> Neo4j -> PostgreSQL
 exports.getParticipants = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;

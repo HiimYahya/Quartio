@@ -1,19 +1,24 @@
 import { NavLink } from 'react-router-dom'
 import useAuthStore from '../../store/authStore'
 
-const links = [
-  { to: '/dashboard',    icon: '⊞',  label: 'Dashboard' },
-  { to: '/utilisateurs', icon: '👥', label: 'Utilisateurs' },
-  { to: '/quartiers',    icon: '🗺️', label: 'Quartiers' },
-  { to: '/incidents',    icon: '⚠️', label: 'Incidents' },
-  { to: '/votes',        icon: '🗳️', label: 'Votes' },
-  { to: '/evenements',   icon: '📅', label: 'Événements' },
-  { to: '/annonces',     icon: '📋', label: 'Annonces' },
-  { to: '/contrats',     icon: '📄', label: 'Contrats' },
+// roles: undefined = tous, sinon tableau de rôles autorisés
+const ALL_LINKS = [
+  { to: '/dashboard',    label: 'Dashboard' },
+  { to: '/statistiques', label: 'Statistiques', roles: ['admin'] },
+  { to: '/console',      label: 'Console QL',   roles: ['admin'] },
+  { to: '/utilisateurs', label: 'Utilisateurs', roles: ['admin'] },
+  { to: '/quartiers',    label: 'Quartiers',    roles: ['admin'] },
+  { to: '/incidents',    label: 'Incidents' },
+  { to: '/signalements', label: 'Signalements' },
+  { to: '/votes',        label: 'Votes',        roles: ['admin'] },
+  { to: '/evenements',   label: 'Événements',   roles: ['admin'] },
+  { to: '/annonces',     label: 'Annonces' },
+  { to: '/contrats',     label: 'Contrats',     roles: ['admin'] },
 ]
 
 export default function Sidebar() {
   const { admin, logout } = useAuthStore()
+  const links = ALL_LINKS.filter((l) => !l.roles || l.roles.includes(admin?.role))
 
   return (
     <aside className="w-60 bg-slate-900 flex flex-col h-full shadow-xl shrink-0">
@@ -26,7 +31,7 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-0.5">
-        {links.map(({ to, icon, label }) => (
+        {links.map(({ to, label }) => (
           <NavLink key={to} to={to}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
@@ -36,7 +41,6 @@ export default function Sidebar() {
               }`
             }
           >
-            <span className="w-5 text-center text-base">{icon}</span>
             {label}
           </NavLink>
         ))}
@@ -46,10 +50,14 @@ export default function Sidebar() {
         <div className="px-3 py-2">
           <p className="text-white/80 text-xs font-medium truncate">{admin?.prenom} {admin?.nom}</p>
           <p className="text-white/40 text-xs truncate">{admin?.email}</p>
+          <span className={`mt-1 inline-block text-xs font-semibold px-2 py-0.5 rounded-full ${
+            admin?.role === 'admin' ? 'bg-indigo-500/30 text-indigo-200' : 'bg-amber-500/30 text-amber-200'
+          }`}>
+            {admin?.role === 'admin' ? 'Administrateur' : 'Modérateur'}
+          </span>
         </div>
         <button onClick={logout}
           className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-white/5 hover:text-red-400 transition-all">
-          <span className="w-5 text-center">🚪</span>
           Déconnexion
         </button>
       </div>

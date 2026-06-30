@@ -18,7 +18,7 @@ export const connectSocket = (token) => {
   })
 
   socket.on('connect_error', (err) => {
-    // Socket.io pas encore implémenté côté backend — fail silencieux
+    // Socket.io pas encore implémenté côté backend - fail silencieux
     console.warn('[Socket] Connexion impossible:', err.message)
   })
 

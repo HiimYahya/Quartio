@@ -87,7 +87,7 @@ exports.remove = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/utilisateurs/:id/quartier  → Neo4j [:HABITE]
+// POST /api/utilisateurs/:id/quartier  -> Neo4j [:HABITE]
 exports.addQuartier = async (req, res, next) => {
   try {
     const userId = parseInt(req.params.id);
@@ -116,7 +116,7 @@ exports.addQuartier = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// DELETE /api/utilisateurs/:id/quartier/:idQ  → Neo4j
+// DELETE /api/utilisateurs/:id/quartier/:idQ  -> Neo4j
 exports.removeQuartier = async (req, res, next) => {
   try {
     const userId = parseInt(req.params.id);

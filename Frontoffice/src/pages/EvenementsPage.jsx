@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { CalendarDays } from 'lucide-react'
 import api from '../services/api'
 import useQuartiers from '../hooks/useQuartiers'
 import SwipeView from '../components/ui/SwipeView'
 
 export default function EvenementsPage() {
   const [evenements, setEvenements] = useState([])
+  const [suggestions, setSuggestions] = useState([])
   const [loading, setLoading] = useState(true)
   const [mode, setMode] = useState('liste') // 'liste' | 'swipe'
   const [showForm, setShowForm] = useState(false)
@@ -27,6 +29,12 @@ export default function EvenementsPage() {
   }
 
   useEffect(() => { load() }, [])
+
+  useEffect(() => {
+    api.get('/evenements/suggestions')
+      .then(({ data }) => setSuggestions(Array.isArray(data) ? data : []))
+      .catch(() => setSuggestions([]))
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -71,7 +79,7 @@ export default function EvenementsPage() {
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              ☰ Liste
+              Liste
             </button>
             <button
               onClick={() => { setMode('swipe'); setShowForm(false) }}
@@ -81,7 +89,7 @@ export default function EvenementsPage() {
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              ♥ Swipe
+              Swipe
             </button>
           </div>
           {mode === 'liste' && (
@@ -189,16 +197,37 @@ export default function EvenementsPage() {
             disabled={submitting}
             className="bg-[#1a4a3a] hover:bg-[#0f2e24] text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors disabled:opacity-60"
           >
-            {submitting ? 'Création…' : 'Créer'}
+            {submitting ? 'Création...' : 'Créer'}
           </button>
         </form>
       )}
 
+      {mode === 'liste' && suggestions.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="font-semibold text-gray-800 text-sm">Suggestions pour vous</h3>
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {suggestions.map((ev) => (
+              <Link
+                key={ev._id ?? ev.id}
+                to={`/evenements/${ev._id ?? ev.id}`}
+                className="shrink-0 w-48 bg-white rounded-xl shadow-sm border border-gray-100 p-3 hover:shadow-md transition-shadow"
+              >
+                <p className="text-xs font-semibold text-[#1a4a3a] uppercase mb-1">
+                  {ev.date_debut ? formatDate(ev.date_debut) : ''}
+                </p>
+                <h4 className="font-medium text-gray-800 text-sm truncate">{ev.titre}</h4>
+                <p className="text-xs text-gray-500 truncate">{ev.lieu ?? 'Lieu non précisé'}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {loading ? (
-        <div className="text-center py-12 text-gray-400">Chargement…</div>
+        <div className="text-center py-12 text-gray-400">Chargement...</div>
       ) : evenements.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
-          <p className="text-4xl mb-3">📅</p>
+          <CalendarDays className="w-8 h-8 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500">Aucun événement pour le moment.</p>
         </div>
       ) : mode === 'swipe' ? (

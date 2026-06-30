@@ -5,8 +5,8 @@ export default function useQuartiers() {
   const [quartiers, setQuartiers] = useState([])
 
   useEffect(() => {
-    api.get('/quartiers')
-      .then(({ data }) => setQuartiers(data.quartiers ?? data ?? []))
+    api.get('/quartiers?limit=100')
+      .then(({ data }) => setQuartiers(data.data ?? data.quartiers ?? []))
       .catch(() => setQuartiers([]))
   }, [])
 

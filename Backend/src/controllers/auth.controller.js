@@ -54,7 +54,7 @@ exports.login = async (req, res, next) => {
       { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
     );
 
-    // Refresh token (longue durée — 7 jours)
+    // Refresh token (longue durée - 7 jours)
     const refreshToken = generateRefreshToken();
     const expireAt     = new Date();
     expireAt.setDate(expireAt.getDate() + REFRESH_EXPIRES_DAYS);

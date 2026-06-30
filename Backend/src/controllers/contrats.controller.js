@@ -4,7 +4,7 @@ const { getPagination, paginate } = require('../utils/pagination');
 const { createNotification } = require('../utils/notify');
 const toNum                  = require('../utils/toNum');
 
-// GET /api/contrats  → mes contrats via Neo4j [:SIGNE]
+// GET /api/contrats  -> mes contrats via Neo4j [:SIGNE]
 exports.getMes = async (req, res, next) => {
   try {
     const { page, limit, skip } = getPagination(req.query);
@@ -36,7 +36,7 @@ exports.getMes = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/contrats/:id  (auth — participant ou admin)
+// GET /api/contrats/:id  (auth - participant ou admin)
 exports.getById = async (req, res, next) => {
   try {
     const result = await pool.query('SELECT * FROM contrat WHERE id_contrat = $1', [req.params.id]);
@@ -100,7 +100,7 @@ exports.create = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// PUT /api/contrats/:id/signer  → Neo4j [:SIGNE] + transaction de points
+// PUT /api/contrats/:id/signer  -> Neo4j [:SIGNE] + transaction de points
 exports.signer = async (req, res, next) => {
   try {
     const contratId = parseInt(req.params.id);

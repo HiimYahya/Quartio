@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Users, Pencil } from 'lucide-react'
 import api from '../services/api'
 
 const ROLE_COLORS = {
@@ -7,12 +8,22 @@ const ROLE_COLORS = {
   user:       'bg-blue-100 text-blue-700',
 }
 
+const EMPTY_FORM = { nom: '', prenom: '', email: '', mot_de_passe: '', role: 'user', langue: 'fr' }
+
 export default function UtilisateursPage() {
-  const [users,   setUsers]   = useState([])
-  const [loading, setLoading] = useState(true)
-  const [search,  setSearch]  = useState('')
+  const [users,      setUsers]      = useState([])
+  const [loading,    setLoading]    = useState(true)
+  const [search,     setSearch]     = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
-  const [confirm, setConfirm] = useState(null)
+  const [confirm,    setConfirm]    = useState(null)
+  const [showCreate, setShowCreate] = useState(false)
+  const [form,       setForm]       = useState(EMPTY_FORM)
+  const [saving,     setSaving]     = useState(false)
+  const [formError,  setFormError]  = useState(null)
+  const [editTarget, setEditTarget] = useState(null)
+  const [editForm,   setEditForm]   = useState({ nom: '', prenom: '', telephone: '', langue: 'fr' })
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError,  setEditError]  = useState(null)
 
   const load = () => {
     api.get('/utilisateurs')
@@ -38,6 +49,51 @@ export default function UtilisateursPage() {
     } catch {}
   }
 
+  const handleCreate = async (e) => {
+    e.preventDefault()
+    setSaving(true)
+    setFormError(null)
+    try {
+      const { data } = await api.post('/auth/register', {
+        nom: form.nom, prenom: form.prenom, email: form.email,
+        mot_de_passe: form.mot_de_passe, langue: form.langue,
+      })
+      const newUser = data.utilisateur
+      if (form.role !== 'user' && newUser?.id_utilisateur) {
+        await api.put(`/utilisateurs/${newUser.id_utilisateur}`, { role: form.role })
+        newUser.role = form.role
+      }
+      setUsers((u) => [...u, { ...newUser, points_solde: 0 }])
+      setShowCreate(false)
+      setForm(EMPTY_FORM)
+    } catch (err) {
+      setFormError(err.response?.data?.error ?? 'Erreur lors de la création')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const openEdit = (u) => {
+    setEditTarget(u)
+    setEditForm({ nom: u.nom ?? '', prenom: u.prenom ?? '', telephone: u.telephone ?? '', langue: u.langue ?? 'fr' })
+    setEditError(null)
+  }
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault()
+    setEditSaving(true)
+    setEditError(null)
+    try {
+      const { data } = await api.put(`/utilisateurs/${editTarget.id_utilisateur}`, editForm)
+      setUsers((u) => u.map((x) => x.id_utilisateur === editTarget.id_utilisateur ? { ...x, ...data } : x))
+      setEditTarget(null)
+    } catch (err) {
+      setEditError(err.response?.data?.error ?? 'Erreur lors de la modification')
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
   const filtered = users.filter((u) => {
     const matchSearch = !search || `${u.nom} ${u.prenom} ${u.email}`.toLowerCase().includes(search.toLowerCase())
     const matchRole   = roleFilter === 'all' || u.role === roleFilter
@@ -46,10 +102,9 @@ export default function UtilisateursPage() {
 
   return (
     <div className="space-y-4">
-      {/* Filtres */}
       <div className="flex gap-3 flex-wrap">
         <input value={search} onChange={(e) => setSearch(e.target.value)}
-          placeholder="Rechercher un utilisateur…"
+          placeholder="Rechercher un utilisateur..."
           className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 flex-1 min-w-48" />
         <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}
           className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
@@ -59,12 +114,17 @@ export default function UtilisateursPage() {
           <option value="admin">Admins</option>
         </select>
         <span className="text-sm text-slate-400 self-center">{filtered.length} résultat(s)</span>
+        <button onClick={() => { setShowCreate(true); setFormError(null); setForm(EMPTY_FORM) }}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+          + Nouvel utilisateur
+        </button>
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-slate-400">Chargement…</div>
+        <div className="text-center py-12 text-slate-400">Chargement...</div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl border border-slate-100">
+          <Users className="w-8 h-8 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-400">Aucun utilisateur trouvé.</p>
         </div>
       ) : (
@@ -100,18 +160,135 @@ export default function UtilisateursPage() {
                   </td>
                   <td className="px-4 py-3 text-slate-500">{u.points_solde ?? 0} pts</td>
                   <td className="px-4 py-3 text-slate-400 text-xs">
-                    {u.date_inscription ? new Date(u.date_inscription).toLocaleDateString('fr-FR') : '—'}
+                    {u.date_inscription ? new Date(u.date_inscription).toLocaleDateString('fr-FR') : '-'}
                   </td>
                   <td className="px-4 py-3">
-                    <button onClick={() => setConfirm(u)}
-                      className="text-xs text-red-500 hover:text-red-700 hover:underline">
-                      Supprimer
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => openEdit(u)}
+                        className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 hover:underline">
+                        <Pencil className="w-3.5 h-3.5" />
+                        Modifier
+                      </button>
+                      <button onClick={() => setConfirm(u)}
+                        className="text-xs text-red-500 hover:text-red-700 hover:underline">
+                        Supprimer
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Modal modification */}
+      {editTarget && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
+            <h3 className="font-semibold text-slate-800 mb-4">Modifier {editTarget.prenom} {editTarget.nom}</h3>
+            {editError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-3">{editError}</p>}
+            <form onSubmit={handleEditSubmit} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Prénom *</label>
+                  <input required value={editForm.prenom} onChange={(e) => setEditForm((f) => ({ ...f, prenom: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Nom *</label>
+                  <input required value={editForm.nom} onChange={(e) => setEditForm((f) => ({ ...f, nom: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Téléphone</label>
+                <input value={editForm.telephone} onChange={(e) => setEditForm((f) => ({ ...f, telephone: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Langue</label>
+                <select value={editForm.langue} onChange={(e) => setEditForm((f) => ({ ...f, langue: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <option value="fr">Français</option>
+                  <option value="en">English</option>
+                </select>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setEditTarget(null)}
+                  className="flex-1 border border-slate-300 text-slate-700 py-2 rounded-lg text-sm hover:bg-slate-50 transition">
+                  Annuler
+                </button>
+                <button type="submit" disabled={editSaving}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-sm transition disabled:opacity-60">
+                  {editSaving ? 'Enregistrement...' : 'Enregistrer'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal création */}
+      {showCreate && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
+            <h3 className="font-semibold text-slate-800 mb-4">Nouvel utilisateur</h3>
+            {formError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-3">{formError}</p>}
+            <form onSubmit={handleCreate} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Prénom *</label>
+                  <input required value={form.prenom} onChange={(e) => setForm((f) => ({ ...f, prenom: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Nom *</label>
+                  <input required value={form.nom} onChange={(e) => setForm((f) => ({ ...f, nom: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Email *</label>
+                <input required type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Mot de passe *</label>
+                <input required type="password" minLength={8} value={form.mot_de_passe} onChange={(e) => setForm((f) => ({ ...f, mot_de_passe: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Rôle</label>
+                  <select value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="user">Habitant</option>
+                    <option value="moderateur">Modérateur</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Langue</label>
+                  <select value={form.langue} onChange={(e) => setForm((f) => ({ ...f, langue: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="fr">Français</option>
+                    <option value="en">English</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowCreate(false)}
+                  className="flex-1 border border-slate-300 text-slate-700 py-2 rounded-lg text-sm hover:bg-slate-50 transition">
+                  Annuler
+                </button>
+                <button type="submit" disabled={saving}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-sm transition disabled:opacity-60">
+                  {saving ? 'Création...' : 'Créer'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

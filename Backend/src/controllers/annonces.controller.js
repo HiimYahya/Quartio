@@ -102,7 +102,7 @@ exports.remove = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/annonces/:id/contrat  → Neo4j [:GENERE] → PostgreSQL
+// GET /api/annonces/:id/contrat  -> Neo4j [:GENERE] -> PostgreSQL
 exports.getContrat = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;

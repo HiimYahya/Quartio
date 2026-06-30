@@ -8,6 +8,10 @@ import ProtectedRoute from './components/layout/ProtectedRoute'
 
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import VerifyEmailPage from './pages/VerifyEmailPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
+import MfaVerifyPage from './pages/MfaVerifyPage'
 import DashboardPage from './pages/DashboardPage'
 import AnnoncesPage from './pages/AnnoncesPage'
 import AnnonceDetailPage from './pages/AnnonceDetailPage'
@@ -40,8 +44,12 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login"    element={!token ? <LoginPage />    : <Navigate to="/dashboard" replace />} />
-        <Route path="/register" element={!token ? <RegisterPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="/login"            element={!token ? <LoginPage />           : <Navigate to="/dashboard" replace />} />
+        <Route path="/register"         element={!token ? <RegisterPage />        : <Navigate to="/dashboard" replace />} />
+        <Route path="/verify-email"          element={<VerifyEmailPage />} />
+        <Route path="/forgot-password"       element={!token ? <ForgotPasswordPage />  : <Navigate to="/dashboard" replace />} />
+        <Route path="/reset-password/:token" element={!token ? <ResetPasswordPage />    : <Navigate to="/dashboard" replace />} />
+        <Route path="/mfa"                   element={!token ? <MfaVerifyPage />        : <Navigate to="/dashboard" replace />} />
 
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
@@ -56,7 +64,7 @@ export default function App() {
             <Route path="/messages/:id"  element={<ConversationPage />} />
             <Route path="/contrats"      element={<ContratsPage />} />
             <Route path="/contrats/:id"  element={
-              <Suspense fallback={<div className="p-8 text-center text-gray-400">Chargement…</div>}>
+              <Suspense fallback={<div className="p-8 text-center text-gray-400">Chargement...</div>}>
                 <ContratDetailPage />
               </Suspense>
             } />
