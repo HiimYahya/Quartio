@@ -10,9 +10,9 @@ const { createSchema, updateSchema } = require('../validators/annonce.validator'
  * @swagger
  * /api/annonces:
  *   get:
- *     summary: Liste toutes les annonces
+ *     summary: Liste les annonces de son quartier
+ *     description: Authentification requise. Un habitant ne voit que les annonces de son (ses) quartier(s) ; un admin/modérateur voit toutes les annonces.
  *     tags: [Annonces]
- *     security: []
  *     parameters:
  *       - in: query
  *         name: statut
@@ -44,6 +44,7 @@ const { createSchema, updateSchema } = require('../validators/annonce.validator'
  *                       items: { $ref: '#/components/schemas/Annonce' }
  *   post:
  *     summary: Publier une annonce
+ *     description: Rattachée automatiquement au quartier de l'auteur si `id_quartier` est absent (un habitant doit avoir un quartier, sinon 400 ; l'admin peut cibler un autre quartier).
  *     tags: [Annonces]
  *     requestBody:
  *       required: true
@@ -155,6 +156,7 @@ router.delete('/:id', auth, ctrl.remove);
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Contrat' }
+ *       403: { description: L'annonce n'est pas dans le quartier de l'utilisateur }
  *       409:
  *         description: Annonce inactive, auto-acceptation, points insuffisants ou contrat déjà existant
  *         content:

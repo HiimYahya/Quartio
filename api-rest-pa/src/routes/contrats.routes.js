@@ -55,6 +55,25 @@ router.get('/',  auth, ctrl.getMes);
 router.post('/', auth, validate(createSchema), ctrl.create);
 
 // ── Litiges (admin) — AVANT /:id pour éviter la capture de "litiges" comme id ──
+/**
+ * @swagger
+ * /api/contrats/litiges:
+ *   get:
+ *     summary: Liste les contrats en litige (admin / modérateur)
+ *     description: Retourne les contrats au statut `litige` avec les noms des deux parties et le motif.
+ *     tags: [Contrats]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 20 }
+ *     responses:
+ *       200:
+ *         description: Liste paginée des litiges
+ *       403: { description: Réservé aux admin / modérateurs }
+ */
 router.get('/litiges', auth, role('admin', 'moderateur'), ctrl.getLitiges);
 
 /**

@@ -11,9 +11,9 @@ const { createSchema, updateSchema } = require('../validators/evenement.validato
  * @swagger
  * /api/evenements:
  *   get:
- *     summary: Liste tous les événements
+ *     summary: Liste les événements de son quartier
+ *     description: Authentification requise. Un habitant ne voit que les événements de son (ses) quartier(s) ; un admin/modérateur voit tous les événements.
  *     tags: [Événements]
- *     security: []
  *     parameters:
  *       - in: query
  *         name: statut
@@ -38,6 +38,7 @@ const { createSchema, updateSchema } = require('../validators/evenement.validato
  *                       items: { $ref: '#/components/schemas/Evenement' }
  *   post:
  *     summary: Créer un événement
+ *     description: Rattaché automatiquement au quartier de l'organisateur si `id_quartier` est absent (un habitant doit avoir un quartier, sinon 400 ; l'admin peut cibler un autre quartier).
  *     tags: [Événements]
  *     requestBody:
  *       required: true

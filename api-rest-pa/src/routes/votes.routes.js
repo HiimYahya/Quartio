@@ -11,9 +11,9 @@ const { createSchema, updateSchema, voterSchema } = require('../validators/vote.
  * @swagger
  * /api/votes:
  *   get:
- *     summary: Liste tous les votes
+ *     summary: Liste les votes de son quartier
+ *     description: Authentification requise. Un habitant ne voit que les votes de son (ses) quartier(s) ; un admin/modérateur voit tous les votes.
  *     tags: [Votes]
- *     security: []
  *     parameters:
  *       - in: query
  *         name: statut
@@ -38,7 +38,10 @@ const { createSchema, updateSchema, voterSchema } = require('../validators/vote.
  *                       items: { $ref: '#/components/schemas/Vote' }
  *   post:
  *     summary: Créer un vote
- *     description: Minimum 2 options requises.
+ *     description: |
+ *       Rattaché automatiquement au quartier de l'auteur (un habitant doit avoir un quartier, sinon 400).
+ *       `type_vote` : `choix_multiple` | `oui_non` | `classement`. Pour `oui_non`, les options Oui/Non
+ *       sont générées côté serveur (sinon au moins 2 options requises). `nb_choix_max` configure le nombre de choix.
  *     tags: [Votes]
  *     requestBody:
  *       required: true

@@ -11,8 +11,8 @@ const { createSchema, updateSchema } = require('../validators/incident.validator
  * @swagger
  * /api/incidents:
  *   get:
- *     summary: Liste tous les incidents (admin, modérateur)
- *     description: Accès réservé aux administrateurs et modérateurs. Les utilisateurs voient leurs propres incidents via leur profil.
+ *     summary: Liste les incidents
+ *     description: Authentification requise. La vue modération `?signalements=true` (messages signalés) est réservée aux admins et modérateurs.
  *     tags: [Incidents]
  *     parameters:
  *       - in: query

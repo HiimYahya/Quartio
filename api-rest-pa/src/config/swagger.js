@@ -146,7 +146,7 @@ API de gestion de quartier connecté.
         },
         AnnonceCreate: {
           type: 'object',
-          required: ['titre', 'id_quartier'],
+          required: ['titre'],
           properties: {
             titre:       { type: 'string', example: 'Cours de guitare' },
             description: { type: 'string' },
@@ -154,7 +154,7 @@ API de gestion de quartier connecté.
             est_payant:  { type: 'boolean', default: false },
             cout_points: { type: 'integer', minimum: 0, default: 0 },
             categorie:   { type: 'string' },
-            id_quartier: { type: 'integer' },
+            id_quartier: { type: 'integer', description: 'Optionnel : déduit du quartier de l\'auteur si absent' },
           },
         },
         // ── Événement (MongoDB) ──────────────────────────────────────────────
@@ -174,7 +174,7 @@ API de gestion de quartier connecté.
         },
         EvenementCreate: {
           type: 'object',
-          required: ['titre', 'date_debut', 'id_quartier'],
+          required: ['titre', 'date_debut'],
           properties: {
             titre:        { type: 'string' },
             description:  { type: 'string' },
@@ -182,7 +182,7 @@ API de gestion de quartier connecté.
             date_fin:     { type: 'string', format: 'date-time' },
             lieu:         { type: 'string' },
             capacite_max: { type: 'integer', minimum: 1 },
-            id_quartier:  { type: 'integer' },
+            id_quartier:  { type: 'integer', description: 'Optionnel : déduit du quartier de l\'organisateur si absent' },
           },
         },
         // ── Vote ────────────────────────────────────────────────────────────
@@ -192,10 +192,13 @@ API de gestion de quartier connecté.
             _id:         { type: 'string' },
             titre:       { type: 'string', example: 'Faut-il un banc dans le parc ?' },
             description: { type: 'string', nullable: true },
-            statut:      { type: 'string', enum: ['ouvert', 'ferme', 'archive'] },
-            est_anonyme: { type: 'boolean' },
-            date_debut:  { type: 'string', format: 'date-time', nullable: true },
-            date_fin:    { type: 'string', format: 'date-time', nullable: true },
+            statut:       { type: 'string', enum: ['ouvert', 'ferme', 'archive'] },
+            type_vote:    { type: 'string', enum: ['choix_multiple', 'oui_non', 'classement'] },
+            nb_choix_max: { type: 'integer' },
+            id_quartier:  { type: 'integer' },
+            est_anonyme:  { type: 'boolean' },
+            date_debut:   { type: 'string', format: 'date-time', nullable: true },
+            date_fin:     { type: 'string', format: 'date-time', nullable: true },
             options: {
               type: 'array',
               items: {
@@ -211,14 +214,18 @@ API de gestion de quartier connecté.
         },
         VoteCreate: {
           type: 'object',
-          required: ['titre', 'options'],
+          required: ['titre'],
           properties: {
-            titre:       { type: 'string' },
-            description: { type: 'string' },
-            est_anonyme: { type: 'boolean', default: false },
-            date_debut:  { type: 'string', format: 'date-time' },
-            date_fin:    { type: 'string', format: 'date-time' },
+            titre:        { type: 'string' },
+            description:  { type: 'string' },
+            type_vote:    { type: 'string', enum: ['choix_multiple', 'oui_non', 'classement'], default: 'choix_multiple' },
+            nb_choix_max: { type: 'integer', minimum: 1, default: 1 },
+            est_anonyme:  { type: 'boolean', default: false },
+            date_debut:   { type: 'string', format: 'date-time' },
+            date_fin:     { type: 'string', format: 'date-time' },
+            id_quartier:  { type: 'integer', description: 'Optionnel : déduit du quartier de l\'auteur si absent' },
             options: {
+              description: 'Au moins 2 options (sauf type_vote=oui_non, généré côté serveur)',
               type: 'array', minItems: 2,
               items: {
                 type: 'object',
@@ -237,12 +244,14 @@ API de gestion de quartier connecté.
           properties: {
             id_contrat:       { type: 'integer' },
             points_echanges:  { type: 'integer', example: 50 },
-            statut:           { type: 'string', enum: ['en_attente', 'signe', 'annule', 'termine'] },
+            statut:           { type: 'string', enum: ['en_attente', 'signe', 'annule', 'termine', 'litige'] },
             id_vendeur:       { type: 'integer', nullable: true },
             id_acheteur:      { type: 'integer', nullable: true },
             id_annonce_mongo: { type: 'string', nullable: true },
             signe_vendeur:    { type: 'boolean' },
             signe_acheteur:   { type: 'boolean' },
+            motif_litige:     { type: 'string', nullable: true },
+            date_litige:      { type: 'string', format: 'date-time', nullable: true },
             vendeur_nom:      { type: 'string', nullable: true },
             vendeur_prenom:   { type: 'string', nullable: true },
             acheteur_nom:     { type: 'string', nullable: true },
