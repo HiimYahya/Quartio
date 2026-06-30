@@ -14,6 +14,7 @@ export default function AnnonceDetailPage() {
   const [annonce,  setAnnonce]  = useState(null)
   const [loading,  setLoading]  = useState(true)
   const [creating, setCreating] = useState(false)
+  const [contacting, setContacting] = useState(false)
   const [error,    setError]    = useState(null)
 
   useEffect(() => {
@@ -41,6 +42,20 @@ export default function AnnonceDetailPage() {
       setError(err.response?.data?.error ?? 'Erreur lors de la création du contrat')
     } finally {
       setCreating(false)
+    }
+  }
+
+  const handleContacter = async () => {
+    if (!annonce?.id_utilisateur_pg) return
+    setContacting(true)
+    setError(null)
+    try {
+      const { data } = await api.post('/conversations', { participants: [annonce.id_utilisateur_pg] })
+      navigate(`/messages/${data._id}`)
+    } catch (err) {
+      setError(err.response?.data?.error ?? 'Impossible de démarrer la conversation')
+    } finally {
+      setContacting(false)
     }
   }
 
@@ -129,10 +144,11 @@ export default function AnnonceDetailPage() {
           )}
 
           <button
-            onClick={() => navigate('/messages')}
-            className="w-full border border-[#1a4a3a] text-[#1a4a3a] hover:bg-[#1a4a3a]/5 font-medium py-2.5 rounded-xl transition-colors text-sm"
+            onClick={handleContacter}
+            disabled={contacting}
+            className="w-full border border-[#1a4a3a] text-[#1a4a3a] hover:bg-[#1a4a3a]/5 font-medium py-2.5 rounded-xl transition-colors text-sm disabled:opacity-60"
           >
-            Contacter le voisin
+            {contacting ? 'Ouverture...' : 'Contacter le voisin'}
           </button>
         </div>
       )}

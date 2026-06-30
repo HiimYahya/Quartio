@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ShieldCheck, Lock, Mail, Phone, Monitor } from 'lucide-react'
+import { ShieldCheck, Lock, Mail, Phone, Monitor, LogOut } from 'lucide-react'
 import api from '../../services/api'
 import PasswordStrengthMeter from './PasswordStrengthMeter'
 import { isPasswordValid, PASSWORD_RULES_MESSAGE } from '../../utils/passwordPolicy'
@@ -206,11 +206,12 @@ function ActiveSessions({ user, onLogout }) {
   const [error, setError]       = useState(null)
 
   useEffect(() => {
+    if (!user?.id) return
     api.get(`/utilisateurs/${user.id}/sessions`)
       .then(({ data }) => setSessions(data ?? []))
       .catch(() => setSessions([]))
       .finally(() => setLoading(false))
-  }, [user.id])
+  }, [user?.id])
 
   const handleRevokeAll = async () => {
     setRevoking(true); setError(null)

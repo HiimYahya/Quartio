@@ -102,9 +102,20 @@ exports.create = async (req, res, next) => {
   try {
     const { type, nom, participants } = req.body;
     const allParticipants = [...new Set([req.user.id, ...participants])];
+    const convType = type || 'privee';
+
+    // Dédup : une conversation privée réunissant exactement les mêmes
+    // participants est réutilisée (évite les doublons sur "Contacter").
+    if (convType === 'privee') {
+      const existing = await Conversation.findOne({
+        type: 'privee',
+        participants_pg: { $all: allParticipants, $size: allParticipants.length },
+      }).lean();
+      if (existing) return res.status(200).json(existing);
+    }
 
     const conv = await Conversation.create({
-      type: type || 'privee',
+      type: convType,
       nom,
       date_creation: new Date(),
       participants_pg: allParticipants,

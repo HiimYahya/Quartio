@@ -63,13 +63,21 @@ export default function ProfilPage() {
     e.preventDefault()
     setSaving(true); setError(null); setSuccess(false)
     try {
-      await api.put(`/utilisateurs/${user.id}`, form)
+      // L'email se change via la section Sécurité (re-vérification + MFA) :
+      // on n'envoie ici que le nom et le prénom.
+      await api.put(`/utilisateurs/${user.id}`, { nom: form.nom, prenom: form.prenom })
       await fetchMe()
       setSuccess(true)
     } catch (err) {
       setError(err.response?.data?.error ?? t('common.error'))
     }
     setSaving(false)
+  }
+
+  // Garde : tant que le profil n'est pas chargé (ex. au rechargement de la page),
+  // on évite de rendre les sections enfant qui accèdent à user.id.
+  if (!user) {
+    return <div className="text-center py-12 text-gray-400">{t('common.loading')}</div>
   }
 
   return (
@@ -210,8 +218,9 @@ export default function ProfilPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('profile.email')}</label>
-            <input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]" />
+            <input type="email" value={form.email} readOnly disabled
+              className="w-full border border-gray-200 bg-gray-50 text-gray-500 rounded-lg px-3 py-2 text-sm cursor-not-allowed" />
+            <p className="text-xs text-gray-400 mt-1">Pour modifier votre email, utilisez la section « Sécurité » ci-dessous.</p>
           </div>
           <button type="submit" disabled={saving}
             className="w-full bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-medium py-2.5 rounded-lg transition-colors disabled:opacity-60">

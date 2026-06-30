@@ -33,7 +33,7 @@ export default function ConversationPage() {
         api.get(`/conversations/${id}/messages`),
         api.get(`/conversations/${id}`),
       ])
-      if (msgRes.value) setMessages(msgRes.value.data?.messages ?? msgRes.value.data ?? [])
+      if (msgRes.value) setMessages(msgRes.value.data?.data ?? msgRes.value.data?.messages ?? [])
       if (convRes.value) setConv(convRes.value.data)
       if (!silent) setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
     } catch { navigate('/messages') }
