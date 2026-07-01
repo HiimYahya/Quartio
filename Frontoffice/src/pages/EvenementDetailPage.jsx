@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { CalendarDays, MapPin, Users, ArrowLeft } from 'lucide-react'
+import { CalendarDays, MapPin, Users, ArrowLeft, Check } from 'lucide-react'
 import api from '../services/api'
 import useAuthStore from '../store/authStore'
 
@@ -11,9 +11,20 @@ export default function EvenementDetailPage() {
   const [ev, setEv]           = useState(null)
   const [loading, setLoading] = useState(true)
   const [inscrit, setInscrit] = useState(false)
-  const [nbParticipants, setNbParticipants] = useState(null)
+  const [participants, setParticipants] = useState([])
   const [actionLoading, setActionLoading]   = useState(false)
   const [error, setError]     = useState(null)
+
+  const myId = user?.id ?? user?.id_utilisateur
+
+  const loadParticipants = () =>
+    api.get(`/evenements/${id}/participants`)
+      .then(({ data }) => {
+        const parts = data ?? []
+        setParticipants(parts)
+        setInscrit(parts.some((p) => p.id_utilisateur === myId))
+      })
+      .catch(() => {})
 
   useEffect(() => {
     Promise.all([
@@ -23,25 +34,24 @@ export default function EvenementDetailPage() {
       .then(([evRes, partRes]) => {
         setEv(evRes.data)
         const parts = partRes.data ?? []
-        setNbParticipants(parts.length)
-        setInscrit(parts.some((p) => p.id_utilisateur === (user?.id ?? user?.id_utilisateur)))
+        setParticipants(parts)
+        setInscrit(parts.some((p) => p.id_utilisateur === myId))
       })
       .catch(() => navigate('/evenements'))
       .finally(() => setLoading(false))
   }, [id])
+
+  const nbParticipants = participants.length
 
   const handleToggle = async () => {
     setActionLoading(true); setError(null)
     try {
       if (inscrit) {
         await api.delete(`/evenements/${id}/participer`)
-        setInscrit(false)
-        setNbParticipants((n) => Math.max(0, (n ?? 1) - 1))
       } else {
         await api.post(`/evenements/${id}/participer`)
-        setInscrit(true)
-        setNbParticipants((n) => (n ?? 0) + 1)
       }
+      await loadParticipants()
     } catch (err) {
       setError(err.response?.data?.error || 'Erreur')
     }
@@ -68,11 +78,18 @@ export default function EvenementDetailPage() {
         {/* Header coloré */}
         <div className="bg-gradient-to-br from-[#1a4a3a] to-[#2d7a5f] px-6 py-8 text-white">
           <h2 className="text-2xl font-bold">{ev.titre}</h2>
-          {ev.statut && ev.statut !== 'planifie' && (
-            <span className="mt-2 inline-block text-xs font-medium bg-white/20 px-2.5 py-1 rounded-full capitalize">
-              {ev.statut.replace('_', ' ')}
-            </span>
-          )}
+          <div className="mt-2 flex items-center gap-2">
+            {ev.statut && ev.statut !== 'planifie' && (
+              <span className="inline-block text-xs font-medium bg-white/20 px-2.5 py-1 rounded-full capitalize">
+                {ev.statut.replace('_', ' ')}
+              </span>
+            )}
+            {inscrit && (
+              <span className="inline-flex items-center gap-1 text-xs font-semibold bg-[#34d399] text-[#1a4a3a] px-2.5 py-1 rounded-full">
+                <Check className="w-3.5 h-3.5" /> Inscrit
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="p-6 space-y-5">
@@ -121,6 +138,30 @@ export default function EvenementDetailPage() {
 
           {ev.description && (
             <p className="text-gray-600 text-sm leading-relaxed">{ev.description}</p>
+          )}
+
+          {/* Liste des participants */}
+          {participants.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1.5">
+                <Users className="w-4 h-4" /> Participants ({participants.length})
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {participants.slice(0, 12).map((p) => (
+                  <div key={p.id_utilisateur} className="flex items-center gap-2 bg-gray-50 rounded-full pl-1 pr-3 py-1 border border-gray-100">
+                    <span className="w-6 h-6 bg-[#1a4a3a] rounded-full flex items-center justify-center text-white text-[10px] font-semibold">
+                      {(p.prenom?.[0] ?? '') + (p.nom?.[0] ?? '')}
+                    </span>
+                    <span className="text-xs text-gray-600">
+                      {p.prenom} {p.id_utilisateur === myId && <span className="text-[#2d7a5f] font-medium">(vous)</span>}
+                    </span>
+                  </div>
+                ))}
+                {participants.length > 12 && (
+                  <span className="text-xs text-gray-400 self-center">et {participants.length - 12} autre(s)</span>
+                )}
+              </div>
+            </div>
           )}
 
           <div className="border-t border-gray-100 pt-4 text-sm text-gray-500">
