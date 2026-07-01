@@ -1,7 +1,21 @@
 const pool             = require('../config/db');
 const { driver }       = require('../config/neo4j');
 const { getPagination, paginate } = require('../utils/pagination');
+const { getUserQuartierIds, isPrivileged } = require('../utils/quartiers');
 const booleanIntersects = require('@turf/boolean-intersects').default;
+
+// Autorise l'accès au contenu d'un quartier : un habitant ne peut consulter
+// que son (ses) quartier(s) ; un admin/modérateur accède à tout.
+// Renvoie false (et répond 403) si l'accès est refusé.
+async function ensureQuartierAccess(req, res) {
+  if (isPrivileged(req.user)) return true;
+  const qids = await getUserQuartierIds(req.user.id);
+  if (!qids.includes(parseInt(req.params.id))) {
+    res.status(403).json({ error: "Ce quartier n'est pas le vôtre." });
+    return false;
+  }
+  return true;
+}
 
 // Vérifie si newGeoStr (JSON string) chevauche un quartier existant.
 // excludeId permet d'exclure le quartier qu'on est en train de modifier.
@@ -171,6 +185,7 @@ exports.remove = async (req, res, next) => {
 exports.getHabitants = async (req, res, next) => {
   try {
     const { id } = req.params;
+    if (!(await ensureQuartierAccess(req, res))) return;
 
     const session = driver.session();
     let pgIds = [];
@@ -204,6 +219,7 @@ exports.getHabitants = async (req, res, next) => {
 exports.getAnnonces = async (req, res, next) => {
   try {
     const { id } = req.params;
+    if (!(await ensureQuartierAccess(req, res))) return;
     const Annonce = require('../models/mongo/annonce.model');
 
     const session = driver.session();
@@ -232,6 +248,7 @@ exports.getAnnonces = async (req, res, next) => {
 exports.getEvenements = async (req, res, next) => {
   try {
     const { id } = req.params;
+    if (!(await ensureQuartierAccess(req, res))) return;
     const Evenement = require('../models/mongo/evenement.model');
 
     const session = driver.session();

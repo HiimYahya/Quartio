@@ -12,8 +12,8 @@ const { createSchema, updateSchema } = require('../validators/quartier.validator
  * /api/quartiers:
  *   get:
  *     summary: Liste tous les quartiers
+ *     description: Authentification requise.
  *     tags: [Quartiers]
- *     security: []
  *     parameters:
  *       - in: query
  *         name: page
@@ -51,7 +51,7 @@ const { createSchema, updateSchema } = require('../validators/quartier.validator
  *             schema: { $ref: '#/components/schemas/Quartier' }
  *       409: { description: Chevauchement avec un quartier existant }
  */
-router.get('/', ctrl.getAll);
+router.get('/', auth, ctrl.getAll);
 router.post('/', auth, role('admin'), validate(createSchema), ctrl.create);
 
 /**
@@ -59,8 +59,8 @@ router.post('/', auth, role('admin'), validate(createSchema), ctrl.create);
  * /api/quartiers/{id}:
  *   get:
  *     summary: Détail d'un quartier
+ *     description: Authentification requise.
  *     tags: [Quartiers]
- *     security: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -103,7 +103,7 @@ router.post('/', auth, role('admin'), validate(createSchema), ctrl.create);
  *     responses:
  *       204: { description: Supprimé }
  */
-router.get('/:id', ctrl.getById);
+router.get('/:id', auth, ctrl.getById);
 router.put('/:id',  auth, role('admin'), validate(updateSchema), ctrl.update);
 router.delete('/:id', auth, role('admin'), ctrl.remove);
 
@@ -112,6 +112,7 @@ router.delete('/:id', auth, role('admin'), ctrl.remove);
  * /api/quartiers/{id}/habitants:
  *   get:
  *     summary: Habitants du quartier (Neo4j [:HABITE])
+ *     description: Un habitant ne peut consulter que son (ses) quartier(s) ; un admin/modérateur accède à tout quartier.
  *     tags: [Quartiers]
  *     parameters:
  *       - in: path
@@ -125,6 +126,7 @@ router.delete('/:id', auth, role('admin'), ctrl.remove);
  *             schema:
  *               type: array
  *               items: { $ref: '#/components/schemas/UtilisateurPublic' }
+ *       403: { description: Ce quartier n'est pas le vôtre }
  */
 router.get('/:id/habitants', auth, ctrl.getHabitants);
 
@@ -133,8 +135,8 @@ router.get('/:id/habitants', auth, ctrl.getHabitants);
  * /api/quartiers/{id}/annonces:
  *   get:
  *     summary: Annonces du quartier (Neo4j -> MongoDB)
+ *     description: Un habitant ne peut consulter que son (ses) quartier(s) ; un admin/modérateur accède à tout quartier.
  *     tags: [Quartiers]
- *     security: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -147,16 +149,17 @@ router.get('/:id/habitants', auth, ctrl.getHabitants);
  *             schema:
  *               type: array
  *               items: { $ref: '#/components/schemas/Annonce' }
+ *       403: { description: Ce quartier n'est pas le vôtre }
  */
-router.get('/:id/annonces', ctrl.getAnnonces);
+router.get('/:id/annonces', auth, ctrl.getAnnonces);
 
 /**
  * @swagger
  * /api/quartiers/{id}/evenements:
  *   get:
  *     summary: Événements du quartier (Neo4j -> MongoDB)
+ *     description: Un habitant ne peut consulter que son (ses) quartier(s) ; un admin/modérateur accède à tout quartier.
  *     tags: [Quartiers]
- *     security: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -169,7 +172,8 @@ router.get('/:id/annonces', ctrl.getAnnonces);
  *             schema:
  *               type: array
  *               items: { $ref: '#/components/schemas/Evenement' }
+ *       403: { description: Ce quartier n'est pas le vôtre }
  */
-router.get('/:id/evenements', ctrl.getEvenements);
+router.get('/:id/evenements', auth, ctrl.getEvenements);
 
 module.exports = router;
