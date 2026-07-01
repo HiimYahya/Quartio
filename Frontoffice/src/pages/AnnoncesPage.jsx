@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Megaphone, Search } from 'lucide-react'
 import api from '../services/api'
 import useAuthStore from '../store/authStore'
+import { toast } from '../store/toastStore'
 
 const TYPE_LABELS = { offre: 'Offre', demande: 'Demande' }
 const TYPE_COLORS = { offre: 'bg-green-100 text-green-700', demande: 'bg-blue-100 text-blue-700' }
@@ -70,8 +71,10 @@ export default function AnnoncesPage() {
       setShowForm(false)
       setForm({ titre: '', description: '', type: 'offre', est_payant: false, cout_points: 0, categorie: '', id_quartier: '' })
       load()
+      toast.success('Annonce publiée')
     } catch (err) {
       setError(err.response?.data?.error ?? 'Erreur lors de la publication')
+      toast.error(err.response?.data?.error ?? 'Erreur lors de la publication')
     }
     setSubmitting(false)
   }

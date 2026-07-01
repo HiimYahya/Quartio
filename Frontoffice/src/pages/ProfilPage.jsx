@@ -6,6 +6,7 @@ import api from '../services/api'
 import LangSwitcher from '../components/ui/LangSwitcher'
 import MfaSection from '../components/ui/MfaSection'
 import SecuritySection from '../components/ui/SecuritySection'
+import { toast } from '../store/toastStore'
 
 export default function ProfilPage() {
   const { user, fetchMe, logout } = useAuthStore()
@@ -24,6 +25,12 @@ export default function ProfilPage() {
   const [detecting,      setDetecting]      = useState(false)
   const [detectResult,   setDetectResult]   = useState(null)  // { type: 'success'|'error', message }
 
+
+  // Synchronise le formulaire quand le profil est chargé (ex. au rechargement de la page,
+  // où user est null au premier rendu le temps du fetchMe).
+  useEffect(() => {
+    if (user) setForm({ nom: user.nom ?? '', prenom: user.prenom ?? '', email: user.email ?? '' })
+  }, [user?.id])
 
   useEffect(() => {
     api.get('/transactions')
@@ -68,8 +75,10 @@ export default function ProfilPage() {
       await api.put(`/utilisateurs/${user.id}`, { nom: form.nom, prenom: form.prenom })
       await fetchMe()
       setSuccess(true)
+      toast.success('Profil mis à jour')
     } catch (err) {
       setError(err.response?.data?.error ?? t('common.error'))
+      toast.error(err.response?.data?.error ?? 'Erreur lors de la sauvegarde')
     }
     setSaving(false)
   }

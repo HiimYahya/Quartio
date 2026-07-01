@@ -13,7 +13,10 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import MfaVerifyPage from './pages/MfaVerifyPage'
 import MentionsLegalesPage from './pages/MentionsLegalesPage'
+import NotFoundPage from './pages/NotFoundPage'
 import CookieBanner from './components/ui/CookieBanner'
+import Toaster from './components/ui/Toaster'
+import ErrorBoundary from './components/ui/ErrorBoundary'
 import DashboardPage from './pages/DashboardPage'
 import AnnoncesPage from './pages/AnnoncesPage'
 import AnnonceDetailPage from './pages/AnnonceDetailPage'
@@ -44,6 +47,8 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <ErrorBoundary>
+      <Toaster />
       <CookieBanner />
       <Routes>
         <Route path="/login"            element={!token ? <LoginPage />           : <Navigate to="/dashboard" replace />} />
@@ -72,11 +77,13 @@ export default function App() {
             } />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/profil"        element={<ProfilPage />} />
+            <Route path="*"              element={<NotFoundPage />} />
           </Route>
         </Route>
 
         <Route path="*" element={<Navigate to={token ? '/dashboard' : '/login'} replace />} />
       </Routes>
+      </ErrorBoundary>
     </BrowserRouter>
   )
 }
