@@ -143,8 +143,10 @@ export default function ConversationPage() {
   }
 
   // ─── Helpers ─────────────────────────────────────────────────────────────
+  // id_utilisateur_pg est le champ présent sur tous les messages (DB, réponse POST,
+  // écho socket) ; auteur_id n'existe que sur le payload socket -> on le garde en repli.
   const isOwn = (msg) =>
-    (msg.auteur_id ?? msg.expediteur_id ?? msg.id_auteur) === (user?.id ?? user?.id_utilisateur)
+    (msg.id_utilisateur_pg ?? msg.auteur_id ?? msg.expediteur_id ?? msg.id_auteur) === (user?.id ?? user?.id_utilisateur)
 
   const getOtherUser = () => {
     if (!conv?.participants) return null
