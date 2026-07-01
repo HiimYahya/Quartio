@@ -11,6 +11,10 @@ const appEvents   = require('./config/events');
 
 const app = express();
 
+// Derrière le proxy de Railway : nécessaire pour que le rate limiter et les IP
+// clientes (req.ip / X-Forwarded-For) soient correctement pris en compte.
+app.set('trust proxy', 1);
+
 // ── Hooks (système d'événements internes) ──────────────────────────────────────
 // Charge les modules de src/hooks/ qui s'abonnent aux événements métier
 // (ex: 'contrat.finalise', 'incident.cree') émis par les controllers.
