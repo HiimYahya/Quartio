@@ -12,6 +12,8 @@ import VerifyEmailPage from './pages/VerifyEmailPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import MfaVerifyPage from './pages/MfaVerifyPage'
+import MentionsLegalesPage from './pages/MentionsLegalesPage'
+import CookieBanner from './components/ui/CookieBanner'
 import DashboardPage from './pages/DashboardPage'
 import AnnoncesPage from './pages/AnnoncesPage'
 import AnnonceDetailPage from './pages/AnnonceDetailPage'
@@ -42,9 +44,11 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <CookieBanner />
       <Routes>
         <Route path="/login"            element={!token ? <LoginPage />           : <Navigate to="/dashboard" replace />} />
         <Route path="/register"         element={!token ? <RegisterPage />        : <Navigate to="/dashboard" replace />} />
+        <Route path="/mentions-legales"      element={<MentionsLegalesPage />} />
         <Route path="/verify-email"          element={<VerifyEmailPage />} />
         <Route path="/forgot-password"       element={!token ? <ForgotPasswordPage />  : <Navigate to="/dashboard" replace />} />
         <Route path="/reset-password/:token" element={!token ? <ResetPasswordPage />    : <Navigate to="/dashboard" replace />} />

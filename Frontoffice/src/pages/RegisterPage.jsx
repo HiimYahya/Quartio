@@ -9,6 +9,7 @@ import { isPasswordValid, PASSWORD_RULES_MESSAGE } from '../utils/passwordPolicy
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ nom: '', prenom: '', email: '', mot_de_passe: '' })
+  const [cgu, setCgu] = useState(false)
   const { register, loading, error, clearError, setError } = useAuthStore()
   const navigate = useNavigate()
   const { t } = useTranslation()
@@ -20,6 +21,9 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (!cgu) {
+      return setError('Vous devez accepter les conditions générales d\'utilisation.')
+    }
     if (!isPasswordValid(form.mot_de_passe)) {
       return setError(PASSWORD_RULES_MESSAGE)
     }
@@ -89,6 +93,14 @@ export default function RegisterPage() {
               </div>
               <PasswordStrengthMeter password={form.mot_de_passe} />
             </div>
+            <label className="flex items-start gap-2 text-sm text-gray-600">
+              <input type="checkbox" checked={cgu} onChange={(e) => { clearError(); setCgu(e.target.checked) }}
+                className="mt-0.5 w-4 h-4 accent-[#1a4a3a]" />
+              <span>
+                J'accepte les{' '}
+                <Link to="/mentions-legales" className="text-[#2d7a5f] font-medium hover:underline">conditions générales d'utilisation</Link>.
+              </span>
+            </label>
             <button type="submit" disabled={loading}
               className="w-full bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-60 mt-2">
               {loading ? t('auth.registering') : t('auth.register')}
