@@ -40,6 +40,18 @@ export default function ConversationPage() {
     if (!silent) setLoading(false)
   }, [id])
 
+  // Ajoute un message en évitant les doublons (l'expéditeur reçoit aussi son
+  // propre message via Socket.io après l'avoir déjà ajouté depuis la réponse POST).
+  const addMessage = useCallback((m) => {
+    if (!m) return
+    setMessages((prev) => {
+      const mid = m._id ?? m.id
+      if (mid && prev.some((x) => (x._id ?? x.id) === mid)) return prev
+      return [...prev, m]
+    })
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+  }, [])
+
   useEffect(() => {
     loadMessages()
     joinConversation(id)
@@ -48,10 +60,7 @@ export default function ConversationPage() {
     if (socket) {
       // Nouveau message reçu en temps réel
       socket.on('message:new', (data) => {
-        if (data.conversationId === id) {
-          setMessages((prev) => [...prev, data.message])
-          setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
-        }
+        if (data.conversationId === id) addMessage(data.message)
       })
 
       // Indicateur de frappe
@@ -86,9 +95,8 @@ export default function ConversationPage() {
         type: 'texte',
       })
       setText('')
-      // Ajouter localement (le socket le re-diffusera aux autres)
-      setMessages((prev) => [...prev, data])
-      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+      // Ajout local (dédupliqué avec l'écho Socket.io par _id)
+      addMessage(data)
     } catch {}
     setSending(false)
   }
@@ -106,8 +114,7 @@ export default function ConversationPage() {
       const { data } = await api.post(`/conversations/${id}/messages/media`, formData, {
         headers: { 'Content-Type': undefined },
       })
-      setMessages((prev) => [...prev, data])
-      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+      addMessage(data)
     } catch (err) {
       setUploadError(err.response?.data?.error?.message || err.response?.data?.error || 'Échec de l\'envoi de l\'image')
     }
