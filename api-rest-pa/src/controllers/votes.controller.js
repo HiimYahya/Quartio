@@ -10,6 +10,11 @@ exports.getAll = async (req, res, next) => {
     const { page, limit, skip } = getPagination(req.query);
     const { statut } = req.query;
 
+    // Fermeture automatique des votes dont la date de fin est dépassée.
+    await pool.query(
+      "UPDATE vote SET statut = 'ferme' WHERE statut = 'ouvert' AND date_fin IS NOT NULL AND date_fin < NOW()"
+    );
+
     const conditions = [];
     const values     = [];
     if (statut) { conditions.push(`statut = $${values.length + 1}`); values.push(statut); }
@@ -25,11 +30,57 @@ exports.getAll = async (req, res, next) => {
     const where  = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const total  = (await pool.query(`SELECT COUNT(*) FROM vote ${where}`, values)).rows[0].count;
     const result = await pool.query(
-      `SELECT * FROM vote ${where} ORDER BY id_vote LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+      `SELECT * FROM vote ${where} ORDER BY id_vote DESC LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
       [...values, limit, skip]
     );
 
-    res.json(paginate(result.rows, parseInt(total), page, limit));
+    const votes = result.rows;
+    const voteIds = votes.map((v) => v.id_vote);
+
+    if (voteIds.length > 0) {
+      // Options de tous les votes
+      const optRes = await pool.query(
+        'SELECT * FROM option_vote WHERE id_vote = ANY($1::int[]) ORDER BY ordre',
+        [voteIds]
+      );
+
+      // Comptage des votes par option + options choisies par l'utilisateur courant (Neo4j)
+      const toInt = (v) => (v && typeof v.toNumber === 'function' ? v.toNumber() : Number(v));
+      const counts = {};       // id_option -> nb
+      const myOptions = new Set();
+      const session = driver.session();
+      try {
+        const cRes = await session.run(
+          `MATCH (u:Utilisateur)-[:REPOND]->(o:OptionVote)<-[:A_OPTION]-(v:Vote)
+           WHERE v.pg_id IN $ids RETURN o.pg_id AS oid, count(u) AS nb`,
+          { ids: voteIds }
+        );
+        cRes.records.forEach((r) => { counts[toInt(r.get('oid'))] = toInt(r.get('nb')); });
+
+        const mRes = await session.run(
+          `MATCH (:Utilisateur {pg_id: $uid})-[:REPOND]->(o:OptionVote)<-[:A_OPTION]-(v:Vote)
+           WHERE v.pg_id IN $ids RETURN o.pg_id AS oid`,
+          { uid: req.user.id, ids: voteIds }
+        );
+        mRes.records.forEach((r) => myOptions.add(toInt(r.get('oid'))));
+      } finally {
+        await session.close();
+      }
+
+      const optionsByVote = {};
+      optRes.rows.forEach((o) => {
+        (optionsByVote[o.id_vote] ??= []).push({ ...o, nb_votes: counts[o.id_option] ?? 0 });
+      });
+
+      votes.forEach((v) => {
+        v.options = optionsByVote[v.id_vote] ?? [];
+        // id_option choisi par l'utilisateur (ou true pour un classement) sinon null
+        const mine = v.options.find((o) => myOptions.has(o.id_option));
+        v.mon_vote = mine ? mine.id_option : null;
+      });
+    }
+
+    res.json(paginate(votes, parseInt(total), page, limit));
   } catch (err) { next(err); }
 };
 

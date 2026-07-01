@@ -219,8 +219,10 @@ export default function VotesPage() {
         <div className="space-y-4">
           {votes.map((v) => {
             const total    = v.options?.reduce((sum, o) => sum + (o.nb_votes ?? 0), 0) ?? 0
-            const hasVoted = voted[v.id_vote ?? v.id]
             const voteId   = v.id_vote ?? v.id
+            const hasVoted = voted[voteId] ?? v.mon_vote
+            const closed   = v.statut && v.statut !== 'ouvert'
+            const showResults = !!hasVoted || closed
             const typeVote = v.type_vote || 'choix_multiple'
 
             if (typeVote === 'classement') {
@@ -278,6 +280,7 @@ export default function VotesPage() {
                   {typeVote === 'oui_non' && (
                     <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Oui / Non</span>
                   )}
+                  {closed && <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">Fermé</span>}
                 </div>
                 {v.description && <p className="text-sm text-gray-500 mb-3">{v.description}</p>}
                 <div className="space-y-2 mt-3">
@@ -285,25 +288,26 @@ export default function VotesPage() {
                     const optId    = opt.id_option ?? opt.id
                     const pct      = total > 0 ? Math.round((opt.nb_votes ?? 0) / total * 100) : 0
                     const isSelected = hasVoted === optId
+                    const canVote  = !hasVoted && !closed
                     return (
                       <button key={optId}
-                        onClick={() => !hasVoted && handleVote(voteId, optId)}
-                        disabled={!!hasVoted}
+                        onClick={() => canVote && handleVote(voteId, optId)}
+                        disabled={!canVote}
                         className={`w-full text-left rounded-lg border transition-all overflow-hidden ${
                           isSelected
                             ? 'border-[#34d399] bg-[#34d399]/10'
-                            : hasVoted
+                            : showResults
                               ? 'border-gray-200 bg-gray-50 cursor-default'
                               : 'border-gray-200 hover:border-[#2d7a5f] hover:bg-[#f0faf5]'
                         }`}>
                         <div className="relative px-4 py-2.5">
-                          {hasVoted && (
-                            <div className="absolute inset-0 bg-[#1a4a3a]/5"
+                          {showResults && (
+                            <div className={`absolute inset-0 ${isSelected ? 'bg-[#34d399]/20' : 'bg-[#1a4a3a]/5'}`}
                               style={{ width: `${pct}%` }} />
                           )}
                           <div className="relative flex justify-between items-center text-sm">
-                            <span className="font-medium text-gray-700">{opt.libelle}</span>
-                            {hasVoted && <span className="text-gray-500 text-xs">{pct}%</span>}
+                            <span className="font-medium text-gray-700">{opt.libelle}{isSelected && ' ✓'}</span>
+                            {showResults && <span className="text-gray-500 text-xs font-medium">{pct}% · {opt.nb_votes ?? 0}</span>}
                           </div>
                         </div>
                       </button>
