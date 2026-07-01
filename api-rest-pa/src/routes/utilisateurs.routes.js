@@ -130,6 +130,47 @@ router.delete('/:id', auth, role('admin'), ctrl.remove);
 
 /**
  * @swagger
+ * /api/utilisateurs/{id}/suspension:
+ *   put:
+ *     summary: Suspendre / réactiver un compte (admin)
+ *     description: "`jours` > 0 suspend le compte pour N jours (sessions révoquées) ; `jours` = 0 ou absent réactive."
+ *     tags: [Utilisateurs]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties: { jours: { type: integer, example: 7 } }
+ *     responses:
+ *       200: { description: Statut de suspension mis à jour }
+ *       404: { description: Utilisateur non trouvé }
+ */
+router.put('/:id/suspension', auth, role('admin'), ctrl.suspendre);
+
+/**
+ * @swagger
+ * /api/utilisateurs/{id}/points:
+ *   post:
+ *     summary: Créditer / débiter des points (admin)
+ *     tags: [Utilisateurs]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [montant]
+ *             properties:
+ *               montant: { type: integer, description: "Positif = crédit, négatif = débit", example: 50 }
+ *               motif:   { type: string, example: "Récompense bénévolat" }
+ *     responses:
+ *       200: { description: Nouveau solde }
+ *       400: { description: Montant invalide ou solde insuffisant }
+ */
+router.post('/:id/points', auth, role('admin'), ctrl.ajusterPoints);
+
+/**
+ * @swagger
  * /api/utilisateurs/{id}/password:
  *   put:
  *     summary: Changer son mot de passe

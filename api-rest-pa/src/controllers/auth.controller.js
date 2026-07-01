@@ -196,6 +196,13 @@ exports.login = async (req, res, next) => {
       return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
     }
 
+    // Bloquer si le compte est suspendu
+    if (user.suspendu_jusqu_au && new Date(user.suspendu_jusqu_au) > new Date()) {
+      return res.status(403).json({
+        error: `Compte suspendu jusqu'au ${new Date(user.suspendu_jusqu_au).toLocaleDateString('fr-FR')}.`,
+      });
+    }
+
     // Bloquer si email non vérifié
     if (user.email_verifie === false) {
       return res.status(403).json({

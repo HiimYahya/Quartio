@@ -28,7 +28,7 @@ exports.getAll = async (req, res, next) => {
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const total = (await pool.query(`SELECT COUNT(*) FROM utilisateur ${where}`, values)).rows[0].count;
     const result = await pool.query(
-      `SELECT id_utilisateur, nom, prenom, email, telephone, role, points_solde, langue, date_inscription
+      `SELECT id_utilisateur, nom, prenom, email, telephone, role, points_solde, langue, date_inscription, email_verifie, suspendu_jusqu_au
        FROM utilisateur ${where} ORDER BY id_utilisateur LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
       [...values, limit, skip]
     );
@@ -472,5 +472,63 @@ exports.detectQuartier = async (req, res, next) => {
       quartier:    { id_quartier: found.id_quartier, nom: found.nom },
       coordinates: { lat, lng },
     });
+  } catch (err) { next(err); }
+};
+
+// PUT /api/utilisateurs/:id/suspension  (admin) - body { jours } (0/absent = réactiver)
+exports.suspendre = async (req, res, next) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const jours  = Number(req.body.jours) || 0;
+    const until  = jours > 0 ? new Date(Date.now() + jours * 24 * 3600 * 1000) : null;
+
+    const { rows } = await pool.query(
+      'UPDATE utilisateur SET suspendu_jusqu_au = $2 WHERE id_utilisateur = $1 RETURNING id_utilisateur, email, suspendu_jusqu_au',
+      [userId, until]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+
+    // Suspension -> révoque les sessions pour forcer la déconnexion immédiate
+    if (until) {
+      await pool.query('UPDATE refresh_token SET est_revoque = TRUE WHERE id_utilisateur = $1', [userId]);
+    }
+    res.json(rows[0]);
+  } catch (err) { next(err); }
+};
+
+// POST /api/utilisateurs/:id/points  (admin) - crédit/débit manuel  body { montant, motif }
+exports.ajusterPoints = async (req, res, next) => {
+  try {
+    const userId  = parseInt(req.params.id);
+    const montant = parseInt(req.body.montant);
+    const motif   = (req.body.motif || 'Ajustement administrateur').toString().slice(0, 200);
+    if (!Number.isInteger(montant) || montant === 0) {
+      return res.status(400).json({ error: 'Montant invalide (entier non nul)' });
+    }
+
+    const u = await pool.query('SELECT points_solde FROM utilisateur WHERE id_utilisateur = $1', [userId]);
+    if (u.rows.length === 0) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    if (u.rows[0].points_solde + montant < 0) {
+      return res.status(400).json({ error: 'Solde insuffisant pour ce débit' });
+    }
+
+    const upd = await pool.query(
+      'UPDATE utilisateur SET points_solde = points_solde + $2 WHERE id_utilisateur = $1 RETURNING id_utilisateur, points_solde',
+      [userId, montant]
+    );
+    const tx = await pool.query(
+      'INSERT INTO transaction_points (montant, motif) VALUES ($1, $2) RETURNING id_transaction',
+      [montant, motif]
+    );
+    // Rattache la transaction à l'utilisateur (Neo4j [:EST_POUR]) pour l'historique
+    const session = driver.session();
+    try {
+      await session.run(
+        'MERGE (t:Transaction {pg_id: $tid}) MERGE (u:Utilisateur {pg_id: $uid}) MERGE (t)-[:EST_POUR]->(u)',
+        { tid: tx.rows[0].id_transaction, uid: userId }
+      );
+    } finally { await session.close(); }
+
+    res.json(upd.rows[0]);
   } catch (err) { next(err); }
 };

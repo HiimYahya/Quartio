@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS utilisateur (
   date_inscription TIMESTAMP DEFAULT NOW(),
   mfa_secret       VARCHAR(255),
   email_verifie    BOOLEAN DEFAULT FALSE,
-  mfa_actif        BOOLEAN DEFAULT FALSE
+  mfa_actif        BOOLEAN DEFAULT FALSE,
+  suspendu_jusqu_au TIMESTAMP
 );
 
 -- ── CONTRAT ─────────────────────────────────────────────────
