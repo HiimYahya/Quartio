@@ -5,16 +5,22 @@ const validateMongoId = require('../utils/validateMongoId');
 const { getPagination, paginate } = require('../utils/pagination');
 const { getUserQuartierIds, isPrivileged } = require('../utils/quartiers');
 
-// GET /api/annonces?page=1&limit=20&statut=active&categorie=...&type=...
+// GET /api/annonces?page=1&limit=20&statut=active&categorie=...&type=...&search=...&payant=true|false
 exports.getAll = async (req, res, next) => {
   try {
     const { page, limit, skip } = getPagination(req.query);
-    const { statut, categorie, type } = req.query;
+    const { statut, categorie, type, search, payant } = req.query;
 
     const filter = {};
     if (statut)    filter.statut    = statut;
     if (categorie) filter.categorie = new RegExp(categorie, 'i');
     if (type)      filter.type      = new RegExp(type, 'i');
+    if (payant === 'true' || payant === 'false') filter.est_payant = payant === 'true';
+    // Recherche plein texte simple sur le titre et la description
+    if (search && search.trim()) {
+      const rx = new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      filter.$or = [{ titre: rx }, { description: rx }];
+    }
 
     // Un habitant ne voit que les annonces de son (ses) quartier(s).
     if (!isPrivileged(req.user)) {

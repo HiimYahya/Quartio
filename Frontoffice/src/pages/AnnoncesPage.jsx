@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Megaphone } from 'lucide-react'
+import { Megaphone, Search } from 'lucide-react'
 import api from '../services/api'
 import useAuthStore from '../store/authStore'
 
@@ -31,16 +31,26 @@ export default function AnnoncesPage() {
       .catch(() => setQuartiers([]))
   }, [user?.id])
 
-  const load = async () => {
+  const [filters, setFilters] = useState({ search: '', type: '', payant: '' })
+
+  const load = async (f = filters) => {
     setLoading(true)
     try {
-      const { data } = await api.get('/annonces')
+      const params = new URLSearchParams()
+      if (f.search)  params.set('search', f.search)
+      if (f.type)    params.set('type', f.type)
+      if (f.payant)  params.set('payant', f.payant)
+      const { data } = await api.get('/annonces?' + params.toString())
       setAnnonces(data.data ?? data.annonces ?? data ?? [])
     } catch { setAnnonces([]) }
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  // Recherche/filtres débouncés (300 ms)
+  useEffect(() => {
+    const t = setTimeout(() => load(filters), 300)
+    return () => clearTimeout(t)
+  }, [filters])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -76,6 +86,41 @@ export default function AnnoncesPage() {
         >
           {showForm ? 'Annuler' : '+ Nouvelle annonce'}
         </button>
+      </div>
+
+      {/* Recherche + filtres */}
+      <div className="space-y-2">
+        <div className="relative">
+          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            value={filters.search}
+            onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
+            placeholder="Rechercher une annonce..."
+            className="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]"
+          />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { key: 'type', value: '', label: 'Tout' },
+            { key: 'type', value: 'offre', label: 'Offres' },
+            { key: 'type', value: 'demande', label: 'Demandes' },
+            { key: 'payant', value: 'false', label: 'Gratuit' },
+            { key: 'payant', value: 'true', label: 'Payant' },
+          ].map((chip) => {
+            const isActive = filters[chip.key] === chip.value
+            return (
+              <button
+                key={chip.key + chip.value}
+                onClick={() => setFilters((f) => ({ ...f, [chip.key]: isActive ? '' : chip.value }))}
+                className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
+                  isActive ? 'bg-[#1a4a3a] text-white border-[#1a4a3a]' : 'bg-white text-gray-600 border-gray-200 hover:border-[#34d399]'
+                }`}
+              >
+                {chip.label}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {showForm && (
