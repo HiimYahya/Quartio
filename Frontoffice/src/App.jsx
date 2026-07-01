@@ -21,6 +21,7 @@ import VotesPage from './pages/VotesPage'
 import MessagesPage from './pages/MessagesPage'
 import ConversationPage from './pages/ConversationPage'
 import ContratsPage from './pages/ContratsPage'
+import NotificationsPage from './pages/NotificationsPage'
 import ProfilPage from './pages/ProfilPage'
 
 const ContratDetailPage = lazy(() => import('./pages/ContratDetailPage'))
@@ -65,6 +66,7 @@ export default function App() {
                 <ContratDetailPage />
               </Suspense>
             } />
+            <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/profil"        element={<ProfilPage />} />
           </Route>
         </Route>

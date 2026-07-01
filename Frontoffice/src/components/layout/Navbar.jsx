@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Coins, Menu, X, LogOut } from 'lucide-react'
+import { Coins, Menu, X, LogOut, Bell } from 'lucide-react'
 import useAuthStore from '../../store/authStore'
 import useSocketStore from '../../store/socketStore'
 import LangSwitcher from '../ui/LangSwitcher'
@@ -20,6 +20,7 @@ export default function Navbar() {
   const user      = useAuthStore((s) => s.user)
   const logout    = useAuthStore((s) => s.logout)
   const connected = useSocketStore((s) => s.connected)
+  const unreadNotifs = useSocketStore((s) => s.unreadNotifs)
   const [open, setOpen] = useState(false)
 
   const linkClass = ({ isActive }) =>
@@ -52,6 +53,14 @@ export default function Navbar() {
               <span>{user.points_solde}</span>
             </Link>
           )}
+          <Link to="/notifications" className="relative shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:text-[#1a4a3a] hover:bg-gray-100 transition-colors" title="Notifications">
+            <Bell className="w-5 h-5" />
+            {unreadNotifs > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                {unreadNotifs > 9 ? '9+' : unreadNotifs}
+              </span>
+            )}
+          </Link>
           <div className="hidden md:block"><LangSwitcher compact /></div>
           <Link to="/profil" className="relative shrink-0" title="Mon profil">
             <div className="w-9 h-9 bg-[#1a4a3a] rounded-full flex items-center justify-center text-white text-sm font-semibold">

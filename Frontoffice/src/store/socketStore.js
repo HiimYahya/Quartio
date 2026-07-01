@@ -1,16 +1,22 @@
 import { create } from 'zustand'
 import { connectSocket, disconnectSocket, getSocket } from '../services/socket'
+import api from '../services/api'
 
 const useSocketStore = create((set, get) => ({
   connected:   false,
   onlineUsers: new Set(),
   alerts:      [], // alertes temps réel non lues
+  unreadNotifs: 0, // compteur de notifications non lues (badge)
 
   connect: (token) => {
     const socket = connectSocket(token)
 
     socket.on('connect',    () => set({ connected: true  }))
     socket.on('disconnect', () => set({ connected: false }))
+
+    // Notifications temps réel -> incrémente le badge
+    socket.on('notification:new', () => set((s) => ({ unreadNotifs: s.unreadNotifs + 1 })))
+    get().refreshUnread()
 
     socket.on('user:online', ({ userId }) => {
       set((s) => ({ onlineUsers: new Set([...s.onlineUsers, userId]) }))
@@ -37,6 +43,15 @@ const useSocketStore = create((set, get) => ({
 
   dismissAlert: (at) => set((s) => ({ alerts: s.alerts.filter((a) => a.at !== at) })),
   clearAlerts:  () => set({ alerts: [] }),
+
+  // Notifications
+  refreshUnread: async () => {
+    try {
+      const { data } = await api.get('/notifications?est_lue=false&limit=1')
+      set({ unreadNotifs: data.pagination?.total ?? 0 })
+    } catch { /* silencieux */ }
+  },
+  setUnread: (n) => set({ unreadNotifs: Math.max(0, n) }),
 
   disconnect: () => {
     disconnectSocket()
