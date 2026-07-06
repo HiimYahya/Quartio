@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Send, Image as ImageIcon, Flag, Loader2 } from 'lucide-react'
+import { ArrowLeft, Send, Image as ImageIcon, Flag, Loader2, Trash2 } from 'lucide-react'
 import api from '../services/api'
 import useAuthStore from '../store/authStore'
 import useSocketStore from '../store/socketStore'
@@ -134,6 +134,14 @@ export default function ConversationPage() {
     }
   }
 
+  const deleteMessage = async (msgId) => {
+    if (!window.confirm('Supprimer ce message ?')) return
+    try {
+      await api.delete(`/messages/${msgId}`)
+      setMessages((prev) => prev.filter((m) => (m._id ?? m.id) !== msgId))
+    } catch { /* ignore */ }
+  }
+
   // ─── Indicateur de frappe ─────────────────────────────────────────────────
   const handleTextChange = (e) => {
     setText(e.target.value)
@@ -206,6 +214,7 @@ export default function ConversationPage() {
                 own={isOwn(msg)}
                 signaled={signaledIds.has(msg.id ?? msg._id)}
                 onSignaler={() => signalerMessage(msg.id ?? msg._id)}
+                onDelete={() => deleteMessage(msg.id ?? msg._id)}
               />
             ))
           )}
@@ -268,7 +277,7 @@ export default function ConversationPage() {
   )
 }
 
-function MessageBubble({ msg, own, signaled, onSignaler }) {
+function MessageBubble({ msg, own, signaled, onSignaler, onDelete }) {
   const time = msg.created_at ?? msg.createdAt
   const isImage = msg.type === 'image' && msg.media_url
   return (
@@ -283,6 +292,15 @@ function MessageBubble({ msg, own, signaled, onSignaler }) {
           }`}
         >
           <Flag className="w-3.5 h-3.5" />
+        </button>
+      )}
+      {own && (
+        <button
+          onClick={onDelete}
+          title="Supprimer ce message"
+          className="text-xs shrink-0 opacity-0 group-hover:opacity-100 transition-opacity px-1.5 py-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
         </button>
       )}
       <div className={`max-w-xs lg:max-w-sm px-4 py-2.5 rounded-2xl text-sm ${

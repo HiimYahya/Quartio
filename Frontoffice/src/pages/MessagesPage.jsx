@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Link } from 'react-router-dom'
-import { MessageCircle } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { MessageCircle, Plus, Search, X } from 'lucide-react'
 import api from '../services/api'
 import useAuthStore from '../store/authStore'
 import useSocketStore from '../store/socketStore'
@@ -26,6 +26,39 @@ export default function MessagesPage() {
   const [loading,       setLoading]       = useState(true)
   const user     = useAuthStore((s) => s.user)
   const isOnline = useSocketStore((s) => s.isOnline)
+  const navigate = useNavigate()
+  const [showNew,   setShowNew]   = useState(false)
+  const [neighbors, setNeighbors] = useState([])
+  const [nSearch,   setNSearch]   = useState('')
+  const [nLoading,  setNLoading]  = useState(false)
+  const [starting,  setStarting]  = useState(false)
+
+  const openNew = async () => {
+    setShowNew(true); setNSearch(''); setNLoading(true)
+    try {
+      const { data: quartiers } = await api.get(`/utilisateurs/${user.id}/quartiers`)
+      const lists = await Promise.all((quartiers ?? []).map((q) =>
+        api.get(`/quartiers/${q.id_quartier}/habitants`).then(({ data }) => data).catch(() => [])
+      ))
+      const byId = new Map()
+      lists.flat().forEach((h) => {
+        if (h.id_utilisateur !== user.id) byId.set(h.id_utilisateur, h)
+      })
+      setNeighbors([...byId.values()])
+    } catch { setNeighbors([]) } finally { setNLoading(false) }
+  }
+
+  const startConv = async (voisinId) => {
+    setStarting(true)
+    try {
+      const { data } = await api.post('/conversations', { participants: [voisinId] })
+      navigate(`/messages/${data._id}`)
+    } catch { /* ignore */ } finally { setStarting(false) }
+  }
+
+  const filteredNeighbors = neighbors.filter((n) =>
+    !nSearch || `${n.prenom} ${n.nom}`.toLowerCase().includes(nSearch.toLowerCase())
+  )
 
   const load = useCallback(() => {
     api.get('/conversations')
@@ -61,7 +94,13 @@ export default function MessagesPage() {
             </span>
           )}
         </div>
-        <SocketStatus />
+        <div className="flex items-center gap-3">
+          <SocketStatus />
+          <button onClick={openNew}
+            className="flex items-center gap-1.5 bg-[#1a4a3a] hover:bg-[#0f2e24] text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-colors">
+            <Plus className="w-4 h-4" /> Nouvelle
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -120,6 +159,43 @@ export default function MessagesPage() {
             </Link>
           )
         })
+      )}
+
+      {/* Modal nouvelle conversation */}
+      {showNew && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowNew(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <h3 className="font-semibold text-gray-800">Nouvelle conversation</h3>
+              <button onClick={() => setShowNew(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-4 border-b border-gray-100">
+              <div className="relative">
+                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input value={nSearch} onChange={(e) => setNSearch(e.target.value)} autoFocus
+                  placeholder="Rechercher un voisin..."
+                  className="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]" />
+              </div>
+            </div>
+            <div className="overflow-y-auto p-2">
+              {nLoading ? (
+                <p className="text-center text-sm text-gray-400 py-6">Chargement...</p>
+              ) : filteredNeighbors.length === 0 ? (
+                <p className="text-center text-sm text-gray-400 py-6">Aucun voisin trouvé dans votre quartier.</p>
+              ) : (
+                filteredNeighbors.map((n) => (
+                  <button key={n.id_utilisateur} onClick={() => startConv(n.id_utilisateur)} disabled={starting}
+                    className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#f0faf5] transition-colors text-left disabled:opacity-50">
+                    <span className="w-9 h-9 bg-[#1a4a3a] rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0">
+                      {n.prenom?.[0]}{n.nom?.[0]}
+                    </span>
+                    <span className="text-sm text-gray-700">{n.prenom} {n.nom}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
