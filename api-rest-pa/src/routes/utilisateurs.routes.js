@@ -125,6 +125,24 @@ router.get('/voisins-fiables', auth, ctrl.voisinsFiables);
  *       403: { description: Accès réservé aux admins }
  */
 router.get('/:id',  auth, ctrl.getById);
+
+/**
+ * @swagger
+ * /api/utilisateurs/{id}/public:
+ *   get:
+ *     summary: Profil public d'un voisin
+ *     description: Infos publiques (nom, prénom, membre depuis), statistiques d'entraide et annonces actives visibles.
+ *     tags: [Utilisateurs]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200: { description: Profil public }
+ *       404: { description: Utilisateur non trouvé }
+ */
+router.get('/:id/public', auth, ctrl.profilPublic);
 router.put('/:id',  auth, validate(updateSchema), ctrl.update);
 router.delete('/:id', auth, role('admin'), ctrl.remove);
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Coins, MapPin, Info, CheckCircle2, AlertCircle, Download, ShieldAlert, Trash2 } from 'lucide-react'
+import { Coins, MapPin, Info, CheckCircle2, AlertCircle, Download, ShieldAlert, Trash2, HandHeart } from 'lucide-react'
 import useAuthStore from '../store/authStore'
 import api from '../services/api'
 import LangSwitcher from '../components/ui/LangSwitcher'
@@ -17,6 +18,7 @@ export default function ProfilPage() {
   const [error, setError]     = useState(null)
   const [transactions, setTransactions] = useState([])
   const [txLoading, setTxLoading]       = useState(true)
+  const [voisins, setVoisins]           = useState([])
 
   // ── Quartier ──────────────────────────────────────────────────────────────
   const [quartier,       setQuartier]       = useState(null)   // quartier actuel
@@ -37,6 +39,9 @@ export default function ProfilPage() {
       .then(({ data }) => setTransactions(data.data ?? data.transactions ?? []))
       .catch(() => setTransactions([]))
       .finally(() => setTxLoading(false))
+    api.get('/utilisateurs/voisins-fiables')
+      .then(({ data }) => setVoisins(Array.isArray(data) ? data : []))
+      .catch(() => setVoisins([]))
   }, [])
 
   // Charge le quartier actuel de l'utilisateur
@@ -193,6 +198,27 @@ export default function ProfilPage() {
           </div>
         )}
       </div>
+
+      {/* Voisins fiables */}
+      {voisins.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+          <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-1.5">
+            <HandHeart className="w-4 h-4 text-[#1a4a3a]" /> Mes voisins fiables
+          </h3>
+          <div className="space-y-2">
+            {voisins.map((v) => (
+              <Link key={v.id_utilisateur} to={`/profil/${v.id_utilisateur}`}
+                className="flex items-center gap-3 bg-[#f0faf5] rounded-xl px-3 py-2 hover:bg-[#e6f7ef] transition-colors">
+                <span className="w-8 h-8 bg-[#1a4a3a] rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0">
+                  {v.prenom?.[0]}{v.nom?.[0]}
+                </span>
+                <span className="text-sm text-gray-700 flex-1">{v.prenom} {v.nom}</span>
+                <span className="text-xs text-gray-400">{v.score} entraide(s)</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Formulaire profil */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">

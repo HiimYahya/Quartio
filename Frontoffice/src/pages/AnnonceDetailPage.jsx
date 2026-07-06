@@ -236,6 +236,15 @@ export default function AnnonceDetailPage() {
           >
             {contacting ? 'Ouverture...' : 'Contacter le voisin'}
           </button>
+
+          {annonce.id_utilisateur_pg && (
+            <button
+              onClick={() => navigate(`/profil/${annonce.id_utilisateur_pg}`)}
+              className="w-full text-sm text-[#2d7a5f] hover:underline text-center"
+            >
+              Voir le profil du voisin
+            </button>
+          )}
         </div>
       )}
     </div>

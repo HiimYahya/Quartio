@@ -28,6 +28,7 @@ import ConversationPage from './pages/ConversationPage'
 import ContratsPage from './pages/ContratsPage'
 import NotificationsPage from './pages/NotificationsPage'
 import ProfilPage from './pages/ProfilPage'
+import ProfilPublicPage from './pages/ProfilPublicPage'
 
 const ContratDetailPage = lazy(() => import('./pages/ContratDetailPage'))
 
@@ -77,6 +78,7 @@ export default function App() {
             } />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/profil"        element={<ProfilPage />} />
+            <Route path="/profil/:id"    element={<ProfilPublicPage />} />
             <Route path="*"              element={<NotFoundPage />} />
           </Route>
         </Route>

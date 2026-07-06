@@ -4,6 +4,8 @@ const pool   = require('../config/db');
 const mailer = require('../config/mailer');
 const { driver } = require('../config/neo4j');
 const { getPagination, paginate } = require('../utils/pagination');
+const { getUserQuartierIds, isPrivileged } = require('../utils/quartiers');
+const Annonce = require('../models/mongo/annonce.model');
 
 // Vérifie le code MFA si l'utilisateur l'a activé. Retourne un message d'erreur ou null.
 const checkMfaIfActive = async (user, mfa_code) => {
@@ -471,6 +473,52 @@ exports.detectQuartier = async (req, res, next) => {
     res.json({
       quartier:    { id_quartier: found.id_quartier, nom: found.nom },
       coordinates: { lat, lng },
+    });
+  } catch (err) { next(err); }
+};
+
+// GET /api/utilisateurs/:id/public  (auth) - profil public d'un voisin
+exports.profilPublic = async (req, res, next) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const base = await pool.query(
+      'SELECT id_utilisateur, nom, prenom, role, date_inscription FROM utilisateur WHERE id_utilisateur = $1',
+      [userId]
+    );
+    if (base.rows.length === 0) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+
+    // Statistiques d'entraide (Neo4j [:A_AIDE])
+    const session = driver.session();
+    let rendus = 0, recus = 0;
+    try {
+      const r = await session.run(
+        `MATCH (u:Utilisateur {pg_id: $id})
+         OPTIONAL MATCH (u)-[out:A_AIDE]->()
+         WITH u, count(out) AS rendus
+         OPTIONAL MATCH (u)<-[inc:A_AIDE]-()
+         RETURN rendus, count(inc) AS recus`,
+        { id: userId }
+      );
+      if (r.records[0]) {
+        const toInt = (v) => (v && typeof v.toNumber === 'function' ? v.toNumber() : Number(v) || 0);
+        rendus = toInt(r.records[0].get('rendus'));
+        recus  = toInt(r.records[0].get('recus'));
+      }
+    } finally { await session.close(); }
+
+    // Annonces actives visibles par le demandeur (cloisonnement quartier)
+    const filter = { id_utilisateur_pg: userId, statut: 'active' };
+    if (!isPrivileged(req.user)) {
+      const qids = await getUserQuartierIds(req.user.id);
+      filter.id_quartier = { $in: qids };
+    }
+    const annonces = await Annonce.find(filter).sort({ createdAt: -1 }).limit(10).lean();
+
+    res.json({
+      ...base.rows[0],
+      services_rendus: rendus,
+      services_recus:  recus,
+      annonces,
     });
   } catch (err) { next(err); }
 };
