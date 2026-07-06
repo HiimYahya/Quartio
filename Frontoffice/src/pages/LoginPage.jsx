@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Mail, Lock, ArrowRight, CheckCircle2 } from 'lucide-react'
@@ -15,6 +15,48 @@ export default function LoginPage() {
   const verified = searchParams.get('verified')
   const reset    = searchParams.get('reset')
 
+  // Blocage temporaire après 5 tentatives échouées.
+  // Persisté en localStorage pour survivre à un rechargement de la page.
+  const MAX_ATTEMPTS = 5
+  const BLOCK_SECONDS = 30
+  const readLS = (k, d = 0) => { try { return parseInt(localStorage.getItem(k)) || d } catch { return d } }
+  const [attempts, setAttempts]   = useState(() => readLS('login_attempts'))
+  const [remaining, setRemaining] = useState(0)
+
+  useEffect(() => {
+    const tick = () => {
+      const until = readLS('login_block_until')
+      const s = Math.ceil((until - Date.now()) / 1000)
+      if (s <= 0) {
+        if (until) { localStorage.removeItem('login_block_until'); localStorage.removeItem('login_attempts'); setAttempts(0) }
+        setRemaining(0)
+      } else {
+        setRemaining(s)
+      }
+    }
+    tick()
+    const it = setInterval(tick, 1000)
+    return () => clearInterval(it)
+  }, [])
+
+  const blocked = remaining > 0
+
+  const registerFailure = () => {
+    const n = readLS('login_attempts') + 1
+    localStorage.setItem('login_attempts', String(n))
+    setAttempts(n)
+    if (n >= MAX_ATTEMPTS) {
+      localStorage.setItem('login_block_until', String(Date.now() + BLOCK_SECONDS * 1000))
+      setRemaining(BLOCK_SECONDS)
+    }
+  }
+
+  const clearFailures = () => {
+    localStorage.removeItem('login_attempts')
+    localStorage.removeItem('login_block_until')
+    setAttempts(0); setRemaining(0)
+  }
+
   const handleChange = (e) => {
     clearError()
     setUnverifiedEmail(null)
@@ -23,13 +65,18 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (blocked) return
     const result = await login(form.email, form.mot_de_passe)
     if (result === true) {
+      clearFailures()
       navigate('/dashboard')
     } else if (result?.mfaRequired) {
+      clearFailures()
       navigate('/mfa')
     } else if (result?.emailNotVerified) {
       setUnverifiedEmail(result.email || form.email)
+    } else {
+      registerFailure()
     }
   }
 
@@ -63,8 +110,20 @@ export default function LoginPage() {
             </div>
           )}
 
-          {error && !unverifiedEmail && (
+          {error && !unverifiedEmail && !blocked && (
             <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-4 text-sm">{error}</div>
+          )}
+
+          {!blocked && attempts > 0 && attempts < MAX_ATTEMPTS && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-lg px-4 py-2 mb-4 text-xs">
+              Tentative {attempts}/{MAX_ATTEMPTS} — après {MAX_ATTEMPTS} échecs, la connexion sera bloquée {BLOCK_SECONDS}s.
+            </div>
+          )}
+
+          {blocked && (
+            <div className="bg-orange-50 border border-orange-200 text-orange-800 rounded-lg px-4 py-3 mb-4 text-sm">
+              Trop de tentatives échouées. Réessayez dans <strong>{remaining}s</strong>.
+            </div>
           )}
 
           {unverifiedEmail && (
@@ -104,9 +163,9 @@ export default function LoginPage() {
                   className="w-full border border-gray-300 rounded-lg pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399] focus:border-transparent transition" />
               </div>
             </div>
-            <button type="submit" disabled={loading}
+            <button type="submit" disabled={loading || blocked}
               className="w-full bg-[#1a4a3a] hover:bg-[#0f2e24] text-white font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-60 mt-2">
-              {loading ? t('auth.connecting') : t('auth.login')}
+              {blocked ? `Réessayez dans ${remaining}s` : loading ? t('auth.connecting') : t('auth.login')}
             </button>
           </form>
 
