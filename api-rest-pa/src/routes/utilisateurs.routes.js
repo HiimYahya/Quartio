@@ -77,6 +77,16 @@ router.get('/voisins-fiables', auth, ctrl.voisinsFiables);
 
 /**
  * @swagger
+ * /api/utilisateurs/moderateurs:
+ *   get:
+ *     summary: Liste des admins et modérateurs (pour assignation d'incidents)
+ *     tags: [Utilisateurs]
+ *     responses: { 200: { description: Liste } }
+ */
+router.get('/moderateurs', auth, role('admin', 'moderateur'), ctrl.listModerateurs);
+
+/**
+ * @swagger
  * /api/utilisateurs/{id}:
  *   get:
  *     summary: Profil d'un utilisateur

@@ -63,8 +63,44 @@ export default function StatistiquesPage() {
     ouvert: '#ef4444', en_cours: '#f59e0b', resolu: '#34d399', ferme: '#6b7280',
   }
 
+  const exportCSV = () => {
+    const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
+    const lines = []
+    lines.push('# KPIs')
+    lines.push('Indicateur,Valeur')
+    lines.push(['Utilisateurs totaux', kpis.total_utilisateurs].map(esc).join(','))
+    lines.push(['Nouveaux (30j)', kpis.nouveaux_30j].map(esc).join(','))
+    lines.push(['Points en circulation', kpis.points_en_circulation ?? 0].map(esc).join(','))
+    lines.push(['Taux completion contrats (%)', kpis.taux_completion ?? 0].map(esc).join(','))
+    lines.push('')
+    lines.push('# Activite hebdomadaire')
+    lines.push('Semaine,Nouveaux,Annonces,Evenements,Points')
+    ;(weekly ?? []).forEach((w) => lines.push([w.label, w.nouveaux, w.annonces, w.evenements, w.points].map(esc).join(',')))
+    lines.push('')
+    lines.push('# Classement (points)')
+    lines.push('Rang,Nom,Points')
+    ;(ranking ?? []).forEach((r, i) => lines.push([i + 1, `${r.prenom ?? ''} ${r.nom ?? ''}`.trim(), r.points_solde ?? r.points ?? 0].map(esc).join(',')))
+    lines.push('')
+    lines.push('# Top categories')
+    lines.push('Categorie,Nombre')
+    ;(top_categories ?? []).forEach((c) => lines.push([c.categorie ?? c.name ?? c._id, c.count ?? c.value ?? 0].map(esc).join(',')))
+
+    const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `statistiques-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <button onClick={exportCSV}
+          className="flex items-center gap-1.5 border border-slate-300 text-slate-600 hover:bg-slate-50 px-3 py-2 rounded-lg text-sm font-medium transition">
+          ⬇ Export CSV
+        </button>
+      </div>
 
       {/* KPIs rapides */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

@@ -11,6 +11,8 @@ const incidentSchema = new mongoose.Schema({
   est_synchronise:  { type: Boolean, default: false },
   // Référence PostgreSQL (utilisateur qui signale)
   id_utilisateur_pg: { type: Number, required: true },
+  // Modérateur/admin assigné au traitement (PostgreSQL id), optionnel
+  id_moderateur:    { type: Number, default: null },
   // Référence MongoDB message source (optionnel)
   id_message: { type: mongoose.Schema.Types.ObjectId, ref: 'Message' },
 }, { timestamps: true });

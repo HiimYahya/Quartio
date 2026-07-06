@@ -28,6 +28,8 @@ export default function IncidentsPage() {
   const [editSaving, setEditSaving] = useState(false)
   const [editError,  setEditError]  = useState(null)
 
+  const [moderateurs, setModerateurs] = useState([])
+
   const load = () => {
     api.get('/incidents')
       .then(({ data }) => setIncidents(data.data ?? data.incidents ?? []))
@@ -35,7 +37,20 @@ export default function IncidentsPage() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    api.get('/utilisateurs/moderateurs')
+      .then(({ data }) => setModerateurs(Array.isArray(data) ? data : []))
+      .catch(() => setModerateurs([]))
+  }, [])
+
+  const handleAssign = async (id, id_moderateur) => {
+    const val = id_moderateur ? parseInt(id_moderateur) : null
+    try {
+      await api.put(`/incidents/${id}`, { id_moderateur: val })
+      setIncidents((inc) => inc.map((i) => (i.id ?? i._id) === id ? { ...i, id_moderateur: val } : i))
+    } catch {}
+  }
 
   const handleStatut = async (id, statut) => {
     try {
@@ -157,6 +172,14 @@ export default function IncidentsPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
+                    <select value={inc.id_moderateur ?? ''} onChange={(e) => handleAssign(id, e.target.value)}
+                      title="Assigner à un modérateur"
+                      className="text-xs font-medium px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-[130px]">
+                      <option value="">Non assigné</option>
+                      {moderateurs.map((m) => (
+                        <option key={m.id_utilisateur} value={m.id_utilisateur}>{m.prenom} {m.nom}</option>
+                      ))}
+                    </select>
                     <select value={inc.statut ?? 'ouvert'} onChange={(e) => handleStatut(id, e.target.value)}
                       className={`text-xs font-medium px-2.5 py-1.5 rounded-lg border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 ${STATUT_COLORS[inc.statut] ?? 'bg-slate-100'}`}>
                       {Object.entries(STATUT_LABELS).map(([val, lab]) => (

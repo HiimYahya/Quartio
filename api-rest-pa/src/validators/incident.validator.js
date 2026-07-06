@@ -15,6 +15,7 @@ const updateSchema = Joi.object({
   priorite:        Joi.string().valid('basse', 'normale', 'haute', 'critique'),
   date_resolution: Joi.date().allow(null),
   est_synchronise: Joi.boolean(),
+  id_moderateur:   Joi.number().integer().allow(null),
 }).min(1);
 
 module.exports = { createSchema, updateSchema };

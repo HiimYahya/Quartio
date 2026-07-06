@@ -477,6 +477,16 @@ exports.detectQuartier = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// GET /api/utilisateurs/moderateurs  (admin, modérateur) - liste pour assignation d'incidents
+exports.listModerateurs = async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      "SELECT id_utilisateur, nom, prenom, role FROM utilisateur WHERE role IN ('admin', 'moderateur') ORDER BY prenom, nom"
+    );
+    res.json(rows);
+  } catch (err) { next(err); }
+};
+
 // GET /api/utilisateurs/:id/public  (auth) - profil public d'un voisin
 exports.profilPublic = async (req, res, next) => {
   try {
