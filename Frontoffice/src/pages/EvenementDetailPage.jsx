@@ -1,8 +1,20 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { CalendarDays, MapPin, Users, ArrowLeft, Check } from 'lucide-react'
+import { MapContainer, TileLayer, Polygon } from 'react-leaflet'
 import api from '../services/api'
 import useAuthStore from '../store/authStore'
+
+// GeoJSON (string) -> positions Leaflet [[lat, lng], ...]
+function parseGeo(g) {
+  if (!g) return null
+  try {
+    const obj  = typeof g === 'string' ? JSON.parse(g) : g
+    const geom = obj.type === 'Feature' ? obj.geometry : obj
+    if (geom?.type === 'Polygon') return geom.coordinates[0].map(([lng, lat]) => [lat, lng])
+  } catch { /* géométrie invalide */ }
+  return null
+}
 
 export default function EvenementDetailPage() {
   const { id }       = useParams()
@@ -14,6 +26,7 @@ export default function EvenementDetailPage() {
   const [participants, setParticipants] = useState([])
   const [actionLoading, setActionLoading]   = useState(false)
   const [error, setError]     = useState(null)
+  const [geo, setGeo]         = useState(null)  // polygone du quartier de l'événement
 
   const myId = user?.id ?? user?.id_utilisateur
 
@@ -40,6 +53,14 @@ export default function EvenementDetailPage() {
       .catch(() => navigate('/evenements'))
       .finally(() => setLoading(false))
   }, [id])
+
+  // Charge le polygone du quartier de l'événement pour la mini-carte
+  useEffect(() => {
+    if (!ev?.id_quartier) return
+    api.get(`/quartiers/${ev.id_quartier}`)
+      .then(({ data }) => setGeo(parseGeo(data.geometrie)))
+      .catch(() => setGeo(null))
+  }, [ev?.id_quartier])
 
   const nbParticipants = participants.length
 
@@ -138,6 +159,24 @@ export default function EvenementDetailPage() {
 
           {ev.description && (
             <p className="text-gray-600 text-sm leading-relaxed">{ev.description}</p>
+          )}
+
+          {/* Mini-carte du quartier de l'événement */}
+          {geo && geo.length > 2 && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1.5">
+                <MapPin className="w-4 h-4" /> Quartier {ev.lieu ? `· ${ev.lieu}` : ''}
+              </h3>
+              <div className="rounded-xl overflow-hidden border border-gray-100" style={{ height: 200 }}>
+                <MapContainer bounds={geo} scrollWheelZoom={false} style={{ height: '100%', width: '100%' }}>
+                  <TileLayer
+                    attribution='&copy; OpenStreetMap'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                  <Polygon positions={geo} pathOptions={{ color: '#1a4a3a', fillColor: '#34d399', fillOpacity: 0.25 }} />
+                </MapContainer>
+              </div>
+            </div>
           )}
 
           {/* Liste des participants */}
