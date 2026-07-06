@@ -1,7 +1,7 @@
 const pool       = require('../config/db');
 const { driver } = require('../config/neo4j');
 const { getPagination, paginate } = require('../utils/pagination');
-const { emitAlert } = require('../socket/index');
+const { emitAlert, emitVoteUpdate } = require('../socket/index');
 const { getUserQuartierIds, isPrivileged } = require('../utils/quartiers');
 
 // GET /api/votes?page=1&limit=20&statut=ouvert
@@ -267,6 +267,9 @@ exports.voter = async (req, res, next) => {
     } finally {
       await session.close();
     }
+
+    // Résultats à rafraîchir en direct chez les autres participants
+    emitVoteUpdate(voteId);
 
     res.status(201).json({ message: 'Vote enregistré' });
   } catch (err) { next(err); }

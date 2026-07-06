@@ -116,4 +116,10 @@ function emitAlert(type, payload, targetUserIds = null) {
   }
 }
 
-module.exports = { initSocket, emitNewMessage, emitNotification, emitAlert, getIo };
+// Signale qu'un vote a reçu une nouvelle réponse (résultats à rafraîchir en direct)
+function emitVoteUpdate(voteId) {
+  if (!io) return;
+  io.emit('vote:update', { id_vote: voteId });
+}
+
+module.exports = { initSocket, emitNewMessage, emitNotification, emitAlert, emitVoteUpdate, getIo };

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Vote } from 'lucide-react'
 import api from '../services/api'
 import useAuthStore from '../store/authStore'
+import { getSocket } from '../services/socket'
 
 const TYPE_LABELS = {
   choix_multiple: 'Choix multiple',
@@ -41,6 +42,15 @@ export default function VotesPage() {
   }
 
   useEffect(() => { load() }, [])
+
+  // Résultats en temps réel : un vote déposé ailleurs rafraîchit la liste
+  useEffect(() => {
+    const socket = getSocket()
+    if (!socket) return
+    const onUpdate = () => load()
+    socket.on('vote:update', onUpdate)
+    return () => socket.off('vote:update', onUpdate)
+  }, [])
 
   // ── Vote classique (choix_multiple / oui_non) ────────────────────────────
   const handleVote = async (voteId, idOption) => {
