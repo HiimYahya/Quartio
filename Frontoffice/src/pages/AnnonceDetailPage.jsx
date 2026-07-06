@@ -16,6 +16,9 @@ export default function AnnonceDetailPage() {
   const [creating, setCreating] = useState(false)
   const [contacting, setContacting] = useState(false)
   const [error,    setError]    = useState(null)
+  const [editing,  setEditing]  = useState(false)
+  const [editForm, setEditForm] = useState({ titre: '', description: '', est_payant: false, cout_points: 0 })
+  const [busy,     setBusy]     = useState(false)
 
   useEffect(() => {
     api.get(`/annonces/${id}`)
@@ -57,6 +60,42 @@ export default function AnnonceDetailPage() {
     } finally {
       setContacting(false)
     }
+  }
+
+  const startEdit = () => {
+    setEditForm({
+      titre: annonce.titre ?? '', description: annonce.description ?? '',
+      est_payant: !!annonce.est_payant, cout_points: annonce.cout_points ?? 0,
+    })
+    setEditing(true); setError(null)
+  }
+
+  const handleUpdate = async (e) => {
+    e.preventDefault()
+    setBusy(true); setError(null)
+    try {
+      const { data } = await api.put(`/annonces/${id}`, {
+        titre: editForm.titre,
+        description: editForm.description,
+        est_payant: editForm.est_payant,
+        cout_points: editForm.est_payant ? parseInt(editForm.cout_points) || 0 : 0,
+      })
+      setAnnonce(data)
+      setEditing(false)
+    } catch (err) {
+      setError(err.response?.data?.error ?? 'Erreur lors de la modification')
+    } finally { setBusy(false) }
+  }
+
+  const handleArchiver = async () => {
+    if (!window.confirm('Archiver cette annonce ? Elle ne sera plus visible ni acceptable.')) return
+    setBusy(true); setError(null)
+    try {
+      const { data } = await api.put(`/annonces/${id}`, { statut: 'archivee' })
+      setAnnonce(data)
+    } catch (err) {
+      setError(err.response?.data?.error ?? 'Erreur lors de l\'archivage')
+    } finally { setBusy(false) }
   }
 
   if (loading) return <div className="text-center py-12 text-gray-400">Chargement...</div>
@@ -116,8 +155,55 @@ export default function AnnonceDetailPage() {
 
       {/* Actions */}
       {isAuteur ? (
-        <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-500 text-center">
-          C'est votre annonce. Vos voisins peuvent vous contacter pour l'accepter.
+        <div className="space-y-3">
+          <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-500 text-center">
+            C'est votre annonce{annonce.statut !== 'active' ? ` (${annonce.statut})` : ''}. Vos voisins peuvent vous contacter pour l'accepter.
+          </div>
+
+          {editing ? (
+            <form onSubmit={handleUpdate} className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Titre</label>
+                <input value={editForm.titre} onChange={(e) => setEditForm((f) => ({ ...f, titre: e.target.value }))} required
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} rows={3}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399] resize-none" />
+              </div>
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input type="checkbox" checked={editForm.est_payant} onChange={(e) => setEditForm((f) => ({ ...f, est_payant: e.target.checked }))} className="w-4 h-4 accent-[#1a4a3a]" />
+                Service payant
+              </label>
+              {editForm.est_payant && (
+                <input type="number" min={0} value={editForm.cout_points} onChange={(e) => setEditForm((f) => ({ ...f, cout_points: e.target.value }))}
+                  placeholder="Coût en points"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]" />
+              )}
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setEditing(false)}
+                  className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg text-sm hover:bg-gray-50">Annuler</button>
+                <button type="submit" disabled={busy}
+                  className="flex-1 bg-[#1a4a3a] hover:bg-[#0f2e24] text-white py-2 rounded-lg text-sm disabled:opacity-60">
+                  {busy ? '...' : 'Enregistrer'}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="flex gap-2">
+              <button onClick={startEdit} disabled={busy}
+                className="flex-1 border border-[#1a4a3a] text-[#1a4a3a] hover:bg-[#1a4a3a]/5 font-medium py-2.5 rounded-xl text-sm disabled:opacity-60">
+                Modifier
+              </button>
+              {annonce.statut === 'active' && (
+                <button onClick={handleArchiver} disabled={busy}
+                  className="flex-1 border border-orange-200 text-orange-700 hover:bg-orange-50 font-medium py-2.5 rounded-xl text-sm disabled:opacity-60">
+                  Archiver
+                </button>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
