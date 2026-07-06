@@ -143,6 +143,33 @@ router.get('/:id',  auth, ctrl.getById);
  *       404: { description: Utilisateur non trouvé }
  */
 router.get('/:id/public', auth, ctrl.profilPublic);
+
+/**
+ * @swagger
+ * /api/utilisateurs/{id}/preferences:
+ *   get:
+ *     summary: Préférences de notifications (par type)
+ *     tags: [Utilisateurs]
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
+ *     responses: { 200: { description: "Map { type: booléen }" } }
+ *   put:
+ *     summary: Mettre à jour les préférences de notifications
+ *     tags: [Utilisateurs]
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               notif_prefs:
+ *                 type: object
+ *                 example: { message: true, evenement: true, contrat: true, vote: false, incident: true }
+ *     responses: { 200: { description: Préférences mises à jour } }
+ */
+router.get('/:id/preferences', auth, ctrl.getPreferences);
+router.put('/:id/preferences', auth, ctrl.updatePreferences);
+
 router.put('/:id',  auth, validate(updateSchema), ctrl.update);
 router.delete('/:id', auth, role('admin'), ctrl.remove);
 

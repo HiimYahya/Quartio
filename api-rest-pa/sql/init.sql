@@ -31,7 +31,8 @@ CREATE TABLE IF NOT EXISTS utilisateur (
   mfa_secret       VARCHAR(255),
   email_verifie    BOOLEAN DEFAULT FALSE,
   mfa_actif        BOOLEAN DEFAULT FALSE,
-  suspendu_jusqu_au TIMESTAMP
+  suspendu_jusqu_au TIMESTAMP,
+  notif_prefs      JSONB               -- préférences de notifications par type (null = tout activé)
 );
 
 -- ── CONTRAT ─────────────────────────────────────────────────

@@ -523,6 +523,35 @@ exports.profilPublic = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// GET /api/utilisateurs/:id/preferences  -> préférences de notifications
+exports.getPreferences = async (req, res, next) => {
+  try {
+    const userId = parseInt(req.params.id);
+    if (req.user.id !== userId && req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
+    const { rows } = await pool.query('SELECT notif_prefs FROM utilisateur WHERE id_utilisateur = $1', [userId]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    res.json(rows[0].notif_prefs ?? {});
+  } catch (err) { next(err); }
+};
+
+// PUT /api/utilisateurs/:id/preferences  body { notif_prefs: { message, evenement, contrat, vote, incident } }
+exports.updatePreferences = async (req, res, next) => {
+  try {
+    const userId = parseInt(req.params.id);
+    if (req.user.id !== userId && req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
+    const prefs = req.body.notif_prefs ?? req.body ?? {};
+    const allowed = ['message', 'evenement', 'contrat', 'vote', 'incident'];
+    const clean = {};
+    for (const k of allowed) if (k in prefs) clean[k] = !!prefs[k];
+    const { rows } = await pool.query(
+      'UPDATE utilisateur SET notif_prefs = $2::jsonb WHERE id_utilisateur = $1 RETURNING notif_prefs',
+      [userId, JSON.stringify(clean)]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    res.json(rows[0].notif_prefs);
+  } catch (err) { next(err); }
+};
+
 // PUT /api/utilisateurs/:id/suspension  (admin) - body { jours } (0/absent = réactiver)
 exports.suspendre = async (req, res, next) => {
   try {

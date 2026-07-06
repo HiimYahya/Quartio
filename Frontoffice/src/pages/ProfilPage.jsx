@@ -19,6 +19,7 @@ export default function ProfilPage() {
   const [transactions, setTransactions] = useState([])
   const [txLoading, setTxLoading]       = useState(true)
   const [voisins, setVoisins]           = useState([])
+  const [notifPrefs, setNotifPrefs]     = useState({})
 
   // ── Quartier ──────────────────────────────────────────────────────────────
   const [quartier,       setQuartier]       = useState(null)   // quartier actuel
@@ -43,6 +44,31 @@ export default function ProfilPage() {
       .then(({ data }) => setVoisins(Array.isArray(data) ? data : []))
       .catch(() => setVoisins([]))
   }, [])
+
+  useEffect(() => {
+    if (!user?.id) return
+    api.get(`/utilisateurs/${user.id}/preferences`)
+      .then(({ data }) => setNotifPrefs(data ?? {}))
+      .catch(() => setNotifPrefs({}))
+  }, [user?.id])
+
+  const NOTIF_TYPES = [
+    { key: 'message',   label: 'Messages' },
+    { key: 'evenement', label: 'Événements' },
+    { key: 'contrat',   label: 'Contrats' },
+    { key: 'vote',      label: 'Votes' },
+    { key: 'incident',  label: 'Incidents' },
+  ]
+
+  const toggleNotif = async (key) => {
+    const next = { ...notifPrefs, [key]: notifPrefs[key] === false ? true : false }
+    setNotifPrefs(next)
+    try {
+      await api.put(`/utilisateurs/${user.id}/preferences`, { notif_prefs: next })
+    } catch {
+      setNotifPrefs(notifPrefs) // rollback en cas d'échec
+    }
+  }
 
   // Charge le quartier actuel de l'utilisateur
   useEffect(() => {
@@ -269,6 +295,26 @@ export default function ProfilPage() {
 
       {/* Sécurité - mot de passe, email, téléphone, sessions */}
       <SecuritySection user={user} onEmailChanged={fetchMe} onLogout={logout} />
+
+      {/* Préférences de notifications */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+        <h3 className="font-semibold text-gray-800 mb-1">Préférences de notifications</h3>
+        <p className="text-xs text-gray-400 mb-3">Choisissez les types de notifications que vous souhaitez recevoir.</p>
+        <div className="space-y-2">
+          {NOTIF_TYPES.map(({ key, label }) => {
+            const enabled = notifPrefs[key] !== false
+            return (
+              <div key={key} className="flex items-center justify-between py-1.5">
+                <span className="text-sm text-gray-700">{label}</span>
+                <button onClick={() => toggleNotif(key)} role="switch" aria-checked={enabled}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${enabled ? 'bg-[#1a4a3a]' : 'bg-gray-300'}`}>
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${enabled ? 'translate-x-5' : ''}`} />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      </div>
 
       {/* Langue */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">

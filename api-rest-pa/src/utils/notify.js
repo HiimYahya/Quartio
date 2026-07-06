@@ -14,6 +14,16 @@ const logger = require('../config/logger');
  */
 const createNotification = async (id_utilisateur, type, titre, contenu, id_ressource = null, type_ressource = null) => {
   try {
+    // Respecte les préférences du destinataire : si le type est explicitement
+    // désactivé (notif_prefs[type] === false), on n'insère rien. 'systeme' est toujours actif.
+    if (type !== 'systeme') {
+      const { rows } = await pool.query(
+        'SELECT notif_prefs FROM utilisateur WHERE id_utilisateur = $1', [id_utilisateur]
+      );
+      const prefs = rows[0]?.notif_prefs;
+      if (prefs && prefs[type] === false) return;
+    }
+
     await pool.query(
       `INSERT INTO notification (id_utilisateur, type, titre, contenu, id_ressource, type_ressource)
        VALUES ($1, $2, $3, $4, $5, $6)`,
