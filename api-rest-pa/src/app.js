@@ -51,6 +51,31 @@ app.use(express.json({ limit: '15mb' }));
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
+// DIAGNOSTIC TEMPORAIRE — teste la connectivité TCP sortante (SMTP vs HTTPS). À retirer.
+app.get('/_diag/egress', async (req, res) => {
+  const net = require('net');
+  const targets = [
+    ['smtp.gmail.com', 587],        // SMTP submission
+    ['smtp.gmail.com', 465],        // SMTP SSL
+    ['smtp-relay.brevo.com', 2525], // SMTP alternatif
+    ['smtp-relay.brevo.com', 587],
+    ['api.resend.com', 443],        // contrôle HTTPS (doit CONNECTED)
+    ['google.com', 443],            // contrôle HTTPS (doit CONNECTED)
+  ];
+  const test = ([host, port]) => new Promise((resolve) => {
+    const start = Date.now();
+    const socket = new net.Socket();
+    let done = false;
+    const finish = (status) => { if (done) return; done = true; socket.destroy(); resolve({ host, port, status, ms: Date.now() - start }); };
+    socket.setTimeout(8000);
+    socket.once('connect', () => finish('CONNECTED'));
+    socket.once('timeout', () => finish('TIMEOUT'));
+    socket.once('error', (e) => finish('ERROR:' + (e.code || e.message)));
+    socket.connect(port, host);
+  });
+  res.json({ results: await Promise.all(targets.map(test)) });
+});
+
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use('/api', require('./routes/index'));
