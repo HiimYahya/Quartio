@@ -1,0 +1,77 @@
+/* ===== Thème Bleu ===== */
+
+.root, .root-pane {
+    -fx-font-family: "Segoe UI", sans-serif;
+    -fx-font-size: 13px;
+    -fx-background-color: #ecf4fb;
+
+    /* Variables Modena — évite les warnings de lookup */
+    -fx-base:                        #d0e4f7;
+    -fx-background:                  #ecf4fb;
+    -fx-control-inner-background:    #ffffff;
+    -fx-control-inner-background-alt:#f0f8ff;
+    -fx-text-background-color:       #212121;
+    -fx-accent:                      #0d47a1;
+    -fx-focus-color:                 #0d47a1;
+    -fx-faint-focus-color:           #0d47a122;
+    -fx-outer-border:                #bbdefb;
+    -fx-inner-border:                #d0e4f7;
+    -fx-body-color:                  #ecf4fb;
+}
+
+/* --- Header --- */
+.header { -fx-background-color: #0d47a1; }
+.header-title { -fx-text-fill: white; -fx-font-size: 20px; -fx-font-weight: bold; }
+.header-subtitle { -fx-text-fill: #90caf9; -fx-font-size: 13px; }
+.label-connexion { -fx-text-fill: white; -fx-font-size: 12px; }
+
+/* --- Sections --- */
+.section-title { -fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #0d47a1; }
+
+/* --- Boutons --- */
+.btn-primary {
+    -fx-background-color: #0d47a1; -fx-text-fill: white;
+    -fx-font-weight: bold; -fx-background-radius: 6; -fx-padding: 6 16;
+}
+.btn-primary:hover { -fx-background-color: #01579b; }
+.btn-secondary {
+    -fx-background-color: #d0e4f7; -fx-text-fill: #0d47a1;
+    -fx-background-radius: 6; -fx-padding: 6 16;
+}
+.btn-secondary:hover { -fx-background-color: #bbdefb; }
+
+/* --- Status bar --- */
+.status-bar {
+    -fx-background-color: #bbdefb;
+    -fx-border-color: #90caf9; -fx-border-width: 1 0 0 0;
+}
+
+/* --- TextArea readonly --- */
+.text-area-readonly .content { -fx-background-color: #f0f8ff; }
+
+/* --- Cartes statistiques --- */
+.stat-card {
+    -fx-background-color: white; -fx-background-radius: 8; -fx-padding: 20;
+    -fx-min-width: 160;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 6, 0, 0, 2);
+    -fx-alignment: center; -fx-spacing: 8;
+}
+.stat-nouveau { -fx-border-color: #0d47a1; -fx-border-width: 0 0 4 0; -fx-border-radius: 0 0 8 8; }
+.stat-encours { -fx-border-color: #e65100; -fx-border-width: 0 0 4 0; -fx-border-radius: 0 0 8 8; }
+.stat-resolu  { -fx-border-color: #1b5e20; -fx-border-width: 0 0 4 0; -fx-border-radius: 0 0 8 8; }
+.stat-rejete  { -fx-border-color: #c62828; -fx-border-width: 0 0 4 0; -fx-border-radius: 0 0 8 8; }
+.stat-nonsync { -fx-border-color: #6a1b9a; -fx-border-width: 0 0 4 0; -fx-border-radius: 0 0 8 8; }
+.stat-label { -fx-font-size: 12px; -fx-text-fill: #546e7a; -fx-font-weight: bold; }
+.stat-value { -fx-font-size: 36px; -fx-font-weight: bold; -fx-text-fill: #0d47a1; }
+
+/* --- Labels info --- */
+.label-info { -fx-text-fill: #546e7a; -fx-font-size: 12px; -fx-font-style: italic; }
+
+/* --- TableView --- */
+.table-view .column-header { -fx-background-color: #bbdefb; -fx-font-weight: bold; }
+.table-view .column-header .label { -fx-text-fill: #0d47a1; }
+.table-view .table-row-cell:selected { -fx-background-color: #0d47a1; }
+.table-view .table-row-cell:selected .table-cell { -fx-text-fill: white; }
+
+/* --- TabPane --- */
+.tab-pane .tab:selected .tab-label { -fx-text-fill: #0d47a1; -fx-font-weight: bold; }

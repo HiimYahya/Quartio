@@ -1,0 +1,316 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.*?>
+<?import javafx.scene.text.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.quartio.desktop.controller.MainController"
+            styleClass="root-pane">
+
+    <!-- HEADER -->
+    <top>
+        <HBox styleClass="header" alignment="CENTER_LEFT" spacing="16">
+            <padding><Insets top="12" bottom="12" left="20" right="20"/></padding>
+            <Label text="QUARTIO" styleClass="header-title"/>
+            <Label text="Administration Desktop" styleClass="header-subtitle"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Circle fx:id="circleConnexion" radius="8"/>
+            <Label fx:id="labelConnexion" text="Hors ligne" styleClass="label-connexion"/>
+            <Label fx:id="labelUtilisateur" text="" styleClass="label-connexion"/>
+            <Button fx:id="btnConnexionAction" text="Déconnexion" onAction="#onConnexionAction" styleClass="btn-secondary"/>
+        </HBox>
+    </top>
+
+    <!-- CONTENU PRINCIPAL : onglets -->
+    <center>
+        <TabPane tabClosingPolicy="UNAVAILABLE">
+
+            <!-- ===== ONGLET INCIDENTS ===== -->
+            <Tab text="Incidents">
+                <SplitPane dividerPositions="0.6">
+
+                    <!-- Partie gauche : tableau -->
+                    <VBox spacing="8">
+                        <padding><Insets top="12" left="12" right="8" bottom="12"/></padding>
+                        <HBox spacing="8" alignment="CENTER_LEFT">
+                            <Label text="Incidents signalés" styleClass="section-title"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Button text="+ Nouvel incident" onAction="#onNouvelIncident" styleClass="btn-primary"/>
+                            <Button text="Exporter" onAction="#onExporter" styleClass="btn-secondary"/>
+                        </HBox>
+
+                        <TableView fx:id="tableIncidents" VBox.vgrow="ALWAYS">
+                            <columns>
+                                <TableColumn fx:id="colId" text="ID" prefWidth="120"/>
+                                <TableColumn fx:id="colTitre" text="Titre" prefWidth="200"/>
+                                <TableColumn fx:id="colType" text="Type" prefWidth="100"/>
+                                <TableColumn fx:id="colStatut" text="Statut" prefWidth="90"/>
+                                <TableColumn fx:id="colPriorite" text="Priorité" prefWidth="70"/>
+                                <TableColumn fx:id="colSync" text="Sync" prefWidth="50"/>
+                            </columns>
+                            <placeholder>
+                                <Label text="Aucun incident"/>
+                            </placeholder>
+                        </TableView>
+                    </VBox>
+
+                    <!-- Partie droite : détail -->
+                    <VBox spacing="10">
+                        <padding><Insets top="12" left="8" right="12" bottom="12"/></padding>
+                        <Label fx:id="labelDetail" text="Sélectionnez un incident" styleClass="section-title"/>
+
+                        <Label text="Titre :"/>
+                        <TextField fx:id="tfTitreDetail" promptText="Titre de l'incident" editable="false"/>
+
+                        <Label text="Description :"/>
+                        <TextArea fx:id="areaDescription" editable="false" prefRowCount="4"
+                                  wrapText="true"/>
+
+                        <Label text="Commentaire administrateur :"/>
+                        <TextArea fx:id="areaCommentaire" prefRowCount="3" wrapText="true"
+                                  promptText="Ajouter un commentaire..."/>
+
+                        <HBox spacing="10" alignment="CENTER_LEFT">
+                            <Label text="Statut :"/>
+                            <ComboBox fx:id="comboStatut" prefWidth="150"/>
+                        </HBox>
+
+                        <Button fx:id="btnMettreAJour" text="Mettre à jour"
+                                onAction="#onMettreAJour" styleClass="btn-primary"
+                                maxWidth="Infinity"/>
+                    </VBox>
+                </SplitPane>
+            </Tab>
+
+            <!-- ===== ONGLET VOISINS ===== -->
+            <Tab text="Voisins">
+                <VBox spacing="12">
+                    <padding><Insets top="16" left="16" right="16" bottom="16"/></padding>
+                    <HBox alignment="CENTER_LEFT">
+                        <Label text="Participation des voisins" styleClass="section-title"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Button text="Analyse sociale" onAction="#onAnalyseSociale" styleClass="btn-secondary"/>
+                    </HBox>
+
+                    <!-- Cartes résumé -->
+                    <HBox spacing="16">
+                        <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
+                            <Label text="Total voisins" styleClass="stat-label"/>
+                            <Label fx:id="labelVoisinsTotal" text="0" styleClass="stat-value"/>
+                        </VBox>
+                        <VBox styleClass="stat-card stat-resolu" HBox.hgrow="ALWAYS">
+                            <Label text="Voisins actifs" styleClass="stat-label"/>
+                            <Label fx:id="labelVoisinsActifs" text="0" styleClass="stat-value"/>
+                        </VBox>
+                        <VBox styleClass="stat-card stat-encours" HBox.hgrow="ALWAYS">
+                            <Label text="Score moyen" styleClass="stat-label"/>
+                            <Label fx:id="labelVoisinsScoreMoyen" text="0.0" styleClass="stat-value"/>
+                        </VBox>
+                    </HBox>
+
+                    <!-- Tableau classement -->
+                    <TableView fx:id="tableVoisins" VBox.vgrow="ALWAYS">
+                        <columns>
+                            <TableColumn fx:id="colVoisinNom" text="Nom" prefWidth="160"/>
+                            <TableColumn fx:id="colVoisinEmail" text="Email" prefWidth="180"/>
+                            <TableColumn fx:id="colVoisinIncidents" text="Incidents" prefWidth="90"/>
+                            <TableColumn fx:id="colVoisinPoints" text="Points" prefWidth="90"/>
+                            <TableColumn fx:id="colVoisinNiveau" text="Niveau" prefWidth="120"/>
+                        </columns>
+                        <placeholder><Label text="Aucun voisin"/></placeholder>
+                    </TableView>
+                </VBox>
+            </Tab>
+
+            <!-- ===== ONGLET STATISTIQUES ===== -->
+            <Tab text="Statistiques">
+                <ScrollPane fitToWidth="true" styleClass="scroll-stats">
+                    <VBox spacing="24">
+                        <padding><Insets top="24" left="28" right="28" bottom="28"/></padding>
+
+                        <!-- ── Section Incidents ── -->
+                        <HBox alignment="CENTER_LEFT" spacing="10">
+                            <Label text="Incidents" styleClass="section-title"/>
+                            <Separator HBox.hgrow="ALWAYS"/>
+                        </HBox>
+
+                        <!-- Ligne 1 : Total + Nouveau + En cours -->
+                        <HBox spacing="16">
+                            <VBox styleClass="stat-card stat-total" HBox.hgrow="ALWAYS">
+                                <Label text="TOTAL" styleClass="stat-label"/>
+                                <Label fx:id="labelNbTotal" text="0" styleClass="stat-value stat-value-total"/>
+                                <Label text="incidents enregistrés" styleClass="stat-sublabel"/>
+                            </VBox>
+                            <VBox styleClass="stat-card stat-nouveau" HBox.hgrow="ALWAYS">
+                                <Label text="NOUVEAU" styleClass="stat-label"/>
+                                <Label fx:id="labelNbNouveau" text="0" styleClass="stat-value"/>
+                                <Label text="en attente de traitement" styleClass="stat-sublabel"/>
+                            </VBox>
+                            <VBox styleClass="stat-card stat-encours" HBox.hgrow="ALWAYS">
+                                <Label text="EN COURS" styleClass="stat-label"/>
+                                <Label fx:id="labelNbEnCours" text="0" styleClass="stat-value"/>
+                                <Label text="en cours de résolution" styleClass="stat-sublabel"/>
+                            </VBox>
+                        </HBox>
+
+                        <!-- Ligne 2 : Résolus + Rejetés + Non sync -->
+                        <HBox spacing="16">
+                            <VBox styleClass="stat-card stat-resolu" HBox.hgrow="ALWAYS">
+                                <Label text="RÉSOLUS" styleClass="stat-label"/>
+                                <Label fx:id="labelNbResolu" text="0" styleClass="stat-value"/>
+                                <Label text="incidents clôturés" styleClass="stat-sublabel"/>
+                            </VBox>
+                            <VBox styleClass="stat-card stat-rejete" HBox.hgrow="ALWAYS">
+                                <Label text="REJETÉS" styleClass="stat-label"/>
+                                <Label fx:id="labelNbRejete" text="0" styleClass="stat-value"/>
+                                <Label text="non retenus" styleClass="stat-sublabel"/>
+                            </VBox>
+                            <VBox styleClass="stat-card stat-nonsync" HBox.hgrow="ALWAYS">
+                                <Label text="NON SYNC" styleClass="stat-label"/>
+                                <Label fx:id="labelNonSync" text="0" styleClass="stat-value"/>
+                                <Label text="à synchroniser" styleClass="stat-sublabel"/>
+                            </VBox>
+                        </HBox>
+
+                        <!-- ── Pied de page ── -->
+                        <Label text="Données issues de la base locale · En mode hors ligne, reflète la dernière synchronisation."
+                               styleClass="label-info stats-footer"/>
+
+                    </VBox>
+                </ScrollPane>
+            </Tab>
+
+            <!-- ===== ONGLET SYNCHRONISATION ===== -->
+            <Tab text="Synchronisation">
+                <VBox spacing="12">
+                    <padding><Insets top="16" left="16" right="16" bottom="16"/></padding>
+                    <HBox spacing="12" alignment="CENTER_LEFT">
+                        <Label text="Historique des synchronisations" styleClass="section-title"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Button fx:id="btnSync" text="Synchroniser maintenant"
+                                onAction="#onSynchroniser" styleClass="btn-primary"/>
+                    </HBox>
+
+                    <ProgressBar fx:id="progressSync" maxWidth="Infinity" visible="false"/>
+
+                    <TableView fx:id="tableSyncLog" prefHeight="200">
+                        <columns>
+                            <TableColumn fx:id="colSyncDate" text="Date" prefWidth="150"/>
+                            <TableColumn fx:id="colSyncStatut" text="Statut" prefWidth="100"/>
+                            <TableColumn fx:id="colSyncResume" text="Résumé" prefWidth="350"/>
+                        </columns>
+                        <placeholder><Label text="Aucune synchronisation effectuée"/></placeholder>
+                    </TableView>
+
+                    <Label text="Journal en temps réel :"/>
+                    <TextArea fx:id="areaSyncLog" prefRowCount="8" editable="false"
+                              wrapText="true" VBox.vgrow="ALWAYS" styleClass="text-area-readonly"/>
+                </VBox>
+            </Tab>
+
+            <!-- ===== ONGLET CALENDRIER ===== -->
+            <Tab text="Calendrier">
+                <VBox spacing="12">
+                    <padding><Insets top="16" left="16" right="16" bottom="16"/></padding>
+                    <HBox spacing="8" alignment="CENTER_LEFT">
+                        <Label text="Événements du quartier" styleClass="section-title"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Button text="+ Nouvel événement" onAction="#onNouvelEvenement" styleClass="btn-primary"/>
+                    </HBox>
+
+                    <TableView fx:id="tableEvenements" VBox.vgrow="ALWAYS">
+                        <columns>
+                            <TableColumn fx:id="colEvtTitre"       text="Titre"        prefWidth="200"/>
+                            <TableColumn fx:id="colEvtType"        text="Type"         prefWidth="90"/>
+                            <TableColumn fx:id="colEvtDate"        text="Date"         prefWidth="140"/>
+                            <TableColumn fx:id="colEvtLieu"        text="Lieu"         prefWidth="160"/>
+                            <TableColumn fx:id="colEvtParticipants" text="Participants" prefWidth="90"/>
+                        </columns>
+                        <placeholder><Label text="Aucun événement"/></placeholder>
+                    </TableView>
+                </VBox>
+            </Tab>
+
+            <!-- ===== ONGLET PARAMÈTRES ===== -->
+            <Tab text="Paramètres">
+                <VBox spacing="24">
+                    <padding><Insets top="24" left="24" right="24" bottom="24"/></padding>
+                    <Label text="Personnalisation" styleClass="section-title"/>
+
+                    <!-- Thèmes -->
+                    <VBox spacing="12">
+                        <Label text="Thème de couleurs" styleClass="stat-label"/>
+                        <fx:define>
+                            <ToggleGroup fx:id="toggleTheme"/>
+                        </fx:define>
+                        <HBox spacing="12" alignment="CENTER_LEFT">
+                            <RadioButton fx:id="radioThemeVert"   text="Vert (défaut)" toggleGroup="$toggleTheme" onAction="#onChangerTheme"/>
+                            <RadioButton fx:id="radioThemeSombre" text="Sombre"        toggleGroup="$toggleTheme" onAction="#onChangerTheme"/>
+                            <RadioButton fx:id="radioThemeBleu"   text="Bleu"          toggleGroup="$toggleTheme" onAction="#onChangerTheme"/>
+                        </HBox>
+                    </VBox>
+
+                    <Separator/>
+
+                    <!-- Police -->
+                    <VBox spacing="12">
+                        <Label text="Police d'affichage" styleClass="stat-label"/>
+                        <HBox spacing="12" alignment="CENTER_LEFT">
+                            <Label text="Police :"/>
+                            <ComboBox fx:id="comboPolice" prefWidth="160" onAction="#onChangerPolice"/>
+                            <Label text="Taille :"/>
+                            <ComboBox fx:id="comboTaille" prefWidth="80" onAction="#onChangerTaille"/>
+                        </HBox>
+                    </VBox>
+
+                    <Separator/>
+
+                    <Separator/>
+
+                    <!-- URL Backend -->
+                    <VBox spacing="12">
+                        <Label text="Connexion au serveur" styleClass="stat-label"/>
+                        <HBox spacing="8" alignment="CENTER_LEFT">
+                            <Label text="URL du backend :"/>
+                            <TextField fx:id="fieldBackendUrl" prefWidth="320"
+                                       promptText="https://quartio-production.up.railway.app/api"/>
+                            <Button text="Tester" onAction="#onTesterConnexion" styleClass="btn-secondary"/>
+                            <Button text="Sauvegarder" onAction="#onSauvegarderUrl" styleClass="btn-primary"/>
+                        </HBox>
+                        <Label fx:id="labelTestConnexion" text="" styleClass="label-info"/>
+                    </VBox>
+
+                    <Separator/>
+
+                    <Label text="Les préférences sont sauvegardées localement et restaurées au démarrage."
+                           styleClass="label-info"/>
+
+                    <Separator/>
+
+                    <!-- Désinstallation -->
+                    <VBox spacing="12">
+                        <Label text="Désinstallation" styleClass="stat-label"/>
+                        <Label text="Supprime toutes les données locales (base H2, préférences) et ferme l'application."
+                               styleClass="label-info" wrapText="true"/>
+                        <Button text="Désinstaller l'application" onAction="#onDesinstaller"
+                                style="-fx-background-color: #c62828; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6; -fx-padding: 6 16;"/>
+                    </VBox>
+                </VBox>
+            </Tab>
+
+        </TabPane>
+    </center>
+
+    <!-- STATUS BAR -->
+    <bottom>
+        <HBox styleClass="status-bar" alignment="CENTER_LEFT" spacing="12">
+            <padding><Insets top="6" bottom="6" left="16" right="16"/></padding>
+            <Label fx:id="labelStatus" text="Prêt"/>
+        </HBox>
+    </bottom>
+
+</BorderPane>

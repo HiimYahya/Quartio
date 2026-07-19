@@ -1,0 +1,85 @@
+/* ===== Thème Vert (défaut) ===== */
+
+.root, .root-pane {
+    -fx-font-family: "Segoe UI", sans-serif;
+    -fx-font-size: 13px;
+    -fx-background-color: #f5f5f5;
+
+    /* Variables Modena — évite les warnings de lookup */
+    -fx-base:                        #ececec;
+    -fx-background:                  #f5f5f5;
+    -fx-control-inner-background:    #ffffff;
+    -fx-control-inner-background-alt:#f4f4f4;
+    -fx-text-background-color:       #212121;
+    -fx-accent:                      #2e7d32;
+    -fx-focus-color:                 #2e7d32;
+    -fx-faint-focus-color:           #2e7d3222;
+    -fx-outer-border:                #cccccc;
+    -fx-inner-border:                #e0e0e0;
+    -fx-body-color:                  #f5f5f5;
+}
+
+/* --- Header --- */
+.header { -fx-background-color: #1b5e20; }
+.header-title {
+    -fx-text-fill: white;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+}
+.header-subtitle { -fx-text-fill: #a5d6a7; -fx-font-size: 13px; }
+.label-connexion  { -fx-text-fill: white; -fx-font-size: 12px; }
+
+/* --- Sections --- */
+.section-title { -fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #2e7d32; }
+
+/* --- Boutons --- */
+.btn-primary {
+    -fx-background-color: #2e7d32; -fx-text-fill: white;
+    -fx-font-weight: bold; -fx-background-radius: 6; -fx-padding: 6 16;
+}
+.btn-primary:hover { -fx-background-color: #1b5e20; }
+.btn-secondary {
+    -fx-background-color: #eeeeee; -fx-text-fill: #333333;
+    -fx-background-radius: 6; -fx-padding: 6 16;
+}
+.btn-secondary:hover { -fx-background-color: #e0e0e0; }
+
+/* --- Status bar --- */
+.status-bar {
+    -fx-background-color: #e8eaf6;
+    -fx-border-color: #c5cae9; -fx-border-width: 1 0 0 0;
+}
+
+/* --- TextArea readonly --- */
+.text-area-readonly .content { -fx-background-color: #fafafa; }
+
+/* --- Cartes statistiques --- */
+.stat-card {
+    -fx-background-color: white; -fx-background-radius: 8; -fx-padding: 20;
+    -fx-min-width: 160;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 6, 0, 0, 2);
+    -fx-alignment: center; -fx-spacing: 8;
+}
+.stat-nouveau { -fx-border-color: #1565c0; -fx-border-width: 0 0 4 0; -fx-border-radius: 0 0 8 8; }
+.stat-encours { -fx-border-color: #e65100; -fx-border-width: 0 0 4 0; -fx-border-radius: 0 0 8 8; }
+.stat-resolu  { -fx-border-color: #2e7d32; -fx-border-width: 0 0 4 0; -fx-border-radius: 0 0 8 8; }
+.stat-rejete  { -fx-border-color: #c62828; -fx-border-width: 0 0 4 0; -fx-border-radius: 0 0 8 8; }
+.stat-nonsync { -fx-border-color: #6a1b9a; -fx-border-width: 0 0 4 0; -fx-border-radius: 0 0 8 8; }
+.stat-label { -fx-font-size: 12px; -fx-text-fill: #757575; -fx-font-weight: bold; }
+.stat-value { -fx-font-size: 36px; -fx-font-weight: bold; -fx-text-fill: #212121; }
+
+/* --- Labels info --- */
+.label-info { -fx-text-fill: #757575; -fx-font-size: 12px; -fx-font-style: italic; }
+
+/* --- Login --- */
+.login-card {
+    -fx-background-color: white;
+    -fx-background-radius: 12;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 20, 0, 0, 4);
+}
+.login-logo { -fx-font-size: 32px; -fx-font-weight: bold; -fx-text-fill: #1b5e20; }
+.login-subtitle { -fx-font-size: 14px; -fx-text-fill: #757575; }
+.label-erreur { -fx-text-fill: #c62828; -fx-font-size: 12px; }
+
+/* --- TableView --- */
+.table-view .column-header { -fx-background-color: #e8f5e9; -fx-font-weight: bold; }

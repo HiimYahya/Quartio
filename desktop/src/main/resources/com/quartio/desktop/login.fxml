@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<StackPane xmlns="http://javafx.com/javafx/21"
+           xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="com.quartio.desktop.controller.LoginController"
+           styleClass="root-pane">
+
+    <VBox alignment="CENTER" spacing="0" maxWidth="400"
+          styleClass="login-card">
+        <padding><Insets top="40" bottom="40" left="40" right="40"/></padding>
+
+        <!-- Logo / Titre -->
+        <Label text="QUARTIO" styleClass="header-title, login-logo"/>
+        <Label text="Administration Desktop" styleClass="header-subtitle, login-subtitle"/>
+
+        <Region prefHeight="32"/>
+
+        <!-- Panel Login -->
+        <VBox fx:id="panelLogin" spacing="14">
+            <Label text="Connexion" styleClass="section-title"/>
+
+            <VBox spacing="4">
+                <Label text="Email"/>
+                <TextField fx:id="fieldEmail" promptText="admin@quartio.fr"/>
+            </VBox>
+
+            <VBox spacing="4">
+                <Label text="Mot de passe"/>
+                <PasswordField fx:id="fieldPassword" promptText="••••••••"
+                               onAction="#onLogin"/>
+            </VBox>
+
+            <Label fx:id="labelErreur" text="" styleClass="label-erreur" wrapText="true"/>
+
+            <Button text="Se connecter" onAction="#onLogin"
+                    styleClass="btn-primary" maxWidth="Infinity"/>
+
+            <Button fx:id="btnOffline" text="Continuer hors ligne (données locales)"
+                    onAction="#onModeHorsLigne"
+                    styleClass="btn-secondary" maxWidth="Infinity"/>
+        </VBox>
+
+        <!-- Panel MFA -->
+        <VBox fx:id="panelMfa" spacing="14" visible="false" managed="false">
+            <Label text="Vérification MFA" styleClass="section-title"/>
+            <Label text="Un code a été envoyé à votre adresse e-mail."
+                   styleClass="label-info" wrapText="true"/>
+
+            <VBox spacing="4">
+                <Label text="Code OTP"/>
+                <TextField fx:id="fieldOtp" promptText="000000"
+                           onAction="#onValiderMfa"/>
+            </VBox>
+
+            <Label fx:id="labelErreurMfa" text="" styleClass="label-erreur"/>
+
+            <Button text="Valider" onAction="#onValiderMfa"
+                    styleClass="btn-primary" maxWidth="Infinity"/>
+            <Button text="Retour" onAction="#onRetourLogin"
+                    styleClass="btn-secondary" maxWidth="Infinity"/>
+        </VBox>
+
+        <Region prefHeight="16"/>
+        <Label text="Seuls les administrateurs et modérateurs peuvent accéder à cette application."
+               styleClass="label-info" wrapText="true" textAlignment="CENTER"/>
+    </VBox>
+
+</StackPane>
