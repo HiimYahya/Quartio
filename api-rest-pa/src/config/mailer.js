@@ -15,6 +15,7 @@ const transport = nodemailer.createTransport({
 
 const FROM = process.env.MAIL_FROM || 'Quartio <noreply@quartio.fr>';
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
 // "Quartio <mail@ex.com>" -> { name: 'Quartio', email: 'mail@ex.com' }
 function parseFrom(from) {
@@ -43,8 +44,27 @@ async function sendViaBrevoApi({ to, subject, html, text }) {
   return res.json().catch(() => ({}));
 }
 
+// Envoi via l'API HTTP de Resend (port 443). Expéditeur authentifié -> arrive en boîte de réception.
+async function sendViaResend({ to, subject, html, text }) {
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ from: FROM, to: [to], subject, html, text }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Resend API ${res.status}: ${body}`);
+  }
+  return res.json().catch(() => ({}));
+}
+
 async function sendMail({ to, subject, html, text }) {
   try {
+    if (RESEND_API_KEY) {
+      const data = await sendViaResend({ to, subject, html, text });
+      logger.info(`[mailer] Email envoyé (Resend) à ${to} - id: ${data.id || 'n/a'}`);
+      return data;
+    }
     if (BREVO_API_KEY) {
       const data = await sendViaBrevoApi({ to, subject, html, text });
       logger.info(`[mailer] Email envoyé (Brevo API) à ${to} - messageId: ${data.messageId || 'n/a'}`);
