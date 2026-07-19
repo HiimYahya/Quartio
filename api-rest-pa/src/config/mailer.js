@@ -14,9 +14,42 @@ const transport = nodemailer.createTransport({
 });
 
 const FROM = process.env.MAIL_FROM || 'Quartio <noreply@quartio.fr>';
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
+
+// "Quartio <mail@ex.com>" -> { name: 'Quartio', email: 'mail@ex.com' }
+function parseFrom(from) {
+  const m = from.match(/^\s*(.*?)\s*<([^>]+)>\s*$/);
+  if (m) return { name: m[1] || 'Quartio', email: m[2] };
+  return { name: 'Quartio', email: from.trim() };
+}
+
+// Envoi via l'API HTTP de Brevo (port 443) — contourne le blocage SMTP des hébergeurs.
+async function sendViaBrevoApi({ to, subject, html, text }) {
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'api-key': BREVO_API_KEY, 'content-type': 'application/json', accept: 'application/json' },
+    body: JSON.stringify({
+      sender: parseFrom(FROM),
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+      textContent: text,
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Brevo API ${res.status}: ${body}`);
+  }
+  return res.json().catch(() => ({}));
+}
 
 async function sendMail({ to, subject, html, text }) {
   try {
+    if (BREVO_API_KEY) {
+      const data = await sendViaBrevoApi({ to, subject, html, text });
+      logger.info(`[mailer] Email envoyé (Brevo API) à ${to} - messageId: ${data.messageId || 'n/a'}`);
+      return data;
+    }
     const info = await transport.sendMail({ from: FROM, to, subject, html, text });
     logger.info(`[mailer] Email envoyé à ${to} - messageId: ${info.messageId}`);
     return info;
