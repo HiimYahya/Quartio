@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS utilisateur (
   prenom           VARCHAR(100) NOT NULL,
   email            VARCHAR(150) UNIQUE NOT NULL,
   telephone        VARCHAR(20),
+  adresse          VARCHAR(255),
   role             VARCHAR(20) NOT NULL DEFAULT 'user'
                      CHECK (role IN ('user', 'admin', 'moderateur')),
   mot_de_passe     VARCHAR(255) NOT NULL,
@@ -34,6 +35,8 @@ CREATE TABLE IF NOT EXISTS utilisateur (
   suspendu_jusqu_au TIMESTAMP,
   notif_prefs      JSONB               -- préférences de notifications par type (null = tout activé)
 );
+-- Colonne ajoutée après coup : présente pour les bases déjà créées
+ALTER TABLE utilisateur ADD COLUMN IF NOT EXISTS adresse VARCHAR(255);
 
 -- ── CONTRAT ─────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS contrat (

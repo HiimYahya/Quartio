@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom'
 import Navbar from './Navbar'
+import Footer from './Footer'
 import AlertBanner from '../ui/AlertBanner'
 
 export default function Layout() {
@@ -12,6 +13,7 @@ export default function Layout() {
           <Outlet />
         </div>
       </main>
+      <Footer />
     </div>
   )
 }

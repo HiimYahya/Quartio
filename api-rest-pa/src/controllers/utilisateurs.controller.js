@@ -97,13 +97,16 @@ exports.update = async (req, res, next) => {
     if (current.rows.length === 0) return res.status(404).json({ error: 'Utilisateur non trouvé' });
 
     const u = current.rows[0];
-    const { nom, prenom, telephone, langue } = req.body;
+    const { nom, prenom, telephone, langue, role } = req.body;
+
+    // Seul un admin peut modifier le rôle ; sinon on conserve l'existant.
+    const newRole = (role && req.user.role === 'admin') ? role : u.role;
 
     const result = await pool.query(
-      `UPDATE utilisateur SET nom=$1, prenom=$2, telephone=$3, langue=$4
-       WHERE id_utilisateur=$5
+      `UPDATE utilisateur SET nom=$1, prenom=$2, telephone=$3, langue=$4, role=$5
+       WHERE id_utilisateur=$6
        RETURNING id_utilisateur, nom, prenom, email, telephone, role, points_solde, langue`,
-      [nom ?? u.nom, prenom ?? u.prenom, telephone ?? u.telephone, langue ?? u.langue, id]
+      [nom ?? u.nom, prenom ?? u.prenom, telephone ?? u.telephone, langue ?? u.langue, newRole, id]
     );
     res.json(result.rows[0]);
   } catch (err) { next(err); }

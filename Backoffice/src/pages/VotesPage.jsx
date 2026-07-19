@@ -35,14 +35,14 @@ export default function VotesPage() {
   const handleStatut = async (id, statut) => {
     try {
       await api.put(`/votes/${id}`, { statut })
-      setVotes((v) => v.map((x) => (x.id ?? x._id) === id ? { ...x, statut } : x))
+      setVotes((v) => v.map((x) => (x.id_vote ?? x.id ?? x._id) === id ? { ...x, statut } : x))
     } catch {}
   }
 
   const handleDelete = async (id) => {
     try {
       await api.delete(`/votes/${id}`)
-      setVotes((v) => v.filter((x) => (x.id ?? x._id) !== id))
+      setVotes((v) => v.filter((x) => (x.id_vote ?? x.id ?? x._id) !== id))
     } catch {}
     setConfirm(null)
   }
@@ -88,7 +88,7 @@ export default function VotesPage() {
   const removeOption = (i) => setForm((f) => ({ ...f, options: f.options.filter((_, idx) => idx !== i) }))
 
   const openEdit = (v) => {
-    const id = v.id ?? v._id
+    const id = v.id_vote ?? v.id ?? v._id
     setEditTarget({ id, titre: v.titre })
     setEditForm({ titre: v.titre ?? '', description: v.description ?? '' })
     setEditError(null)
@@ -101,7 +101,7 @@ export default function VotesPage() {
     try {
       const payload = { titre: editForm.titre, description: editForm.description || null }
       await api.put(`/votes/${editTarget.id}`, payload)
-      setVotes((v) => v.map((x) => (x.id ?? x._id) === editTarget.id ? { ...x, ...payload } : x))
+      setVotes((v) => v.map((x) => (x.id_vote ?? x.id ?? x._id) === editTarget.id ? { ...x, ...payload } : x))
       setEditTarget(null)
     } catch (err) {
       setEditError(err.response?.data?.error ?? 'Erreur lors de la modification')
@@ -139,7 +139,7 @@ export default function VotesPage() {
             </thead>
             <tbody className="divide-y divide-slate-50">
               {votes.map((v) => {
-                const id = v.id ?? v._id
+                const id = v.id_vote ?? v.id ?? v._id
                 return (
                   <tr key={id} className="hover:bg-slate-50 transition">
                     <td className="px-4 py-3">

@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { User, Mail, Lock } from 'lucide-react'
+import { User, Mail, Lock, MapPin } from 'lucide-react'
 import useAuthStore from '../store/authStore'
 import LangSwitcher from '../components/ui/LangSwitcher'
 import PasswordStrengthMeter from '../components/ui/PasswordStrengthMeter'
 import { isPasswordValid, PASSWORD_RULES_MESSAGE } from '../utils/passwordPolicy'
+import { toast } from '../store/toastStore'
 
 export default function RegisterPage() {
-  const [form, setForm] = useState({ nom: '', prenom: '', email: '', mot_de_passe: '' })
+  const [form, setForm] = useState({ nom: '', prenom: '', email: '', mot_de_passe: '', adresse: '' })
   const [cgu, setCgu] = useState(false)
   const { register, loading, error, clearError, setError } = useAuthStore()
   const navigate = useNavigate()
@@ -29,6 +30,16 @@ export default function RegisterPage() {
     }
     const result = await register(form)
     if (!result) return
+
+    const q = result.quartier
+    if (q?.status === 'found') {
+      toast.success(`Bienvenue ! Vous êtes rattaché au quartier ${q.quartier?.nom}.`)
+    } else if (q?.status === 'no_quartier') {
+      toast.info("Votre adresse n'est pour l'instant couverte par aucun quartier. Un signalement a été transmis ; vous pourrez rejoindre un quartier depuis votre profil.")
+    } else if (q?.status === 'not_found') {
+      toast.info("Adresse non localisée. Vous pourrez renseigner votre quartier depuis votre profil.")
+    }
+
     if (result.email_verification_required === false) {
       navigate('/login?verified=1')
     } else {
@@ -82,6 +93,16 @@ export default function RegisterPage() {
                 <input type="email" name="email" value={form.email} onChange={handleChange} required placeholder="votre@email.com"
                   className="w-full border border-gray-300 rounded-lg pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399] transition" />
               </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
+              <div className="relative">
+                <MapPin className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input type="text" name="adresse" value={form.adresse} onChange={handleChange} required
+                  placeholder="12 rue de la Paix, Nanterre"
+                  className="w-full border border-gray-300 rounded-lg pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399] transition" />
+              </div>
+              <p className="text-xs text-gray-400 mt-1">Sert à vous rattacher automatiquement à votre quartier.</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.password')}</label>

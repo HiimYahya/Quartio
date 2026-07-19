@@ -4,6 +4,8 @@ const crypto = require('crypto');
 const pool   = require('../config/db');
 const mailer = require('../config/mailer');
 const { driver } = require('../config/neo4j');
+const { resolveQuartier } = require('../utils/geo');
+const Incident = require('../models/mongo/incident.model');
 const { PASSWORD_PATTERN, PASSWORD_MESSAGE } = require('../validators/auth.validator');
 
 const REFRESH_EXPIRES_DAYS = 7;
@@ -44,7 +46,7 @@ const creditWelcomeAndVerify = async (userId) => {
 
 exports.register = async (req, res, next) => {
   try {
-    const { nom, prenom, email, mot_de_passe, telephone, langue } = req.body;
+    const { nom, prenom, email, mot_de_passe, telephone, langue, adresse } = req.body;
 
     const existing = await pool.query(
       'SELECT id_utilisateur FROM utilisateur WHERE email = $1', [email]
@@ -55,13 +57,16 @@ exports.register = async (req, res, next) => {
 
     const hash   = await bcrypt.hash(mot_de_passe, 10);
     const result = await pool.query(
-      `INSERT INTO utilisateur (nom, prenom, email, mot_de_passe, telephone, langue)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO utilisateur (nom, prenom, email, mot_de_passe, telephone, langue, adresse)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id_utilisateur, nom, prenom, email, role, points_solde, langue, date_inscription`,
-      [nom, prenom, email, hash, telephone || null, langue || 'fr']
+      [nom, prenom, email, hash, telephone || null, langue || 'fr', adresse || null]
     );
 
     const user = result.rows[0];
+
+    // Assignation au quartier depuis l'adresse (jamais bloquant pour l'inscription)
+    const quartierInfo = await assignQuartierOnRegister(user, adresse, nom, prenom);
 
     const code    = generateOtp();
     const expireAt = new Date(Date.now() + 15 * 60 * 1000);
@@ -78,15 +83,58 @@ exports.register = async (req, res, next) => {
       return res.status(201).json({
         utilisateur: { ...user, email_verifie: true },
         email_verification_required: false,
+        quartier: quartierInfo,
       });
     }
 
     res.status(201).json({
       utilisateur: user,
       email_verification_required: true,
+      quartier: quartierInfo,
     });
   } catch (err) { next(err); }
 };
+
+// Localise l'adresse, rattache l'utilisateur à son quartier (relation HABITE) ;
+// si l'adresse est valide mais hors de tout quartier dessiné, crée un incident.
+// Ne lève jamais d'erreur : l'inscription ne doit jamais échouer à cause de ça.
+async function assignQuartierOnRegister(user, adresse, nom, prenom) {
+  try {
+    const resolved = await resolveQuartier(adresse);
+
+    if (resolved.status === 'found') {
+      const session = driver.session();
+      try {
+        await session.run(
+          `MERGE (u:Utilisateur {pg_id: $uid})
+           MERGE (q:Quartier {pg_id: $qid})
+           MERGE (u)-[:HABITE]->(q)`,
+          { uid: user.id_utilisateur, qid: resolved.quartier.id_quartier }
+        );
+      } finally {
+        await session.close();
+      }
+      return { status: 'found', quartier: resolved.quartier };
+    }
+
+    if (resolved.status === 'no_quartier') {
+      await Incident.create({
+        titre: `Adresse hors zone couverte — ${prenom} ${nom}`,
+        description: `L'adresse « ${adresse} » a été localisée (lat ${resolved.coordinates.lat}, lng ${resolved.coordinates.lng}) `
+          + `mais ne correspond à aucun quartier dessiné. Il faut créer ou étendre un quartier pour couvrir cette adresse.`,
+        type: 'quartier',
+        priorite: 'normale',
+        id_utilisateur_pg: user.id_utilisateur,
+      });
+      return { status: 'no_quartier', quartier: null };
+    }
+
+    return { status: 'not_found', quartier: null };
+  } catch {
+    // géocodage/BDD indisponible : on n'interrompt pas l'inscription
+    return { status: 'error', quartier: null };
+  }
+}
 
 exports.verifyEmail = async (req, res, next) => {
   try {

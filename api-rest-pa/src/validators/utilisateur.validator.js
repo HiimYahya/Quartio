@@ -6,6 +6,7 @@ const updateSchema = Joi.object({
   prenom:    Joi.string().min(2).max(100),
   telephone: Joi.string().max(20).allow('', null),
   langue:    Joi.string().valid('fr', 'en'),
+  role:      Joi.string().valid('user', 'admin', 'moderateur'),
 }).min(1);
 
 const addQuartierSchema = Joi.object({

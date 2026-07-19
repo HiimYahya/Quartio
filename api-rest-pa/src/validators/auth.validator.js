@@ -12,6 +12,7 @@ const registerSchema = Joi.object({
   prenom:       Joi.string().min(2).max(100).required(),
   email:        Joi.string().email().required(),
   mot_de_passe: passwordSchema,
+  adresse:      Joi.string().min(3).max(255).allow('', null),
   telephone:    Joi.string().max(20).optional().allow(''),
   langue:       Joi.string().valid('fr', 'en').default('fr'),
 });
