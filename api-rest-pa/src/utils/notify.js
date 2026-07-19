@@ -1,21 +1,8 @@
 const pool = require('../config/db');
 const logger = require('../config/logger');
 
-/**
- * Crée une notification pour un utilisateur.
- * Fire-and-forget : une erreur ici ne fait pas planter l'opération principale.
- *
- * @param {number} id_utilisateur  - destinataire
- * @param {string} type            - 'message' | 'evenement' | 'contrat' | 'vote' | 'incident'
- * @param {string} titre           - titre court de la notification
- * @param {string} contenu         - description détaillée
- * @param {string} id_ressource    - ID de la ressource liée (string, peut être un ID Mongo ou PG)
- * @param {string} type_ressource  - type de la ressource ('annonce', 'evenement', etc.)
- */
 const createNotification = async (id_utilisateur, type, titre, contenu, id_ressource = null, type_ressource = null) => {
   try {
-    // Respecte les préférences du destinataire : si le type est explicitement
-    // désactivé (notif_prefs[type] === false), on n'insère rien. 'systeme' est toujours actif.
     if (type !== 'systeme') {
       const { rows } = await pool.query(
         'SELECT notif_prefs FROM utilisateur WHERE id_utilisateur = $1', [id_utilisateur]

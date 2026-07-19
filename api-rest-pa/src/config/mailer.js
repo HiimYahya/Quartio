@@ -1,11 +1,6 @@
 const nodemailer = require('nodemailer');
 const logger     = require('./logger');
 
-// ─── Transport ────────────────────────────────────────────────────────────────
-// En dev  : Mailtrap (attrape les emails sans les envoyer pour de vrai)
-// En prod : SMTP réel (SendGrid, SES, Gmail SMTP...)
-// Variables d'env requises :
-//   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM
 const transport = nodemailer.createTransport({
   host:   process.env.SMTP_HOST   || 'sandbox.smtp.mailtrap.io',
   port:   parseInt(process.env.SMTP_PORT || '2525'),
@@ -17,7 +12,6 @@ const transport = nodemailer.createTransport({
 
 const FROM = process.env.MAIL_FROM || 'Quartio <noreply@quartio.fr>';
 
-// ─── Envoi générique ──────────────────────────────────────────────────────────
 async function sendMail({ to, subject, html, text }) {
   try {
     const info = await transport.sendMail({ from: FROM, to, subject, html, text });
@@ -29,14 +23,6 @@ async function sendMail({ to, subject, html, text }) {
   }
 }
 
-// ─── Templates ────────────────────────────────────────────────────────────────
-
-/**
- * Email de vérification à l'inscription.
- * @param {string} to    - adresse email du destinataire
- * @param {string} prenom
- * @param {string} code  - OTP 6 chiffres
- */
 async function sendVerificationEmail(to, prenom, code) {
   return sendMail({
     to,
@@ -63,12 +49,6 @@ async function sendVerificationEmail(to, prenom, code) {
   });
 }
 
-/**
- * Email de réinitialisation du mot de passe.
- * @param {string} to
- * @param {string} prenom
- * @param {string} resetUrl - URL complète avec le token
- */
 async function sendResetPasswordEmail(to, prenom, resetUrl) {
   return sendMail({
     to,
@@ -98,9 +78,6 @@ async function sendResetPasswordEmail(to, prenom, resetUrl) {
   });
 }
 
-/**
- * Email de bienvenue après vérification réussie.
- */
 async function sendWelcomeEmail(to, prenom) {
   return sendMail({
     to,
@@ -131,9 +108,6 @@ async function sendWelcomeEmail(to, prenom) {
   });
 }
 
-/**
- * Notification quand un contrat attend la signature de l'utilisateur.
- */
 async function sendContratSignatureEmail(to, prenom, contratId, serviceNom) {
   const url = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/contrats/${contratId}`;
   return sendMail({

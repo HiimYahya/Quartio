@@ -2,7 +2,6 @@ const pool       = require('../config/db');
 const { driver } = require('../config/neo4j');
 const { getPagination, paginate } = require('../utils/pagination');
 
-// GET /api/transactions  -> mes transactions via Neo4j [:EST_POUR]
 exports.getMes = async (req, res, next) => {
   try {
     const { page, limit, skip } = getPagination(req.query);
@@ -34,7 +33,6 @@ exports.getMes = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/transactions/:id  (auth - propriétaire ou admin)
 exports.getById = async (req, res, next) => {
   try {
     const txId = parseInt(req.params.id);

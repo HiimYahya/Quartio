@@ -55,7 +55,6 @@ export default function ConsolePage() {
       e.preventDefault()
       execute()
     }
-    // Tab -> 2 espaces
     if (e.key === 'Tab') {
       e.preventDefault()
       const el    = textareaRef.current
@@ -78,7 +77,6 @@ export default function ConsolePage() {
   return (
     <div className="space-y-4 h-full flex flex-col">
 
-      {/* Barre du haut */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex gap-2 flex-wrap">
           {EXAMPLES.map(({ label, query: q }) => (
@@ -94,7 +92,6 @@ export default function ConsolePage() {
         </button>
       </div>
 
-      {/* Aide syntaxe */}
       {showHelp && (
         <pre className="bg-slate-900 text-green-300 text-xs p-4 rounded-xl overflow-x-auto leading-relaxed font-mono whitespace-pre">
           {SYNTAX_HELP}
@@ -103,10 +100,8 @@ export default function ConsolePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 flex-1 min-h-0">
 
-        {/* Éditeur + résultats */}
         <div className="lg:col-span-3 flex flex-col gap-3">
 
-          {/* Éditeur */}
           <div className="bg-slate-900 rounded-xl overflow-hidden border border-slate-700">
             <div className="flex items-center justify-between px-4 py-2 border-b border-slate-700">
               <span className="text-xs text-slate-400 font-mono">Quartio-QL</span>
@@ -142,7 +137,6 @@ export default function ConsolePage() {
             </div>
           </div>
 
-          {/* Résultats */}
           {result && (
             <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden flex-1 min-h-0">
               {!result.ok ? (
@@ -202,7 +196,6 @@ export default function ConsolePage() {
                 </div>
               )}
 
-              {/* AST en bas */}
               <details className="border-t border-slate-100">
                 <summary className="px-4 py-2 text-xs text-slate-400 cursor-pointer hover:text-slate-600">
                   Voir l'AST généré
@@ -215,7 +208,6 @@ export default function ConsolePage() {
           )}
         </div>
 
-        {/* Historique */}
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4">
           <h3 className="text-sm font-semibold text-slate-700 mb-3">Historique</h3>
           {history.length === 0 ? (

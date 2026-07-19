@@ -54,7 +54,6 @@ const { createSchema, updateSchema } = require('../validators/evenement.validato
 router.get('/', auth, ctrl.getAll);
 router.post('/', auth, validate(createSchema), ctrl.create);
 
-// Route fixe AVANT /:id pour éviter la capture par le paramètre dynamique
 router.get('/suggestions', auth, ctrl.suggestions);
 
 /**

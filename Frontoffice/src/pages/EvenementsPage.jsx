@@ -9,7 +9,7 @@ export default function EvenementsPage() {
   const [evenements, setEvenements] = useState([])
   const [suggestions, setSuggestions] = useState([])
   const [loading, setLoading] = useState(true)
-  const [mode, setMode] = useState('liste') // 'liste' | 'swipe'
+  const [mode, setMode] = useState('liste')
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({
     titre: '', description: '', date_debut: '', date_fin: '',
@@ -18,7 +18,7 @@ export default function EvenementsPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const user = useAuthStore((s) => s.user)
-  const [quartiers, setQuartiers] = useState([])  // quartiers de l'utilisateur uniquement
+  const [quartiers, setQuartiers] = useState([])
 
   useEffect(() => {
     if (!user?.id) return
@@ -81,7 +81,6 @@ export default function EvenementsPage() {
       <div className="flex items-center justify-between">
         <p className="text-gray-500 text-sm">{evenements.length} événement(s)</p>
         <div className="flex items-center gap-2">
-          {/* Toggle liste / swipe */}
           <div className="flex bg-gray-100 rounded-lg p-1 gap-1">
             <button
               onClick={() => setMode('liste')}

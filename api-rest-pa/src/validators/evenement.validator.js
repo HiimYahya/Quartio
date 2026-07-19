@@ -8,7 +8,7 @@ const createSchema = Joi.object({
   date_fin:     Joi.date().allow(null),
   lieu:         Joi.string().max(200).allow('', null),
   capacite_max: Joi.number().integer().min(1).allow(null),
-  id_quartier:  Joi.number().integer().allow(null), // dérivé du quartier de l'organisateur si absent
+  id_quartier:  Joi.number().integer().allow(null),
 });
 
 const updateSchema = Joi.object({

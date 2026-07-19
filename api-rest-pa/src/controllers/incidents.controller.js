@@ -5,14 +5,11 @@ const { getPagination, paginate } = require('../utils/pagination');
 const { emitAlert }   = require('../socket/index');
 const appEvents       = require('../config/events');
 
-// GET /api/incidents?page=1&limit=20&statut=ouvert&priorite=haute  (admin, modérateur)
-// GET /api/incidents?signalements=true  -> messages signalés uniquement (avec contenu + auteur)
 exports.getAll = async (req, res, next) => {
   try {
     const { page, limit, skip } = getPagination(req.query);
     const { statut, priorite, signalements } = req.query;
 
-    // La vue modération (messages signalés) est réservée aux admin/modérateurs.
     if (signalements === 'true' && !['admin', 'moderateur'].includes(req.user.role)) {
       return res.status(403).json({ error: 'Accès refusé - rôle requis : admin ou moderateur' });
     }
@@ -50,7 +47,6 @@ exports.getAll = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/incidents/:id  (auth)
 exports.getById = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
@@ -60,7 +56,6 @@ exports.getById = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/incidents  (auth)
 exports.create = async (req, res, next) => {
   try {
     const { titre, description, type, priorite } = req.body;
@@ -70,7 +65,6 @@ exports.create = async (req, res, next) => {
       id_utilisateur_pg: req.user.id,
     });
 
-    // Alerte temps réel pour les incidents urgents
     if (['haute', 'critique'].includes(incident.priorite)) {
       emitAlert('incident', {
         id:       incident._id.toString(),
@@ -80,7 +74,6 @@ exports.create = async (req, res, next) => {
       });
     }
 
-    // Événement métier (pour les hooks)
     appEvents.emit('incident.cree', {
       incidentId: incident._id.toString(), priorite: incident.priorite,
     });
@@ -89,7 +82,6 @@ exports.create = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// PUT /api/incidents/:id  (admin)
 exports.update = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
@@ -101,7 +93,6 @@ exports.update = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// DELETE /api/incidents/:id  (admin)
 exports.remove = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;

@@ -27,7 +27,7 @@ export default function ProfilPublicPage() {
     try {
       const { data } = await api.post('/conversations', { participants: [parseInt(id)] })
       navigate(`/messages/${data._id}`)
-    } catch { /* ignore */ } finally { setContacting(false) }
+    } catch {  } finally { setContacting(false) }
   }
 
   if (loading) return <div className="text-center py-12 text-gray-400">Chargement...</div>
@@ -39,7 +39,6 @@ export default function ProfilPublicPage() {
         <ArrowLeft className="w-4 h-4" /> Retour
       </button>
 
-      {/* En-tête profil */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 bg-[#1a4a3a] rounded-full flex items-center justify-center text-white text-2xl font-bold shrink-0">
@@ -56,7 +55,6 @@ export default function ProfilPublicPage() {
           </div>
         </div>
 
-        {/* Stats d'entraide */}
         <div className="grid grid-cols-2 gap-3 mt-5">
           <div className="bg-[#f0faf5] rounded-xl p-4 text-center">
             <HandHeart className="w-5 h-5 text-[#1a4a3a] mx-auto mb-1" />
@@ -78,7 +76,6 @@ export default function ProfilPublicPage() {
         )}
       </div>
 
-      {/* Annonces actives */}
       <div>
         <h3 className="font-bold text-gray-800 mb-2">Ses annonces actives</h3>
         {(!profil.annonces || profil.annonces.length === 0) ? (

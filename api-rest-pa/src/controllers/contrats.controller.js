@@ -8,7 +8,6 @@ const { emitAlert }          = require('../socket/index');
 const ContratDocument        = require('../models/mongo/contratdocument.model');
 const appEvents               = require('../config/events');
 
-// GET /api/contrats  -> mes contrats (vendeur ou acheteur)
 exports.getMes = async (req, res, next) => {
   try {
     const { page, limit, skip } = getPagination(req.query);
@@ -33,7 +32,6 @@ exports.getMes = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/contrats/:id  (auth - participant ou admin)
 exports.getById = async (req, res, next) => {
   try {
     const { rows } = await pool.query(
@@ -57,7 +55,6 @@ exports.getById = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/contrats  (auth)
 exports.create = async (req, res, next) => {
   try {
     const { points_echanges, id_annonce_mongo } = req.body;
@@ -93,14 +90,6 @@ exports.create = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// PUT /api/contrats/:id/signer
-// Chaque participant signe de son côté.
-// Quand les 2 ont signé -> finalisation automatique :
-//   - débit des points de l'acheteur
-//   - crédit des points au vendeur
-//   - création des transactions PostgreSQL
-//   - statut contrat -> 'termine'
-//   - statut annonce -> 'archivee'
 exports.signer = async (req, res, next) => {
   try {
     const contratId = parseInt(req.params.id);
@@ -115,7 +104,6 @@ exports.signer = async (req, res, next) => {
     if (c.statut === 'annule')
       return res.status(409).json({ error: 'Ce contrat a été annulé' });
 
-    // Identifier le rôle du signataire
     const isVendeur  = uid === c.id_vendeur;
     const isAcheteur = uid === c.id_acheteur;
     if (!isVendeur && !isAcheteur)
@@ -128,7 +116,6 @@ exports.signer = async (req, res, next) => {
     );
     const signataire = uRows[0];
 
-    // MFA obligatoire pour signer si activé sur le compte
     if (signataire.mfa_actif) {
       if (!mfa_code)
         return res.status(400).json({ error: 'Code MFA requis pour signer ce contrat' });
@@ -139,13 +126,11 @@ exports.signer = async (req, res, next) => {
         return res.status(400).json({ error: 'Code MFA invalide' });
     }
 
-    // Vérifier que l'acheteur a assez de points avant de signer
     const points = c.points_echanges ?? 0;
     if (isAcheteur && points > 0 && signataire.points_solde < points) {
       return res.status(409).json({ error: `Points insuffisants (solde : ${signataire.points_solde} pts, requis : ${points} pts)` });
     }
 
-    // Marquer la signature du participant
     const colSigne = isVendeur ? 'signe_vendeur' : 'signe_acheteur';
     if (c[colSigne])
       return res.status(409).json({ error: 'Vous avez déjà signé ce contrat' });
@@ -155,7 +140,6 @@ exports.signer = async (req, res, next) => {
       [contratId]
     );
 
-    // Relation Neo4j : le signataire a signé ce contrat
     {
       const session = driver.session();
       try {
@@ -170,7 +154,6 @@ exports.signer = async (req, res, next) => {
       }
     }
 
-    // Archive la signature (et le PDF signé si fourni) dans MongoDB
     if (signature_dataurl || pdf_base64) {
       const mongoUpdate = {
         $push: {
@@ -195,15 +178,12 @@ exports.signer = async (req, res, next) => {
       ).catch(() => {});
     }
 
-    // Recharger pour voir si les 2 ont maintenant signé
     const { rows: refreshed } = await pool.query(
       'SELECT * FROM contrat WHERE id_contrat = $1', [contratId]
     );
     const updated = refreshed[0];
 
-    // ── Finalisation si les deux ont signé ───────────────────────────────────
     if (updated.signe_vendeur && updated.signe_acheteur) {
-      // 1. Débit acheteur
       if (points > 0) {
         await pool.query(
           'UPDATE utilisateur SET points_solde = points_solde - $1 WHERE id_utilisateur = $2',
@@ -214,7 +194,6 @@ exports.signer = async (req, res, next) => {
           [-points, `Paiement service - contrat #${contratId}`]
         );
 
-        // 2. Crédit vendeur
         await pool.query(
           'UPDATE utilisateur SET points_solde = points_solde + $1 WHERE id_utilisateur = $2',
           [points, c.id_vendeur]
@@ -224,7 +203,6 @@ exports.signer = async (req, res, next) => {
           [points, `Encaissement service - contrat #${contratId}`]
         );
 
-        // 3. Relations Neo4j transactions
         const session = driver.session();
         try {
           await session.run(
@@ -246,7 +224,6 @@ exports.signer = async (req, res, next) => {
           await session.close();
         }
       } else {
-        // Service gratuit : on garde la trace de l'entraide sans transaction de points
         const session = driver.session();
         try {
           await session.run(
@@ -261,19 +238,16 @@ exports.signer = async (req, res, next) => {
         }
       }
 
-      // 4. Statut contrat -> termine
       await pool.query(
         `UPDATE contrat SET statut = 'termine', date_signature = NOW() WHERE id_contrat = $1`,
         [contratId]
       );
 
-      // 5. Archive l'annonce (MongoDB)
       if (c.id_annonce_mongo) {
         const Annonce = require('../models/mongo/annonce.model');
         await Annonce.findByIdAndUpdate(c.id_annonce_mongo, { statut: 'archivee' }).catch(() => {});
       }
 
-      // 6. Notifications
       const autreId = isVendeur ? c.id_acheteur : c.id_vendeur;
       createNotification(autreId, 'contrat',
         'Contrat finalisé',
@@ -281,19 +255,16 @@ exports.signer = async (req, res, next) => {
         String(contratId), 'contrat'
       );
 
-      // 7. Événement métier (pour les hooks)
       appEvents.emit('contrat.finalise', {
         contratId, idVendeur: c.id_vendeur, idAcheteur: c.id_acheteur, points,
       });
     } else {
-      // Notifier l'autre partie que la signature est en attente
       const autreId = isVendeur ? c.id_acheteur : c.id_vendeur;
       createNotification(autreId, 'contrat',
         'Signature requise',
         `Le contrat #${contratId} attend votre signature.`,
         String(contratId), 'contrat'
       );
-      // Alerte temps réel à l'autre partie
       if (autreId) {
         emitAlert('contrat', {
           id_contrat: contratId,
@@ -307,8 +278,6 @@ exports.signer = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/contrats/:id/document  (auth - participant ou admin)
-// Retourne le document archivé dans MongoDB : PDF signé (base64), hash SHA-256, signatures
 exports.getDocument = async (req, res, next) => {
   try {
     const contratId = parseInt(req.params.id);
@@ -342,7 +311,6 @@ exports.getDocument = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// PUT /api/contrats/:id/statut  (admin)
 exports.updateStatut = async (req, res, next) => {
   try {
     const { statut } = req.body;
@@ -355,7 +323,6 @@ exports.updateStatut = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// DELETE /api/contrats/:id  (admin)
 exports.remove = async (req, res, next) => {
   try {
     const result = await pool.query(
@@ -367,16 +334,13 @@ exports.remove = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// Notifie tous les admins (fire-and-forget)
 const notifierAdmins = async (titre, contenu, id_ressource) => {
   try {
     const { rows } = await pool.query("SELECT id_utilisateur FROM utilisateur WHERE role = 'admin'");
     rows.forEach((a) => createNotification(a.id_utilisateur, 'contrat', titre, contenu, id_ressource, 'contrat'));
-  } catch (_) { /* non bloquant */ }
+  } catch (_) {  }
 };
 
-// PUT /api/contrats/:id/annuler  (auth - une des parties)
-// Règle : possible uniquement si l'autre partie n'a pas encore signé.
 exports.annuler = async (req, res, next) => {
   try {
     const contratId = parseInt(req.params.id);
@@ -393,7 +357,6 @@ exports.annuler = async (req, res, next) => {
     if (!['en_attente', 'signe'].includes(c.statut)) {
       return res.status(409).json({ error: `Un contrat ${c.statut} ne peut pas être annulé` });
     }
-    // L'autre partie a-t-elle déjà signé ?
     const autreASigne = isVendeur ? c.signe_acheteur : c.signe_vendeur;
     if (autreASigne) {
       return res.status(409).json({ error: 'L\'autre partie a déjà signé : annulation impossible (ouvrez un litige)' });
@@ -413,8 +376,6 @@ exports.annuler = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/contrats/:id/litige  (auth - une des parties)
-// Ouvre un litige sur un contrat terminé ; les admins sont notifiés.
 exports.ouvrirLitige = async (req, res, next) => {
   try {
     const contratId = parseInt(req.params.id);
@@ -436,7 +397,6 @@ exports.ouvrirLitige = async (req, res, next) => {
       [contratId, motif]
     );
 
-    // Notifier l'autre partie + les admins
     const autreId = uid === c.id_vendeur ? c.id_acheteur : c.id_vendeur;
     if (autreId) {
       createNotification(autreId, 'contrat', 'Litige ouvert',
@@ -449,7 +409,6 @@ exports.ouvrirLitige = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/contrats/litiges  (admin, modérateur)  -> contrats en litige
 exports.getLitiges = async (req, res, next) => {
   try {
     const { page, limit, skip } = getPagination(req.query);
@@ -469,9 +428,6 @@ exports.getLitiges = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// PUT /api/contrats/:id/litige/resoudre  (admin)
-// action = 'rembourser' (rejoue le transfert en sens inverse, statut -> annule)
-//        | 'clore'      (litige rejeté, statut -> termine)
 exports.resoudreLitige = async (req, res, next) => {
   try {
     const contratId = parseInt(req.params.id);
@@ -487,7 +443,6 @@ exports.resoudreLitige = async (req, res, next) => {
 
     if (action === 'rembourser') {
       if (points > 0 && c.id_acheteur && c.id_vendeur) {
-        // Rembourse l'acheteur, reprend au vendeur (inverse du transfert de finalisation)
         await pool.query('UPDATE utilisateur SET points_solde = points_solde + $1 WHERE id_utilisateur = $2', [points, c.id_acheteur]);
         const txRefund = await pool.query(
           'INSERT INTO transaction_points (montant, motif) VALUES ($1, $2) RETURNING *',
@@ -516,11 +471,9 @@ exports.resoudreLitige = async (req, res, next) => {
       }
       await pool.query("UPDATE contrat SET statut = 'annule' WHERE id_contrat = $1", [contratId]);
     } else {
-      // clore : litige rejeté, le contrat reste terminé
       await pool.query("UPDATE contrat SET statut = 'termine' WHERE id_contrat = $1", [contratId]);
     }
 
-    // Notifier les deux parties
     const msg = action === 'rembourser'
       ? `Le litige sur le contrat #${contratId} a été tranché : remboursement de ${points} points.`
       : `Le litige sur le contrat #${contratId} a été clos sans remboursement.`;

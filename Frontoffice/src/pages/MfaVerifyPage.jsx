@@ -12,7 +12,6 @@ export default function MfaVerifyPage() {
   const { verifyMfa, mfaToken } = useAuthStore()
 
   useEffect(() => {
-    // Si on arrive ici sans mfa_token en store, on redirige
     if (!mfaToken) navigate('/login', { replace: true })
     else inputsRef.current[0]?.focus()
   }, [mfaToken])

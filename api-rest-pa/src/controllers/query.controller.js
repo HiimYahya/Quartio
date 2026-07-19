@@ -18,10 +18,8 @@ const COLLECTIONS = {
   message:       Message,
 };
 
-// Opérations autorisées en lecture pour les modérateurs
 const READ_ONLY_OPS = ['find', 'count'];
 
-// POST /api/query
 exports.execute = async (req, res, next) => {
   try {
     const { query } = req.body;
@@ -29,7 +27,6 @@ exports.execute = async (req, res, next) => {
       return res.status(400).json({ error: 'Paramètre "query" manquant' });
     }
 
-    // Parse + transpile
     let ast;
     try {
       ast = parse(query.trim());
@@ -37,7 +34,6 @@ exports.execute = async (req, res, next) => {
       return res.status(400).json({ error: parseErr.message, type: 'parse_error' });
     }
 
-    // Vérification de la collection
     const model = COLLECTIONS[ast.collection.toLowerCase()];
     if (!model) {
       return res.status(400).json({
@@ -45,7 +41,6 @@ exports.execute = async (req, res, next) => {
       });
     }
 
-    // Les modérateurs ne peuvent qu'en lecture
     if (req.user.role === 'moderateur' && !READ_ONLY_OPS.includes(ast.type)) {
       return res.status(403).json({ error: 'Les modérateurs n\'ont accès qu\'aux opérations FIND et COUNT' });
     }

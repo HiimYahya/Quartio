@@ -1,5 +1,3 @@
-// Règles minimales : 8 caractères, 1 majuscule, 1 chiffre, 1 caractère spécial
-// (alignées sur PASSWORD_PATTERN côté API - api-rest-pa/src/validators/auth.validator.js)
 export const PASSWORD_RULES = [
   { label: '8 caractères minimum', test: (pw) => pw.length >= 8 },
   { label: '1 majuscule',          test: (pw) => /[A-Z]/.test(pw) },

@@ -10,7 +10,7 @@ export default function SwipeView({ evenements }) {
   const [index, setIndex]       = useState(evenements.length - 1)
   const [joined, setJoined]     = useState([])
   const [skipped, setSkipped]   = useState([])
-  const [feedback, setFeedback] = useState(null) // 'join' | 'skip'
+  const [feedback, setFeedback] = useState(null)
   const [finished, setFinished] = useState(false)
 
   const cardRefs = useRef([])
@@ -27,13 +27,11 @@ export default function SwipeView({ evenements }) {
     const id = ev._id ?? ev.id
     if (direction === 'right') {
       showFeedback('join')
-      // Inscription + enregistrement Neo4j [:A_AIME]
       try { await api.post(`/evenements/${id}/participer`) } catch {}
       try { await api.post(`/evenements/${id}/swipe`, { direction: 'right' }) } catch {}
       setJoined((j) => [...j, ev])
     } else {
       showFeedback('skip')
-      // Enregistrement Neo4j [:A_IGNORE]
       try { await api.post(`/evenements/${id}/swipe`, { direction: 'left' }) } catch {}
       setSkipped((s) => [...s, ev])
     }
@@ -81,7 +79,6 @@ export default function SwipeView({ evenements }) {
   return (
     <div className="flex flex-col items-center select-none">
 
-      {/* Progression */}
       <div className="w-full max-w-sm mb-4">
         <div className="flex justify-between text-xs text-gray-400 mb-1">
           <span>{done} / {total} vus</span>
@@ -95,7 +92,6 @@ export default function SwipeView({ evenements }) {
         </div>
       </div>
 
-      {/* Feedback overlay */}
       <div className="relative w-full max-w-sm" style={{ height: 420 }}>
         {feedback === 'join' && (
           <div className="absolute inset-0 z-50 flex items-center justify-center rounded-2xl bg-green-400/20 border-4 border-green-400 pointer-events-none">
@@ -112,7 +108,6 @@ export default function SwipeView({ evenements }) {
           </div>
         )}
 
-        {/* Stack de cartes */}
         {evenements.map((ev, i) => (
           <TinderCard
             key={ev._id ?? ev.id}
@@ -127,7 +122,6 @@ export default function SwipeView({ evenements }) {
         ))}
       </div>
 
-      {/* Boutons manuels */}
       <div className="flex items-center gap-6 mt-6">
         <button
           onClick={() => swipe('left')}
@@ -163,7 +157,6 @@ function EventCard({ ev }) {
 
   return (
     <div className="w-full h-full bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden cursor-grab active:cursor-grabbing">
-      {/* Header coloré */}
       <div className="bg-gradient-to-br from-[#1a4a3a] to-[#2d7a5f] h-40 flex items-center justify-center relative">
         <div className="text-center text-white">
           {monthStr ? (
@@ -182,7 +175,6 @@ function EventCard({ ev }) {
         )}
       </div>
 
-      {/* Contenu */}
       <div className="p-5 space-y-3">
         <h3 className="text-lg font-bold text-gray-800 leading-tight">{ev.titre}</h3>
 

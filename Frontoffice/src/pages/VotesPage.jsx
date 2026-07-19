@@ -21,7 +21,7 @@ export default function VotesPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError]           = useState(null)
   const [voted, setVoted]           = useState({})
-  const [rankings, setRankings]     = useState({}) // voteId -> [optId, ...]
+  const [rankings, setRankings]     = useState({})
   const user = useAuthStore((s) => s.user)
   const [myQuartiers, setMyQuartiers] = useState([])
 
@@ -43,7 +43,6 @@ export default function VotesPage() {
 
   useEffect(() => { load() }, [])
 
-  // Résultats en temps réel : un vote déposé ailleurs rafraîchit la liste
   useEffect(() => {
     const socket = getSocket()
     if (!socket) return
@@ -52,7 +51,6 @@ export default function VotesPage() {
     return () => socket.off('vote:update', onUpdate)
   }, [])
 
-  // ── Vote classique (choix_multiple / oui_non) ────────────────────────────
   const handleVote = async (voteId, idOption) => {
     try {
       await api.post(`/votes/${voteId}/voter`, { id_option: idOption })
@@ -61,7 +59,6 @@ export default function VotesPage() {
     } catch {}
   }
 
-  // ── Vote classement : soumettre l'ordre ──────────────────────────────────
   const handleRankingSubmit = async (voteId) => {
     const ordre = rankings[voteId]
     if (!ordre || ordre.length === 0) return
@@ -87,7 +84,6 @@ export default function VotesPage() {
     }
   }
 
-  // ── Création ─────────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
@@ -134,7 +130,6 @@ export default function VotesPage() {
         </button>
       </div>
 
-      {/* ── Formulaire de création ─────────────────────────────────────── */}
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-4">
           <h3 className="font-semibold text-gray-800">Nouveau vote</h3>
@@ -217,7 +212,6 @@ export default function VotesPage() {
         </form>
       )}
 
-      {/* ── Liste des votes ────────────────────────────────────────────── */}
       {loading ? (
         <div className="text-center py-12 text-gray-400">Chargement...</div>
       ) : votes.length === 0 ? (
@@ -282,7 +276,6 @@ export default function VotesPage() {
               )
             }
 
-            // choix_multiple et oui_non
             return (
               <div key={voteId} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
                 <div className="flex items-center gap-2 mb-1">

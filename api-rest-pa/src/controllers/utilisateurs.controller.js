@@ -7,7 +7,6 @@ const { getPagination, paginate } = require('../utils/pagination');
 const { getUserQuartierIds, isPrivileged } = require('../utils/quartiers');
 const Annonce = require('../models/mongo/annonce.model');
 
-// Vérifie le code MFA si l'utilisateur l'a activé. Retourne un message d'erreur ou null.
 const checkMfaIfActive = async (user, mfa_code) => {
   if (!user.mfa_actif) return null;
   if (!mfa_code) return 'Code MFA requis';
@@ -17,7 +16,6 @@ const checkMfaIfActive = async (user, mfa_code) => {
   return valid ? null : 'Code MFA invalide';
 };
 
-// GET /api/utilisateurs  (admin)
 exports.getAll = async (req, res, next) => {
   try {
     const { page, limit, skip } = getPagination(req.query);
@@ -38,8 +36,6 @@ exports.getAll = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/utilisateurs/voisins-fiables  (auth)
-// Voisins ayant le plus de contrats finalisés avec l'utilisateur connecté ([:A_AIDE] dans les deux sens)
 exports.voisinsFiables = async (req, res, next) => {
   try {
     const uid = req.user.id;
@@ -77,7 +73,6 @@ exports.voisinsFiables = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/utilisateurs/:id  (auth)
 exports.getById = async (req, res, next) => {
   try {
     const result = await pool.query(
@@ -90,7 +85,6 @@ exports.getById = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// PUT /api/utilisateurs/:id  (soi-même ou admin)
 exports.update = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -115,7 +109,6 @@ exports.update = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// PUT /api/utilisateurs/:id/password  (soi-même)
 exports.changePassword = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -136,14 +129,12 @@ exports.changePassword = async (req, res, next) => {
     const hash = await bcrypt.hash(nouveau_mot_de_passe, 10);
     await pool.query('UPDATE utilisateur SET mot_de_passe = $1 WHERE id_utilisateur = $2', [hash, id]);
 
-    // Déconnecte toutes les sessions par sécurité (l'utilisateur devra se reconnecter)
     await pool.query('UPDATE refresh_token SET est_revoque = TRUE WHERE id_utilisateur = $1', [id]);
 
     res.json({ message: 'Mot de passe modifié. Vous avez été déconnecté de toutes les sessions.' });
   } catch (err) { next(err); }
 };
 
-// PUT /api/utilisateurs/:id/email  (soi-même)
 exports.changeEmail = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -168,7 +159,6 @@ exports.changeEmail = async (req, res, next) => {
       [nouvel_email, id]
     );
 
-    // Envoie un nouveau code de vérification pour le nouvel email
     const code     = String(Math.floor(100000 + Math.random() * 900000));
     const expireAt = new Date(Date.now() + 15 * 60 * 1000);
     await pool.query(
@@ -181,7 +171,6 @@ exports.changeEmail = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// PUT /api/utilisateurs/:id/telephone  (soi-même)
 exports.changeTelephone = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -205,8 +194,6 @@ exports.changeTelephone = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/utilisateurs/:id/sessions  (soi-même)
-// Liste les sessions actives (refresh tokens non révoqués et non expirés)
 exports.getSessions = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -222,7 +209,6 @@ exports.getSessions = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// DELETE /api/utilisateurs/:id/sessions  (soi-même) - "Déconnecter partout"
 exports.revokeSessions = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -233,7 +219,6 @@ exports.revokeSessions = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// DELETE /api/utilisateurs/:id  (admin)
 exports.remove = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -258,7 +243,6 @@ exports.remove = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/utilisateurs/:id/quartier  -> Neo4j [:HABITE]
 exports.addQuartier = async (req, res, next) => {
   try {
     const userId = parseInt(req.params.id);
@@ -287,7 +271,6 @@ exports.addQuartier = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// DELETE /api/utilisateurs/:id/quartier/:idQ  -> Neo4j
 exports.removeQuartier = async (req, res, next) => {
   try {
     const userId = parseInt(req.params.id);
@@ -312,7 +295,6 @@ exports.removeQuartier = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/utilisateurs/:id/transactions  (soi-même ou admin)
 exports.getTransactions = async (req, res, next) => {
   try {
     const userId = parseInt(req.params.id);
@@ -344,23 +326,11 @@ exports.getTransactions = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ─── Ray casting ─────────────────────────────────────────────────────────────
-// Détermine si un point (lat, lng) est à l'intérieur d'un polygone GeoJSON.
-//
-// Algorithme : on lance un rayon horizontal vers la droite depuis le point.
-// On compte combien de fois ce rayon coupe les arêtes du polygone.
-//   - Nombre impair  -> le point est DEDANS
-//   - Nombre pair    -> le point est DEHORS
-//
-// ring : tableau de [lng, lat] (format GeoJSON - attention, ordre inversé vs Leaflet)
 function pointInPolygon(lat, lng, ring) {
   let inside = false;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const xi = ring[i][0]; const yi = ring[i][1]; // [lng, lat]
+    const xi = ring[i][0]; const yi = ring[i][1];
     const xj = ring[j][0]; const yj = ring[j][1];
-    // Le rayon croise l'arête si :
-    //   - le point est entre les latitudes des deux sommets
-    //   - le point est à gauche du point d'intersection
     const cross = ((yi > lat) !== (yj > lat))
       && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi);
     if (cross) inside = !inside;
@@ -368,7 +338,6 @@ function pointInPolygon(lat, lng, ring) {
   return inside;
 }
 
-// GET /api/utilisateurs/:id/quartiers -> récupère le/les quartier(s) de l'utilisateur
 exports.getQuartiers = async (req, res, next) => {
   try {
     const userId = parseInt(req.params.id);
@@ -401,12 +370,6 @@ exports.getQuartiers = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/utilisateurs/:id/quartier/detect
-// Body : { adresse: string }
-// 1. Géocode l'adresse via Nominatim (OpenStreetMap)
-// 2. Ray casting sur tous les quartiers avec une géométrie
-// 3. Si trouvé : crée la relation HABITE dans Neo4j et retourne le quartier
-// 4. Si non trouvé : 404 avec le message approprié
 exports.detectQuartier = async (req, res, next) => {
   try {
     const userId = parseInt(req.params.id);
@@ -419,7 +382,6 @@ exports.detectQuartier = async (req, res, next) => {
       return res.status(400).json({ error: 'Adresse requise' });
     }
 
-    // ── Étape 1 : Géocodage Nominatim ────────────────────────────────────────
     const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(adresse.trim())}&format=json&limit=1`;
     const geoRes = await fetch(geoUrl, {
       headers: { 'User-Agent': 'Quartio/1.0 contact@quartio.fr' },
@@ -433,21 +395,19 @@ exports.detectQuartier = async (req, res, next) => {
     const lat = parseFloat(geoData[0].lat);
     const lng = parseFloat(geoData[0].lon);
 
-    // ── Étape 2 : Récupération des quartiers avec géométrie ───────────────────
     const { rows: quartiers } = await pool.query(
       'SELECT id_quartier, nom, geometrie FROM quartier WHERE geometrie IS NOT NULL'
     );
 
-    // ── Étape 3 : Ray casting ─────────────────────────────────────────────────
     let found = null;
     for (const q of quartiers) {
       try {
-        const ring = JSON.parse(q.geometrie).geometry.coordinates[0]; // [[lng,lat], ...]
+        const ring = JSON.parse(q.geometrie).geometry.coordinates[0];
         if (pointInPolygon(lat, lng, ring)) {
           found = q;
           break;
         }
-      } catch { /* géométrie invalide - on ignore */ }
+      } catch {  }
     }
 
     if (!found) {
@@ -457,7 +417,6 @@ exports.detectQuartier = async (req, res, next) => {
       });
     }
 
-    // ── Étape 4 : Assigne le quartier dans Neo4j (relation HABITE) ────────────
     const session = driver.session();
     try {
       await session.run(
@@ -477,7 +436,6 @@ exports.detectQuartier = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/utilisateurs/moderateurs  (admin, modérateur) - liste pour assignation d'incidents
 exports.listModerateurs = async (req, res, next) => {
   try {
     const { rows } = await pool.query(
@@ -487,7 +445,6 @@ exports.listModerateurs = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/utilisateurs/:id/public  (auth) - profil public d'un voisin
 exports.profilPublic = async (req, res, next) => {
   try {
     const userId = parseInt(req.params.id);
@@ -497,7 +454,6 @@ exports.profilPublic = async (req, res, next) => {
     );
     if (base.rows.length === 0) return res.status(404).json({ error: 'Utilisateur non trouvé' });
 
-    // Statistiques d'entraide (Neo4j [:A_AIDE])
     const session = driver.session();
     let rendus = 0, recus = 0;
     try {
@@ -516,7 +472,6 @@ exports.profilPublic = async (req, res, next) => {
       }
     } finally { await session.close(); }
 
-    // Annonces actives visibles par le demandeur (cloisonnement quartier)
     const filter = { id_utilisateur_pg: userId, statut: 'active' };
     if (!isPrivileged(req.user)) {
       const qids = await getUserQuartierIds(req.user.id);
@@ -533,7 +488,6 @@ exports.profilPublic = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/utilisateurs/:id/preferences  -> préférences de notifications
 exports.getPreferences = async (req, res, next) => {
   try {
     const userId = parseInt(req.params.id);
@@ -544,7 +498,6 @@ exports.getPreferences = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// PUT /api/utilisateurs/:id/preferences  body { notif_prefs: { message, evenement, contrat, vote, incident } }
 exports.updatePreferences = async (req, res, next) => {
   try {
     const userId = parseInt(req.params.id);
@@ -562,7 +515,6 @@ exports.updatePreferences = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// PUT /api/utilisateurs/:id/suspension  (admin) - body { jours } (0/absent = réactiver)
 exports.suspendre = async (req, res, next) => {
   try {
     const userId = parseInt(req.params.id);
@@ -575,7 +527,6 @@ exports.suspendre = async (req, res, next) => {
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Utilisateur non trouvé' });
 
-    // Suspension -> révoque les sessions pour forcer la déconnexion immédiate
     if (until) {
       await pool.query('UPDATE refresh_token SET est_revoque = TRUE WHERE id_utilisateur = $1', [userId]);
     }
@@ -583,7 +534,6 @@ exports.suspendre = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/utilisateurs/:id/points  (admin) - crédit/débit manuel  body { montant, motif }
 exports.ajusterPoints = async (req, res, next) => {
   try {
     const userId  = parseInt(req.params.id);
@@ -607,7 +557,6 @@ exports.ajusterPoints = async (req, res, next) => {
       'INSERT INTO transaction_points (montant, motif) VALUES ($1, $2) RETURNING id_transaction',
       [montant, motif]
     );
-    // Rattache la transaction à l'utilisateur (Neo4j [:EST_POUR]) pour l'historique
     const session = driver.session();
     try {
       await session.run(

@@ -37,7 +37,6 @@ export default function AnnonceDetailPage() {
       const { data } = await api.post(`/annonces/${id}/contrat`)
       navigate(`/contrats/${data.id_contrat}`)
     } catch (err) {
-      // Contrat déjà existant -> redirection directe
       if (err.response?.data?.id_contrat) {
         navigate(`/contrats/${err.response.data.id_contrat}`)
         return
@@ -107,7 +106,6 @@ export default function AnnonceDetailPage() {
         <ArrowLeft className="w-4 h-4" /> Retour aux annonces
       </button>
 
-      {/* Carte principale */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
         <div className="flex items-start justify-between gap-3">
           <h2 className="text-xl font-bold text-gray-800">{annonce.titre}</h2>
@@ -146,14 +144,12 @@ export default function AnnonceDetailPage() {
         </div>
       </div>
 
-      {/* Erreur */}
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
           {error}
         </div>
       )}
 
-      {/* Actions */}
       {isAuteur ? (
         <div className="space-y-3">
           <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-500 text-center">

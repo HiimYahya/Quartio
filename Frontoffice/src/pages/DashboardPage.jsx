@@ -26,7 +26,6 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
 
-      {/* Accueil chaleureux */}
       <div className="bg-gradient-to-br from-[#1a4a3a] to-[#2d7a5f] rounded-3xl p-6 md:p-8 text-white flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <p className="text-white/70 text-sm">{t('dashboard.subtitle')}</p>
@@ -39,7 +38,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Actions rapides */}
       <div className="grid grid-cols-4 gap-3 sm:gap-4 max-w-xl">
         {QUICK_ACTIONS.map(({ to, label, icon: Icon, color }) => (
           <Link key={to} to={to} className="flex flex-col items-center gap-2 group">
@@ -51,10 +49,8 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Deux colonnes sur desktop */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        {/* Près de chez vous : annonces */}
         <section>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-gray-800 text-lg">Près de chez vous</h3>
@@ -85,7 +81,6 @@ export default function DashboardPage() {
           )}
         </section>
 
-        {/* Prochains événements */}
         <section>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-gray-800 text-lg">Prochains événements</h3>

@@ -1,6 +1,5 @@
 const Joi = require('joi');
 
-// 8 caractères minimum, au moins 1 majuscule, 1 chiffre, 1 caractère spécial
 const PASSWORD_PATTERN = /^(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,}$/;
 const PASSWORD_MESSAGE = 'Le mot de passe doit contenir au moins 8 caractères, 1 majuscule, 1 chiffre et 1 caractère spécial';
 

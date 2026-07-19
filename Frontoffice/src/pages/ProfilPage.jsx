@@ -21,16 +21,12 @@ export default function ProfilPage() {
   const [voisins, setVoisins]           = useState([])
   const [notifPrefs, setNotifPrefs]     = useState({})
 
-  // ── Quartier ──────────────────────────────────────────────────────────────
-  const [quartier,       setQuartier]       = useState(null)   // quartier actuel
+  const [quartier,       setQuartier]       = useState(null)
   const [qLoading,       setQLoading]       = useState(true)
   const [adresse,        setAdresse]        = useState('')
   const [detecting,      setDetecting]      = useState(false)
-  const [detectResult,   setDetectResult]   = useState(null)  // { type: 'success'|'error', message }
+  const [detectResult,   setDetectResult]   = useState(null)
 
-
-  // Synchronise le formulaire quand le profil est chargé (ex. au rechargement de la page,
-  // où user est null au premier rendu le temps du fetchMe).
   useEffect(() => {
     if (user) setForm({ nom: user.nom ?? '', prenom: user.prenom ?? '', email: user.email ?? '' })
   }, [user?.id])
@@ -66,11 +62,10 @@ export default function ProfilPage() {
     try {
       await api.put(`/utilisateurs/${user.id}/preferences`, { notif_prefs: next })
     } catch {
-      setNotifPrefs(notifPrefs) // rollback en cas d'échec
+      setNotifPrefs(notifPrefs)
     }
   }
 
-  // Charge le quartier actuel de l'utilisateur
   useEffect(() => {
     if (!user?.id) return
     api.get(`/utilisateurs/${user.id}/quartiers`)
@@ -101,8 +96,6 @@ export default function ProfilPage() {
     e.preventDefault()
     setSaving(true); setError(null); setSuccess(false)
     try {
-      // L'email se change via la section Sécurité (re-vérification + MFA) :
-      // on n'envoie ici que le nom et le prénom.
       await api.put(`/utilisateurs/${user.id}`, { nom: form.nom, prenom: form.prenom })
       await fetchMe()
       setSuccess(true)
@@ -114,8 +107,6 @@ export default function ProfilPage() {
     setSaving(false)
   }
 
-  // Garde : tant que le profil n'est pas chargé (ex. au rechargement de la page),
-  // on évite de rendre les sections enfant qui accèdent à user.id.
   if (!user) {
     return <div className="text-center py-12 text-gray-400">{t('common.loading')}</div>
   }
@@ -123,7 +114,6 @@ export default function ProfilPage() {
   return (
     <div className="max-w-2xl space-y-5">
 
-      {/* Solde points */}
       <div className="bg-gradient-to-r from-[#1a4a3a] to-[#2d7a5f] rounded-2xl p-6 text-white flex items-center justify-between">
         <div>
           <p className="text-white/60 text-sm mb-1">{t('profile.balance')}</p>
@@ -136,11 +126,9 @@ export default function ProfilPage() {
         <Coins className="w-12 h-12 text-white/30" />
       </div>
 
-      {/* Mon quartier */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
         <h3 className="font-semibold text-gray-800">Mon quartier</h3>
 
-        {/* Quartier actuel */}
         {qLoading ? (
           <p className="text-sm text-gray-400">Chargement...</p>
         ) : quartier ? (
@@ -158,7 +146,6 @@ export default function ProfilPage() {
           </div>
         )}
 
-        {/* Formulaire de détection par adresse */}
         <form onSubmit={handleDetect} className="space-y-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -175,7 +162,6 @@ export default function ProfilPage() {
             </p>
           </div>
 
-          {/* Résultat de la détection */}
           {detectResult && (
             <div className={`flex items-center gap-2 rounded-lg px-4 py-3 text-sm ${
               detectResult.type === 'success'
@@ -199,7 +185,6 @@ export default function ProfilPage() {
         </form>
       </div>
 
-      {/* Transactions */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
         <h3 className="font-semibold text-gray-800 mb-4">{t('profile.txHistory')}</h3>
         {txLoading ? (
@@ -225,7 +210,6 @@ export default function ProfilPage() {
         )}
       </div>
 
-      {/* Voisins fiables */}
       {voisins.length > 0 && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
           <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-1.5">
@@ -246,7 +230,6 @@ export default function ProfilPage() {
         </div>
       )}
 
-      {/* Formulaire profil */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
         <div className="flex items-center gap-4 mb-6">
           <div className="w-16 h-16 bg-[#1a4a3a] rounded-full flex items-center justify-center text-white text-2xl font-bold shrink-0">
@@ -290,13 +273,10 @@ export default function ProfilPage() {
         </form>
       </div>
 
-      {/* Sécurité - MFA */}
       <MfaSection user={user} onStatusChange={fetchMe} />
 
-      {/* Sécurité - mot de passe, email, téléphone, sessions */}
       <SecuritySection user={user} onEmailChanged={fetchMe} onLogout={logout} />
 
-      {/* Préférences de notifications */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
         <h3 className="font-semibold text-gray-800 mb-1">Préférences de notifications</h3>
         <p className="text-xs text-gray-400 mb-3">Choisissez les types de notifications que vous souhaitez recevoir.</p>
@@ -316,13 +296,11 @@ export default function ProfilPage() {
         </div>
       </div>
 
-      {/* Langue */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
         <h3 className="font-semibold text-gray-800 mb-3">Langue / Language</h3>
         <LangSwitcher />
       </div>
 
-      {/* RGPD */}
       <RgpdSection user={user} onDelete={logout} />
 
       <button onClick={logout}
@@ -334,7 +312,7 @@ export default function ProfilPage() {
 }
 
 function RgpdSection({ user, onDelete }) {
-  const [deleteStep, setDeleteStep] = useState(null) // null | 'confirm' | 'verify'
+  const [deleteStep, setDeleteStep] = useState(null)
   const [credential, setCredential] = useState('')
   const [loading, setLoading]       = useState(false)
   const [error, setError]           = useState(null)
@@ -348,7 +326,7 @@ function RgpdSection({ user, onDelete }) {
       a.download = `quartio-mes-donnees-${user?.id}.json`
       a.click()
       URL.revokeObjectURL(url)
-    } catch { /* silencieux - l'utilisateur verra l'absence de téléchargement */ }
+    } catch {  }
   }
 
   const handleDelete = async (e) => {

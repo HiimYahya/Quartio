@@ -4,13 +4,11 @@ const { getPagination, paginate } = require('../utils/pagination');
 const { emitAlert, emitVoteUpdate } = require('../socket/index');
 const { getUserQuartierIds, isPrivileged } = require('../utils/quartiers');
 
-// GET /api/votes?page=1&limit=20&statut=ouvert
 exports.getAll = async (req, res, next) => {
   try {
     const { page, limit, skip } = getPagination(req.query);
     const { statut } = req.query;
 
-    // Fermeture automatique des votes dont la date de fin est dépassée.
     await pool.query(
       "UPDATE vote SET statut = 'ferme' WHERE statut = 'ouvert' AND date_fin IS NOT NULL AND date_fin < NOW()"
     );
@@ -19,7 +17,6 @@ exports.getAll = async (req, res, next) => {
     const values     = [];
     if (statut) { conditions.push(`statut = $${values.length + 1}`); values.push(statut); }
 
-    // Un habitant ne voit que les votes de son (ses) quartier(s).
     if (!isPrivileged(req.user)) {
       const qids = await getUserQuartierIds(req.user.id);
       if (qids.length === 0) return res.json(paginate([], 0, page, limit));
@@ -38,15 +35,13 @@ exports.getAll = async (req, res, next) => {
     const voteIds = votes.map((v) => v.id_vote);
 
     if (voteIds.length > 0) {
-      // Options de tous les votes
       const optRes = await pool.query(
         'SELECT * FROM option_vote WHERE id_vote = ANY($1::int[]) ORDER BY ordre',
         [voteIds]
       );
 
-      // Comptage des votes par option + options choisies par l'utilisateur courant (Neo4j)
       const toInt = (v) => (v && typeof v.toNumber === 'function' ? v.toNumber() : Number(v));
-      const counts = {};       // id_option -> nb
+      const counts = {};
       const myOptions = new Set();
       const session = driver.session();
       try {
@@ -74,7 +69,6 @@ exports.getAll = async (req, res, next) => {
 
       votes.forEach((v) => {
         v.options = optionsByVote[v.id_vote] ?? [];
-        // id_option choisi par l'utilisateur (ou true pour un classement) sinon null
         const mine = v.options.find((o) => myOptions.has(o.id_option));
         v.mon_vote = mine ? mine.id_option : null;
       });
@@ -84,7 +78,6 @@ exports.getAll = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/votes/:id  (avec options)
 exports.getById = async (req, res, next) => {
   try {
     const vote = await pool.query('SELECT * FROM vote WHERE id_vote = $1', [req.params.id]);
@@ -97,14 +90,12 @@ exports.getById = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/votes  (auth)
 exports.create = async (req, res, next) => {
   try {
     const { titre, description, type, type_vote, nb_choix_max, date_debut, date_fin, est_anonyme, options: rawOptions, id_themes, id_quartier } = req.body;
 
     const typeVote = type_vote || 'choix_multiple';
 
-    // Le vote est rattaché au quartier de son auteur (l'admin peut cibler un autre quartier).
     const wanted = id_quartier ? parseInt(id_quartier) : null;
     let quartierId;
     if (isPrivileged(req.user)) {
@@ -124,7 +115,6 @@ exports.create = async (req, res, next) => {
     );
     const vote = voteResult.rows[0];
 
-    // Pour oui_non : options fixes générées automatiquement
     const optionsToInsert = typeVote === 'oui_non'
       ? [{ libelle: 'Oui', ordre: 0 }, { libelle: 'Non', ordre: 1 }]
       : (rawOptions ?? []);
@@ -159,7 +149,6 @@ exports.create = async (req, res, next) => {
       await session.close();
     }
 
-    // Alerte temps réel à tous les connectés
     emitAlert('vote', {
       id_vote: vote.id_vote,
       titre:   vote.titre,
@@ -170,7 +159,6 @@ exports.create = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// PUT /api/votes/:id  (créateur ou admin)
 exports.update = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -203,7 +191,6 @@ exports.update = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// DELETE /api/votes/:id  (admin)
 exports.remove = async (req, res, next) => {
   try {
     const result = await pool.query('DELETE FROM vote WHERE id_vote = $1 RETURNING id_vote', [req.params.id]);
@@ -219,7 +206,6 @@ exports.remove = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/votes/:id/voter  (auth) -> Neo4j [:REPOND]
 exports.voter = async (req, res, next) => {
   try {
     const voteId    = parseInt(req.params.id);
@@ -236,7 +222,6 @@ exports.voter = async (req, res, next) => {
       return res.status(409).json({ error: 'Ce vote est fermé' });
     }
 
-    // Un habitant ne peut voter que dans son quartier.
     if (!isPrivileged(req.user)) {
       const qids = await getUserQuartierIds(req.user.id);
       if (!vote.rows[0].id_quartier || !qids.includes(vote.rows[0].id_quartier)) {
@@ -268,14 +253,12 @@ exports.voter = async (req, res, next) => {
       await session.close();
     }
 
-    // Résultats à rafraîchir en direct chez les autres participants
     emitVoteUpdate(voteId);
 
     res.status(201).json({ message: 'Vote enregistré' });
   } catch (err) { next(err); }
 };
 
-// GET /api/votes/:id/resultats
 exports.getResultats = async (req, res, next) => {
   try {
     const voteId = parseInt(req.params.id);

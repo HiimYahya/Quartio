@@ -5,7 +5,7 @@ import useAuthStore from '../store/authStore'
 
 export default function LoginPage() {
   const [form, setForm] = useState({ email: '', mot_de_passe: '' })
-  const [step, setStep] = useState('login') // 'login' | 'mfa'
+  const [step, setStep] = useState('login')
   const [digits, setDigits] = useState(['', '', '', '', '', ''])
   const { login, verifyMfa, loading, error, clearError } = useAuthStore()
   const navigate = useNavigate()

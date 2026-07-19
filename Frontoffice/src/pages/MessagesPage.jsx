@@ -53,7 +53,7 @@ export default function MessagesPage() {
     try {
       const { data } = await api.post('/conversations', { participants: [voisinId] })
       navigate(`/messages/${data._id}`)
-    } catch { /* ignore */ } finally { setStarting(false) }
+    } catch {  } finally { setStarting(false) }
   }
 
   const filteredNeighbors = neighbors.filter((n) =>
@@ -161,7 +161,6 @@ export default function MessagesPage() {
         })
       )}
 
-      {/* Modal nouvelle conversation */}
       {showNew && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowNew(false)}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>

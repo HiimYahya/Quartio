@@ -1,5 +1,4 @@
 export default {
-  // Navigation
   nav: {
     home:      'Accueil',
     map:       'Carte du quartier',
@@ -13,7 +12,6 @@ export default {
     logout:    'Déconnexion',
   },
 
-  // Auth
   auth: {
     login:           'Connexion',
     register:        "S'inscrire",
@@ -30,7 +28,6 @@ export default {
     joinSlogan:      'Rejoignez votre quartier',
   },
 
-  // Dashboard
   dashboard: {
     greeting:     'Bonjour, {{name}}',
     subtitle:     'Bienvenue sur Quartio - votre quartier, connecté.',
@@ -50,7 +47,6 @@ export default {
     role:         'Rôle',
   },
 
-  // Annonces
   annonces: {
     title:        'Annonces',
     count:        '{{count}} annonce(s) dans votre quartier',
@@ -76,7 +72,6 @@ export default {
     placeholderCat:   'Ex: Bricolage, Jardinage...',
   },
 
-  // Événements
   events: {
     title:        'Événements',
     count:        '{{count}} événement(s)',
@@ -106,7 +101,6 @@ export default {
     organizedBy:  'Organisé par',
   },
 
-  // Votes
   votes: {
     title:      'Votes',
     count:      '{{count}} vote(s) actif(s)',
@@ -124,7 +118,6 @@ export default {
     placeholderDesc:  'Contexte du vote (optionnel)',
   },
 
-  // Messages
   messages: {
     title:       'Messages',
     count:       '{{count}} conversation(s)',
@@ -141,7 +134,6 @@ export default {
     back:        '<- Retour',
   },
 
-  // Contrats
   contracts: {
     title:       'Contrats',
     count:       '{{count}} contrat(s)',
@@ -154,12 +146,10 @@ export default {
     points:      '{{count}} pts',
     free:        'Gratuit',
     sign:        'Signer ->',
-    // Statuts
     en_attente:  'En attente',
     signe:       'Signé',
     annule:      'Annulé',
     termine:     'Terminé',
-    // Détail
     step1:       'Informations',
     step2:       'Document PDF',
     step3:       'Signature',
@@ -191,7 +181,6 @@ export default {
     pendingSign: 'En attente de signature',
   },
 
-  // Incidents
   incidents: {
     title:      'Incidents',
     count:      '{{count}} incident(s) signalé(s)',
@@ -214,7 +203,6 @@ export default {
     critique:   'Critique',
   },
 
-  // Profil
   profile: {
     title:        'Mon profil',
     balance:      'Mon solde de points',
@@ -232,7 +220,6 @@ export default {
     transaction:  'Transaction',
   },
 
-  // Carte
   map: {
     title:       'Carte du quartier',
     showAll:     'Tout',
@@ -245,7 +232,6 @@ export default {
     free:        'Gratuit',
   },
 
-  // Commun
   common: {
     loading:  'Chargement...',
     error:    'Une erreur est survenue.',

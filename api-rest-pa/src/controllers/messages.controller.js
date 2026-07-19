@@ -4,7 +4,6 @@ const Incident               = require('../models/mongo/incident.model');
 const validateMongoId        = require('../utils/validateMongoId');
 const { createNotification } = require('../utils/notify');
 
-// DELETE /api/messages/:id  (auteur ou admin)
 exports.remove = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
@@ -15,13 +14,11 @@ exports.remove = async (req, res, next) => {
       return res.status(403).json({ error: 'Accès refusé' });
     }
 
-    // Soft delete
     await Message.findByIdAndUpdate(req.params.id, { est_supprime: true });
     res.status(204).send();
   } catch (err) { next(err); }
 };
 
-// POST /api/messages/:id/avertir  (admin, modérateur) -> notifie l'auteur du message
 exports.avertir = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
@@ -41,7 +38,6 @@ exports.avertir = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/messages/:id/signaler  -> MongoDB Incident + Neo4j [:SIGNALE]
 exports.signaler = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
@@ -71,7 +67,6 @@ exports.signaler = async (req, res, next) => {
       await session.close();
     }
 
-    // Notifier les admins (id_utilisateur = 0 -> sera ignoré si inexistant)
     createNotification(
       message.id_utilisateur_pg,
       'incident',

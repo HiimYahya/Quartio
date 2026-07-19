@@ -4,9 +4,6 @@ const { getPagination, paginate } = require('../utils/pagination');
 const { getUserQuartierIds, isPrivileged } = require('../utils/quartiers');
 const booleanIntersects = require('@turf/boolean-intersects').default;
 
-// Autorise l'accès au contenu d'un quartier : un habitant ne peut consulter
-// que son (ses) quartier(s) ; un admin/modérateur accède à tout.
-// Renvoie false (et répond 403) si l'accès est refusé.
 async function ensureQuartierAccess(req, res) {
   if (isPrivileged(req.user)) return true;
   const qids = await getUserQuartierIds(req.user.id);
@@ -17,8 +14,6 @@ async function ensureQuartierAccess(req, res) {
   return true;
 }
 
-// Vérifie si newGeoStr (JSON string) chevauche un quartier existant.
-// excludeId permet d'exclure le quartier qu'on est en train de modifier.
 async function checkOverlap(newGeoStr, excludeId = null) {
   if (!newGeoStr) return null;
   let newGeo;
@@ -32,14 +27,13 @@ async function checkOverlap(newGeoStr, excludeId = null) {
   for (const row of existing.rows) {
     try {
       if (booleanIntersects(newGeo, JSON.parse(row.geometrie))) {
-        return row.nom; // retourne le nom du premier quartier en conflit
+        return row.nom;
       }
-    } catch { /* ignore les géométries invalides */ }
+    } catch {  }
   }
   return null;
 }
 
-// GET /api/quartiers
 exports.getAll = async (req, res, next) => {
   try {
     const { page, limit, skip } = getPagination(req.query);
@@ -54,7 +48,6 @@ exports.getAll = async (req, res, next) => {
   }
 };
 
-// GET /api/quartiers/:id
 exports.getById = async (req, res, next) => {
   try {
     const result = await pool.query(
@@ -70,7 +63,6 @@ exports.getById = async (req, res, next) => {
   }
 };
 
-// POST /api/quartiers  (admin)
 exports.create = async (req, res, next) => {
   try {
     const { nom, geometrie } = req.body;
@@ -87,7 +79,6 @@ exports.create = async (req, res, next) => {
 
     const quartier = result.rows[0];
 
-    // Créer le nœud dans Neo4j
     const session = driver.session();
     try {
       await session.run(
@@ -104,7 +95,6 @@ exports.create = async (req, res, next) => {
   }
 };
 
-// PUT /api/quartiers/:id  (admin)
 exports.update = async (req, res, next) => {
   try {
     const { nom, geometrie } = req.body;
@@ -134,7 +124,6 @@ exports.update = async (req, res, next) => {
       [updated.nom, updated.geometrie, id]
     );
 
-    // Mettre à jour le nom dans Neo4j
     const session = driver.session();
     try {
       await session.run(
@@ -151,7 +140,6 @@ exports.update = async (req, res, next) => {
   }
 };
 
-// DELETE /api/quartiers/:id  (admin)
 exports.remove = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -164,7 +152,6 @@ exports.remove = async (req, res, next) => {
       return res.status(404).json({ error: 'Quartier non trouvé' });
     }
 
-    // Supprimer le nœud et toutes ses relations dans Neo4j
     const session = driver.session();
     try {
       await session.run(
@@ -181,7 +168,6 @@ exports.remove = async (req, res, next) => {
   }
 };
 
-// GET /api/quartiers/:id/habitants  (auth) - via Neo4j
 exports.getHabitants = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -215,7 +201,6 @@ exports.getHabitants = async (req, res, next) => {
   }
 };
 
-// GET /api/quartiers/:id/annonces  - via Neo4j -> MongoDB
 exports.getAnnonces = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -244,7 +229,6 @@ exports.getAnnonces = async (req, res, next) => {
   }
 };
 
-// GET /api/quartiers/:id/evenements  - via Neo4j -> MongoDB
 exports.getEvenements = async (req, res, next) => {
   try {
     const { id } = req.params;

@@ -70,7 +70,6 @@ export default function DashboardPage() {
         <p className="text-white/60 text-sm mt-1">Tableau de bord administrateur Quartio</p>
       </div>
 
-      {/* KPIs enrichis */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Utilisateurs"      value={kpis.total_utilisateurs ?? oldStats.users}      color="bg-blue-50" sub={kpis.nouveaux_30j != null ? `+${kpis.nouveaux_30j} ce mois` : undefined} icon={Users} />
         <StatCard label="Points en circulation" value={kpis.points_en_circulation != null ? `${kpis.points_en_circulation.toLocaleString('fr-FR')} pts` : '-'} color="bg-yellow-50" icon={Coins} />
@@ -85,7 +84,6 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Incidents urgents */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-slate-700">Incidents urgents</h3>
@@ -115,7 +113,6 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Actions rapides + état services */}
         <div className="space-y-4">
           <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
             <h3 className="font-semibold text-slate-700 mb-3">Actions rapides</h3>

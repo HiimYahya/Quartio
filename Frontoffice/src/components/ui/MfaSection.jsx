@@ -3,7 +3,7 @@ import { ShieldCheck, ShieldOff, QrCode, KeyRound } from 'lucide-react'
 import api from '../../services/api'
 
 export default function MfaSection({ user, onStatusChange }) {
-  const [step, setStep]     = useState('idle') // idle | setup | activate | disable
+  const [step, setStep]     = useState('idle')
   const [qrCode, setQrCode] = useState(null)
   const [secret, setSecret] = useState(null)
   const [code, setCode]     = useState('')
@@ -77,7 +77,6 @@ export default function MfaSection({ user, onStatusChange }) {
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">{error}</div>
       )}
 
-      {/* ── État idle ─────────────────────────────────────────────────────────── */}
       {step === 'idle' && (
         <div>
           {!mfaActive ? (
@@ -96,7 +95,6 @@ export default function MfaSection({ user, onStatusChange }) {
         </div>
       )}
 
-      {/* ── Étape setup : affichage QR code ──────────────────────────────────── */}
       {step === 'setup' && (
         <div className="space-y-4">
           <p className="flex items-center gap-1.5 text-sm text-gray-600">
@@ -143,7 +141,6 @@ export default function MfaSection({ user, onStatusChange }) {
         </div>
       )}
 
-      {/* ── Étape disable : saisie code pour confirmation ─────────────────── */}
       {step === 'disable' && (
         <form onSubmit={disable} className="space-y-3">
           <p className="text-sm text-gray-600">

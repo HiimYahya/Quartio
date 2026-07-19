@@ -59,7 +59,6 @@ const useAuthStore = create((set) => ({
   fetchMe: async () => {
     try {
       const { data } = await api.get('/auth/me');
-      // normalise id_utilisateur -> id
       const user = { ...data, id: data.id ?? data.id_utilisateur };
       set({ user });
     } catch {

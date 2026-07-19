@@ -5,12 +5,10 @@ const pool      = require('../config/db');
 
 const APP_NAME = 'Quartio';
 
-// GET /api/auth/mfa/setup - génère un secret TOTP + QR code (non activé tant que /activate pas appelé)
 exports.setup = async (req, res, next) => {
   try {
     const secret = speakeasy.generateSecret({ name: `${APP_NAME} (${req.user.email})`, length: 20 });
 
-    // Stocke le secret provisoire (pas encore actif)
     await pool.query(
       'UPDATE utilisateur SET mfa_secret = $1 WHERE id_utilisateur = $2',
       [secret.base32, req.user.id]
@@ -26,7 +24,6 @@ exports.setup = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/auth/mfa/activate - vérifie le premier code TOTP et active le MFA
 exports.activate = async (req, res, next) => {
   try {
     const { code } = req.body;
@@ -63,7 +60,6 @@ exports.activate = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/auth/mfa/disable - désactive le MFA (nécessite un code TOTP valide)
 exports.disable = async (req, res, next) => {
   try {
     const { code } = req.body;
@@ -95,8 +91,6 @@ exports.disable = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/auth/mfa/verify - appelé depuis la page /mfa après login (avec mfa_token)
-// Vérifie le code TOTP et retourne le vrai JWT + refresh token
 exports.verify = async (req, res, next) => {
   try {
     const { mfa_token, code } = req.body;
@@ -132,7 +126,6 @@ exports.verify = async (req, res, next) => {
 
     if (!valid) return res.status(400).json({ error: 'Code invalide' });
 
-    // Émet le vrai JWT
     const accessToken = jwt.sign(
       { id: user.id_utilisateur, email: user.email, role: user.role },
       process.env.JWT_SECRET,
@@ -165,8 +158,6 @@ exports.verify = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/auth/mfa/verify-action - vérifie un code TOTP pour une action sensible (signature, etc.)
-// Utilisé par les routes protégées (contrats, changement email, etc.)
 exports.verifyAction = async (req, res, next) => {
   try {
     const { code } = req.body;

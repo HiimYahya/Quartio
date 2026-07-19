@@ -7,7 +7,6 @@ const validateMongoId = require('../utils/validateMongoId');
 const { getPagination, paginate } = require('../utils/pagination');
 const { emitNewMessage } = require('../socket/index');
 
-// GET /api/conversations  -> mes conversations enrichies (dernier message + non lus)
 exports.getMes = async (req, res, next) => {
   try {
     const { page, limit, skip } = getPagination(req.query);
@@ -36,7 +35,6 @@ exports.getMes = async (req, res, next) => {
 
     const total = await Conversation.countDocuments({ _id: { $in: mongoIds } });
 
-    // Enrichir chaque conversation avec dernier message + nb non lus
     const enriched = await Promise.all(convs.map(async (conv) => {
       const [lastMsg, nonLus] = await Promise.all([
         Message.findOne({ id_conversation: conv._id, est_supprime: false })
@@ -50,7 +48,6 @@ exports.getMes = async (req, res, next) => {
         }),
       ]);
 
-      // Charger les infos PG des participants (nom/prénom)
       const otherIds = conv.participants_pg.filter((id) => id !== uid);
       let participants = [];
       if (otherIds.length > 0) {
@@ -75,7 +72,6 @@ exports.getMes = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/conversations/:id
 exports.getById = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
@@ -86,7 +82,6 @@ exports.getById = async (req, res, next) => {
       return res.status(403).json({ error: 'Accès refusé' });
     }
 
-    // Enrichir avec les infos PG des participants
     const pgRes = await pool.query(
       'SELECT id_utilisateur AS id, nom, prenom FROM utilisateur WHERE id_utilisateur = ANY($1)',
       [conv.participants_pg]
@@ -97,15 +92,12 @@ exports.getById = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/conversations
 exports.create = async (req, res, next) => {
   try {
     const { type, nom, participants } = req.body;
     const allParticipants = [...new Set([req.user.id, ...participants])];
     const convType = type || 'privee';
 
-    // Dédup : une conversation privée réunissant exactement les mêmes
-    // participants est réutilisée (évite les doublons sur "Contacter").
     if (convType === 'privee') {
       const existing = await Conversation.findOne({
         type: 'privee',
@@ -139,7 +131,6 @@ exports.create = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/conversations/:id/messages - marque les messages de l'autre comme lus
 exports.getMessages = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
@@ -152,7 +143,6 @@ exports.getMessages = async (req, res, next) => {
       return res.status(403).json({ error: 'Accès refusé' });
     }
 
-    // Marquer comme lus tous les messages de l'autre que l'utilisateur n'a pas encore lus
     await Message.updateMany(
       { id_conversation: conv._id, id_utilisateur_pg: { $ne: uid }, lu_par: { $not: { $elemMatch: { $eq: uid } } } },
       { $push: { lu_par: uid } }
@@ -167,7 +157,6 @@ exports.getMessages = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/conversations/:id/messages
 exports.envoyerMessage = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
@@ -185,10 +174,9 @@ exports.envoyerMessage = async (req, res, next) => {
       media_url,
       id_utilisateur_pg: req.user.id,
       id_conversation:   conv._id,
-      lu_par:            [req.user.id], // l'expéditeur l'a forcément lu
+      lu_par:            [req.user.id],
     });
 
-    // Relations Neo4j
     const session = driver.session();
     try {
       await session.run(
@@ -203,7 +191,6 @@ exports.envoyerMessage = async (req, res, next) => {
       await session.close();
     }
 
-    // Émettre le message en temps réel via Socket.io
     const msgPayload = message.toObject();
     emitNewMessage(req.params.id, {
       ...msgPayload,
@@ -214,7 +201,6 @@ exports.envoyerMessage = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/conversations/:id/messages/media - upload d'une image (Cloudinary)
 exports.envoyerMessageMedia = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;

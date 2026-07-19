@@ -4,12 +4,10 @@ const Annonce   = require('../models/mongo/annonce.model');
 const Evenement = require('../models/mongo/evenement.model');
 const Incident  = require('../models/mongo/incident.model');
 
-// GET /api/stats  (admin)
 exports.getStats = async (req, res, next) => {
   try {
     const now = new Date();
 
-    // ── KPIs globaux ──────────────────────────────────────────────────────────
     const [
       totalUsers, activeUsersRes, pointsRes,
       openIncidents, urgentIncidents,
@@ -37,7 +35,6 @@ exports.getStats = async (req, res, next) => {
         .lean(),
     ]);
 
-    // ── Séries hebdomadaires sur 8 semaines ───────────────────────────────────
     const weeks = [];
     for (let i = 7; i >= 0; i--) {
       const start = new Date(now);
@@ -75,13 +72,11 @@ exports.getStats = async (req, res, next) => {
       };
     }));
 
-    // ── Classement utilisateurs par points ───────────────────────────────────
     const rankingRes = await pool.query(
       `SELECT id_utilisateur, prenom, nom, points_solde, role
        FROM utilisateur ORDER BY points_solde DESC LIMIT 10`
     );
 
-    // ── Top catégories d'annonces ─────────────────────────────────────────────
     const topCategories = await Annonce.aggregate([
       { $match: { categorie: { $ne: null } } },
       { $group: { _id: '$categorie', count: { $sum: 1 } } },
@@ -89,7 +84,6 @@ exports.getStats = async (req, res, next) => {
       { $limit: 8 },
     ]);
 
-    // ── Répartition incidents par statut ─────────────────────────────────────
     const incidentsByStatus = await Incident.aggregate([
       { $group: { _id: '$statut', count: { $sum: 1 } } },
     ]);
@@ -119,9 +113,6 @@ exports.getStats = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/stats/heatmap  (admin, modérateur)
-// Niveau d'activité par quartier sur les 30 derniers jours :
-// nombre d'habitants ([:HABITE]) + annonces + événements + incidents publiés par ces habitants
 exports.getHeatmap = async (req, res, next) => {
   try {
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);

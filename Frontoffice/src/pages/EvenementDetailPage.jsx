@@ -5,14 +5,13 @@ import { MapContainer, TileLayer, Polygon } from 'react-leaflet'
 import api from '../services/api'
 import useAuthStore from '../store/authStore'
 
-// GeoJSON (string) -> positions Leaflet [[lat, lng], ...]
 function parseGeo(g) {
   if (!g) return null
   try {
     const obj  = typeof g === 'string' ? JSON.parse(g) : g
     const geom = obj.type === 'Feature' ? obj.geometry : obj
     if (geom?.type === 'Polygon') return geom.coordinates[0].map(([lng, lat]) => [lat, lng])
-  } catch { /* géométrie invalide */ }
+  } catch {  }
   return null
 }
 
@@ -26,7 +25,7 @@ export default function EvenementDetailPage() {
   const [participants, setParticipants] = useState([])
   const [actionLoading, setActionLoading]   = useState(false)
   const [error, setError]     = useState(null)
-  const [geo, setGeo]         = useState(null)  // polygone du quartier de l'événement
+  const [geo, setGeo]         = useState(null)
 
   const myId = user?.id ?? user?.id_utilisateur
 
@@ -54,7 +53,6 @@ export default function EvenementDetailPage() {
       .finally(() => setLoading(false))
   }, [id])
 
-  // Charge le polygone du quartier de l'événement pour la mini-carte
   useEffect(() => {
     if (!ev?.id_quartier) return
     api.get(`/quartiers/${ev.id_quartier}`)
@@ -96,7 +94,6 @@ export default function EvenementDetailPage() {
       </button>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        {/* Header coloré */}
         <div className="bg-gradient-to-br from-[#1a4a3a] to-[#2d7a5f] px-6 py-8 text-white">
           <h2 className="text-2xl font-bold">{ev.titre}</h2>
           <div className="mt-2 flex items-center gap-2">
@@ -114,7 +111,6 @@ export default function EvenementDetailPage() {
         </div>
 
         <div className="p-6 space-y-5">
-          {/* Méta */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-600">
             <div className="flex items-center gap-2">
               <CalendarDays className="w-4 h-4 shrink-0" />
@@ -141,7 +137,6 @@ export default function EvenementDetailPage() {
             </div>
           </div>
 
-          {/* Barre de capacité */}
           {ev.capacite_max && nbParticipants !== null && (
             <div>
               <div className="flex justify-between text-xs text-gray-400 mb-1">
@@ -161,7 +156,6 @@ export default function EvenementDetailPage() {
             <p className="text-gray-600 text-sm leading-relaxed">{ev.description}</p>
           )}
 
-          {/* Mini-carte du quartier de l'événement */}
           {geo && geo.length > 2 && (
             <div>
               <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1.5">
@@ -179,7 +173,6 @@ export default function EvenementDetailPage() {
             </div>
           )}
 
-          {/* Liste des participants */}
           {participants.length > 0 && (
             <div>
               <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1.5">
@@ -211,7 +204,6 @@ export default function EvenementDetailPage() {
             <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">{error}</div>
           )}
 
-          {/* Bouton d'action */}
           {!isOrganisateur && (
             <button
               onClick={handleToggle}

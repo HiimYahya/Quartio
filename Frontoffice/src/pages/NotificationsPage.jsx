@@ -13,7 +13,6 @@ const TYPE_ICON = {
   systeme:   Info,
 }
 
-// Où mène le clic sur une notification, selon la ressource liée.
 function resourceLink(n) {
   const id = n.id_ressource
   switch (n.type_ressource) {
@@ -44,7 +43,7 @@ export default function NotificationsPage() {
 
   const markRead = async (n) => {
     if (!n.est_lue) {
-      try { await api.put(`/notifications/${n.id_notification}/lire`) } catch { /* ignore */ }
+      try { await api.put(`/notifications/${n.id_notification}/lire`) } catch {  }
       setItems((v) => v.map((x) => x.id_notification === n.id_notification ? { ...x, est_lue: true } : x))
       refreshUnread()
     }
@@ -57,14 +56,14 @@ export default function NotificationsPage() {
   }
 
   const markAll = async () => {
-    try { await api.put('/notifications/lire-tout') } catch { /* ignore */ }
+    try { await api.put('/notifications/lire-tout') } catch {  }
     setItems((v) => v.map((x) => ({ ...x, est_lue: true })))
     setUnread(0)
   }
 
   const remove = async (id, e) => {
     e.stopPropagation()
-    try { await api.delete(`/notifications/${id}`) } catch { /* ignore */ }
+    try { await api.delete(`/notifications/${id}`) } catch {  }
     setItems((v) => v.filter((x) => x.id_notification !== id))
     refreshUnread()
   }

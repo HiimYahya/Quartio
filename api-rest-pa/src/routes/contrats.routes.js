@@ -54,7 +54,6 @@ const { createSchema, statutSchema, signerSchema, litigeSchema, resoudreLitigeSc
 router.get('/',  auth, ctrl.getMes);
 router.post('/', auth, validate(createSchema), ctrl.create);
 
-// ── Litiges (admin) — AVANT /:id pour éviter la capture de "litiges" comme id ──
 /**
  * @swagger
  * /api/contrats/litiges:
@@ -237,7 +236,6 @@ router.put('/:id/statut', auth, role('admin'), validate(statutSchema), ctrl.upda
  */
 router.delete('/:id', auth, role('admin'), ctrl.remove);
 
-// ── Annulation / litiges ──────────────────────────────────────────────────────
 /**
  * @swagger
  * /api/contrats/{id}/annuler:

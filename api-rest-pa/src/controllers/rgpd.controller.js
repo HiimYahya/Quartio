@@ -7,16 +7,11 @@ const Incident     = require('../models/mongo/incident.model');
 const Conversation = require('../models/mongo/conversation.model');
 const Message      = require('../models/mongo/message.model');
 
-// GET /api/rgpd/export
-// Retourne un JSON complet de toutes les données personnelles de l'utilisateur connecté
 exports.export = async (req, res, next) => {
   try {
     const uid = req.user.id;
     const toInt = (v) => (v && typeof v.toNumber === 'function' ? v.toNumber() : Number(v));
 
-    // ── Neo4j : ids liés à l'utilisateur (transactions, votes) + relations ──────
-    // Le lien transaction→utilisateur ([:EST_POUR]) et vote→utilisateur ([:REPOND])
-    // est porté par Neo4j, pas par une colonne PostgreSQL.
     const session = driver.session();
     let txIds = [], optionIds = [], relations = [];
     try {
@@ -48,7 +43,6 @@ exports.export = async (req, res, next) => {
       await session.close();
     }
 
-    // ── PostgreSQL ─────────────────────────────────────────────────────────────
     const [profil, contrats, transactions, notifications, votes] = await Promise.all([
       pool.query(
         `SELECT id_utilisateur, nom, prenom, email, telephone, role,
@@ -90,7 +84,6 @@ exports.export = async (req, res, next) => {
         : Promise.resolve({ rows: [] }),
     ]);
 
-    // ── MongoDB ────────────────────────────────────────────────────────────────
     const [annonces, evenements, incidents, conversations, messages] = await Promise.all([
       Annonce.find({ id_utilisateur_pg: uid }).lean(),
       Evenement.find({ id_utilisateur_pg: uid }).lean(),
@@ -120,8 +113,6 @@ exports.export = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// DELETE /api/rgpd/delete-account
-// Suppression totale du compte - nécessite un code MFA si activé, sinon confirmation par mot de passe
 exports.deleteAccount = async (req, res, next) => {
   try {
     const uid  = req.user.id;
@@ -135,7 +126,6 @@ exports.deleteAccount = async (req, res, next) => {
 
     const user = userRes.rows[0];
 
-    // Vérification : MFA si activé, sinon mot de passe
     if (user.mfa_actif) {
       if (!code) return res.status(400).json({ error: 'Code MFA requis' });
       const valid = speakeasy.totp.verify({
@@ -149,22 +139,17 @@ exports.deleteAccount = async (req, res, next) => {
       if (!match) return res.status(400).json({ error: 'Mot de passe incorrect' });
     }
 
-    // ── Suppression cascade ────────────────────────────────────────────────────
-
-    // MongoDB : anonymiser les messages (RGPD - préserve la cohérence des conversations)
     await Message.updateMany(
       { id_utilisateur_pg: uid },
       { $set: { contenu: '[Message supprimé]', est_supprime: true } }
     );
 
-    // MongoDB : supprimer les annonces, événements, incidents créés par l'utilisateur
     await Promise.all([
       Annonce.deleteMany({ id_utilisateur_pg: uid }),
       Evenement.deleteMany({ id_utilisateur_pg: uid }),
       Incident.deleteMany({ id_utilisateur_pg: uid }),
     ]);
 
-    // Neo4j : supprimer toutes les relations et le nœud Utilisateur
     const session = driver.session();
     try {
       await session.run(
@@ -176,9 +161,6 @@ exports.deleteAccount = async (req, res, next) => {
       await session.close();
     }
 
-    // PostgreSQL : CASCADE via FK supprime automatiquement :
-    // refresh_token, email_verification, password_reset, notification, transaction_points
-    // Les contrats sont gardés (anonymisés via SET NULL) pour l'intégrité comptable
     await pool.query(
       'UPDATE contrat SET id_vendeur = NULL WHERE id_vendeur = $1',
       [uid]

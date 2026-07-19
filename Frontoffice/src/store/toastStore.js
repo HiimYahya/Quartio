@@ -12,7 +12,6 @@ const useToastStore = create((set) => ({
   remove: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 }))
 
-// API impérative simple : toast.success('...'), toast.error('...'), toast.info('...')
 export const toast = {
   success: (m) => useToastStore.getState().push('success', m),
   error:   (m) => useToastStore.getState().push('error', m),

@@ -15,8 +15,6 @@ export default function LoginPage() {
   const verified = searchParams.get('verified')
   const reset    = searchParams.get('reset')
 
-  // Blocage temporaire après 5 tentatives échouées.
-  // Persisté en localStorage pour survivre à un rechargement de la page.
   const MAX_ATTEMPTS = 5
   const BLOCK_SECONDS = 30
   const readLS = (k, d = 0) => { try { return parseInt(localStorage.getItem(k)) || d } catch { return d } }

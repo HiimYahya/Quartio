@@ -19,14 +19,12 @@ export default function VerifyEmailPage() {
   const inputsRef = useRef([])
   const navigate  = useNavigate()
 
-  // Compte à rebours cooldown renvoi
   useEffect(() => {
     if (resendCooldown <= 0) return
     const id = setInterval(() => setResendCooldown((n) => n - 1), 1000)
     return () => clearInterval(id)
   }, [resendCooldown])
 
-  // Compte à rebours expiration code
   useEffect(() => {
     if (expireLeft <= 0) return
     const id = setInterval(() => setExpireLeft((n) => n - 1), 1000)

@@ -1,6 +1,3 @@
-// Transpile le CST (Concrete Syntax Tree) produit par le parser
-// en une structure { type, collection, filter, document, sort, limit }
-// que le controller exécute via Mongoose.
 
 function parseValue(node) {
   if (!node || !node.children) return null;
@@ -8,7 +5,7 @@ function parseValue(node) {
 
   if (ch.StringLiteral?.[0]) {
     const raw = ch.StringLiteral[0].image;
-    return raw.slice(1, -1); // retire les guillemets
+    return raw.slice(1, -1);
   }
   if (ch.NumberLiteral?.[0]) {
     return parseFloat(ch.NumberLiteral[0].image);
@@ -29,13 +26,11 @@ function parseCondition(node) {
   const ch   = node.children;
   const field = ch.field?.[0]?.image ?? ch.Identifier?.[0]?.image;
 
-  // CONTAINS
   if (ch.Contains) {
     const val = parseValue(ch.value?.[0]);
     return { [field]: { $regex: String(val), $options: 'i' } };
   }
 
-  // IN / NOT IN
   if (ch.In) {
     const vals = (ch.value ?? []).map(parseValue);
     return ch.Not
@@ -43,7 +38,6 @@ function parseCondition(node) {
       : { [field]: { $in: vals } };
   }
 
-  // Comparison
   const opToken = ch.comparisonOp?.[0]?.children;
   const val     = parseValue(ch.value?.[0]);
 
@@ -66,15 +60,13 @@ function parseWhereClause(node) {
   if (conditions.length === 0) return {};
   if (conditions.length === 1) return parseCondition(conditions[0]);
 
-  // Reconstruire l'ordre des conditions et des opérateurs
   const parts = [parseCondition(conditions[0])];
   for (let i = 0; i < logicalOps.length; i++) {
-    const op   = logicalOps[i].tokenType.name; // 'And' | 'Or'
+    const op   = logicalOps[i].tokenType.name;
     const cond = parseCondition(conditions[i + 1]);
     parts.push({ op, cond });
   }
 
-  // Regrouper par AND prioritaire sur OR
   let andGroup = [parts[0]];
   const orGroups = [];
 
@@ -117,7 +109,6 @@ function parseJsonValue(node) {
   return null;
 }
 
-// ── Point d'entrée ────────────────────────────────────────────────────────────
 function transpile(cst) {
   const root = cst.children;
 
@@ -128,7 +119,7 @@ function transpile(cst) {
     const lm = q.limitClause?.[0];
 
     let sort  = null;
-    let limit = 50; // sécurité : max 50 par défaut
+    let limit = 50;
 
     if (ob) {
       const field = ob.children.field?.[0]?.image ?? ob.children.Identifier?.[0]?.image;
@@ -137,7 +128,7 @@ function transpile(cst) {
     }
     if (lm) {
       const n = parseInt(lm.children.n?.[0]?.image ?? lm.children.NumberLiteral?.[0]?.image ?? '50');
-      limit = Math.min(n, 200); // plafond de sécurité
+      limit = Math.min(n, 200);
     }
 
     return {

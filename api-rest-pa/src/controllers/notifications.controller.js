@@ -1,7 +1,6 @@
 const pool = require('../config/db');
 const { getPagination, paginate } = require('../utils/pagination');
 
-// GET /api/notifications  -> mes notifications
 exports.getMes = async (req, res, next) => {
   try {
     const { page, limit, skip } = getPagination(req.query);
@@ -26,7 +25,6 @@ exports.getMes = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// PUT /api/notifications/:id/lire  -> marquer une notification comme lue
 exports.marquerLue = async (req, res, next) => {
   try {
     const result = await pool.query(
@@ -40,7 +38,6 @@ exports.marquerLue = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// PUT /api/notifications/lire-tout  -> marquer toutes comme lues
 exports.marquerToutesLues = async (req, res, next) => {
   try {
     await pool.query(
@@ -51,7 +48,6 @@ exports.marquerToutesLues = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// DELETE /api/notifications/:id  -> supprimer une notification
 exports.remove = async (req, res, next) => {
   try {
     const result = await pool.query(

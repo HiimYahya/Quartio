@@ -18,24 +18,9 @@ L.Icon.Default.mergeOptions({
 
 const COLORS = ['#4f46e5', '#0891b2', '#059669', '#d97706', '#dc2626']
 
-// ─── Couche de dessin ────────────────────────────────────────────────────────
-//
-// Pourquoi une pile d'historique (historyRef) ?
-//   Chaque clic (ajout OU déplacement) sauvegarde l'état AVANT l'opération.
-//   Quand dblclick arrive, on appelle undo() deux fois pour annuler exactement
-//   les 2 clicks parasites qui ont précédé le dblclick, quel que soit leur type.
-//
-//   L'ancienne approche slice(0,-2) était fausse dès qu'un déplacement avait eu
-//   lieu : un déplacement ne change pas le nombre de points, donc slice(0,-2)
-//   retirait 2 points là où 1 seul avait été ajouté -> forme finale incorrecte.
-//
-// Pourquoi stopPropagation sur les CircleMarkers ?
-//   Le clic sur un CircleMarker remonte (bubbling Leaflet) jusqu'à la carte.
-//   Sans stopPropagation, le handler click de la carte se déclenche aussi, ce
-//   qui déplacerait ET ajouterait un point simultanément.
 function DrawingLayer({ isDrawing, onComplete }) {
   const pointsRef      = useRef([])
-  const historyRef     = useRef([])   // pile : chaque entrée = état avant l'opération
+  const historyRef     = useRef([])
   const selectedIdxRef = useRef(null)
   const [pts,         setPts]         = useState([])
   const [selectedIdx, setSelectedIdx] = useState(null)
@@ -45,14 +30,12 @@ function DrawingLayer({ isDrawing, onComplete }) {
     setSelectedIdx(idx)
   }
 
-  // Enregistre l'état courant dans l'historique, puis applique le nouvel état
   const commit = (newPts) => {
     historyRef.current = [...historyRef.current, [...pointsRef.current]]
     pointsRef.current  = newPts
     setPts([...newPts])
   }
 
-  // Annule la dernière opération (restaure l'état précédent depuis la pile)
   const undo = () => {
     if (historyRef.current.length === 0) return
     const prev = historyRef.current[historyRef.current.length - 1]
@@ -68,8 +51,6 @@ function DrawingLayer({ isDrawing, onComplete }) {
     setSelection(null)
   }
 
-  // Clavier : Backspace/Delete -> annule la dernière opération (ou supprime le point sélectionné)
-  //           Escape -> désélectionne
   useEffect(() => {
     if (!isDrawing) return
     const onKey = (e) => {
@@ -90,28 +71,23 @@ function DrawingLayer({ isDrawing, onComplete }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [isDrawing])
 
-  // Reset quand on quitte le mode dessin
   useEffect(() => { if (!isDrawing) reset() }, [isDrawing])
 
   useMapEvents({
     click(e) {
       if (!isDrawing) return
       if (selectedIdxRef.current !== null) {
-        // Déplace le point sélectionné - commit() sauvegarde l'état avant le déplacement
         const next = [...pointsRef.current]
         next[selectedIdxRef.current] = [e.latlng.lat, e.latlng.lng]
         commit(next)
         setSelection(null)
       } else {
-        // Ajoute un nouveau point - commit() sauvegarde l'état avant l'ajout
         commit([...pointsRef.current, [e.latlng.lat, e.latlng.lng]])
       }
     },
     dblclick(e) {
       if (!isDrawing) return
       e.originalEvent.preventDefault()
-      // Le click précédant ce dblclick a appelé commit() et modifié l'état.
-      // On appelle undo() une fois pour revenir à l'état avant ce click parasite.
       undo()
       const finalPts = pointsRef.current
       reset()
@@ -148,8 +124,6 @@ function DrawingLayer({ isDrawing, onComplete }) {
             }}
             eventHandlers={{
               click(e) {
-                // Bloque la propagation vers la carte pour éviter d'ajouter/déplacer
-                // un point au même endroit que le clic sur le marqueur
                 L.DomEvent.stopPropagation(e)
                 setSelection(selectedIdxRef.current === i ? null : i)
               },
@@ -161,7 +135,6 @@ function DrawingLayer({ isDrawing, onComplete }) {
   )
 }
 
-// ─── GeoJSON string -> positions Leaflet ──────────────────────────────────────
 const parseGeo = (g) => {
   if (!g) return null
   try {
@@ -170,7 +143,6 @@ const parseGeo = (g) => {
   } catch { return null }
 }
 
-// ─── Détection de chevauchement ───────────────────────────────────────────────
 const detectOverlap = (geoStr, quartiers, excludeId = null) => {
   try {
     const newPoly = JSON.parse(geoStr)
@@ -183,10 +155,6 @@ const detectOverlap = (geoStr, quartiers, excludeId = null) => {
   } catch { return [] }
 }
 
-// ─── Modal portail ────────────────────────────────────────────────────────────
-// Rendu via createPortal directement dans document.body.
-// Sans ça, la modal se retrouve dans le contexte de stacking de Leaflet
-// (z-index ~400-700) et passe derrière la carte malgré son z-index élevé.
 function Modal({ children }) {
   return createPortal(
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4"
@@ -197,7 +165,6 @@ function Modal({ children }) {
   )
 }
 
-// ─── Page principale ──────────────────────────────────────────────────────────
 export default function QuartiersPage() {
   const [quartiers,    setQuartiers]    = useState([])
   const [loading,      setLoading]      = useState(true)
@@ -288,7 +255,6 @@ export default function QuartiersPage() {
   return (
     <div className="flex gap-4 h-[calc(100vh-112px)] min-h-0">
 
-      {/* ── Colonne gauche ────────────────────────────────────────────────── */}
       <div className="w-80 shrink-0 flex flex-col gap-3 overflow-y-auto">
 
         {!showForm && (
@@ -374,7 +340,6 @@ export default function QuartiersPage() {
           </div>
         )}
 
-        {/* Liste */}
         <div className="flex-1 space-y-2">
           {loading ? (
             <p className="text-center text-sm text-slate-400 py-6">Chargement...</p>
@@ -414,7 +379,6 @@ export default function QuartiersPage() {
         </div>
       </div>
 
-      {/* ── Carte ─────────────────────────────────────────────────────────── */}
       <div className={`flex-1 rounded-2xl overflow-hidden shadow-sm border border-slate-200 ${drawMode ? 'cursor-crosshair' : ''}`}>
         <MapContainer
           center={[48.8566, 2.3522]}
@@ -454,7 +418,6 @@ export default function QuartiersPage() {
         </MapContainer>
       </div>
 
-      {/* ── Modal suppression - rendue via portal pour passer au-dessus de Leaflet ── */}
       {confirm && (
         <Modal>
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">

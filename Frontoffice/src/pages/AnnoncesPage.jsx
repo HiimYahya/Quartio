@@ -19,7 +19,7 @@ export default function AnnoncesPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const user = useAuthStore((s) => s.user)
-  const [quartiers, setQuartiers] = useState([])  // quartiers de l'utilisateur uniquement
+  const [quartiers, setQuartiers] = useState([])
 
   useEffect(() => {
     if (!user?.id) return
@@ -47,7 +47,6 @@ export default function AnnoncesPage() {
     setLoading(false)
   }
 
-  // Recherche/filtres débouncés (300 ms)
   useEffect(() => {
     const t = setTimeout(() => load(filters), 300)
     return () => clearTimeout(t)
@@ -91,7 +90,6 @@ export default function AnnoncesPage() {
         </button>
       </div>
 
-      {/* Recherche + filtres */}
       <div className="space-y-2">
         <div className="relative">
           <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />

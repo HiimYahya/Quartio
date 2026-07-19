@@ -1,6 +1,5 @@
 const { createToken, Lexer } = require('chevrotain');
 
-// ── Mots-clés avec word boundary ─────────────────────────────────────────────
 const Find     = createToken({ name: 'Find',     pattern: /FIND(?![a-zA-Z0-9_])/i });
 const Insert   = createToken({ name: 'Insert',   pattern: /INSERT(?![a-zA-Z0-9_])/i });
 const Update   = createToken({ name: 'Update',   pattern: /UPDATE(?![a-zA-Z0-9_])/i });
@@ -18,7 +17,6 @@ const In       = createToken({ name: 'In',       pattern: /IN(?![a-zA-Z0-9_])/i 
 const Contains = createToken({ name: 'Contains', pattern: /CONTAINS(?![a-zA-Z0-9_])/i });
 const Not      = createToken({ name: 'Not',      pattern: /NOT(?![a-zA-Z0-9_])/i });
 
-// ── Opérateurs ────────────────────────────────────────────────────────────────
 const Neq = createToken({ name: 'Neq', pattern: /!=/ });
 const Gte = createToken({ name: 'Gte', pattern: />=/ });
 const Lte = createToken({ name: 'Lte', pattern: /<=/ });
@@ -26,7 +24,6 @@ const Gt  = createToken({ name: 'Gt',  pattern: />/ });
 const Lt  = createToken({ name: 'Lt',  pattern: /</ });
 const Eq  = createToken({ name: 'Eq',  pattern: /=/ });
 
-// ── Littéraux ─────────────────────────────────────────────────────────────────
 const StringLiteral = createToken({
   name: 'StringLiteral',
   pattern: /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/,
@@ -47,7 +44,6 @@ const NullLiteral = createToken({
   pattern: /null/i,
 });
 
-// ── Identificateurs & ponctuation ────────────────────────────────────────────
 const Identifier = createToken({
   name: 'Identifier',
   pattern: /[a-zA-Z_][a-zA-Z0-9_.]*/,
@@ -69,23 +65,16 @@ const WhiteSpace = createToken({
   group: Lexer.SKIPPED,
 });
 
-// Ordre crucial : mots-clés avant Identifier, opérateurs multi-chars avant mono-char
 const allTokens = [
   WhiteSpace,
-  // Mots-clés
   Find, Insert, Update, Delete, Count,
   Where, Set, Limit, OrderBy, Asc, Desc,
   And, Or, In, Contains, Not,
-  // Littéraux typés (avant Identifier)
   BoolLiteral, NullLiteral,
-  // Opérateurs multi-char avant mono-char
   Neq, Gte, Lte, Gt, Lt, Eq,
-  // Littéraux
   StringLiteral, NumberLiteral,
-  // Ponctuation
   LCurly, RCurly, LParen, RParen, LBrack, RBrack,
   Comma, Colon, Dot,
-  // Identifier en dernier
   Identifier,
 ];
 

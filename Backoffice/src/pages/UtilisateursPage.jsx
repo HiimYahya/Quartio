@@ -240,7 +240,6 @@ export default function UtilisateursPage() {
         </div>
       )}
 
-      {/* Modal modification */}
       {editTarget && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
@@ -287,7 +286,6 @@ export default function UtilisateursPage() {
         </div>
       )}
 
-      {/* Modal création */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
@@ -350,7 +348,6 @@ export default function UtilisateursPage() {
         </div>
       )}
 
-      {/* Modal points */}
       {pointsTarget && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
@@ -383,7 +380,6 @@ export default function UtilisateursPage() {
         </div>
       )}
 
-      {/* Modal suspension */}
       {suspTarget && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
@@ -420,7 +416,6 @@ export default function UtilisateursPage() {
         </div>
       )}
 
-      {/* Modal confirmation suppression */}
       {confirm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">

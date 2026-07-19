@@ -41,7 +41,6 @@ export default function ContratsPage() {
         </div>
       ) : (
         <>
-          {/* Contrats à signer en priorité */}
           {enAttente.length > 0 && (
             <div>
               <h3 className="text-sm font-semibold text-yellow-700 mb-2 flex items-center gap-2">
@@ -56,7 +55,6 @@ export default function ContratsPage() {
             </div>
           )}
 
-          {/* Autres contrats */}
           {autres.length > 0 && (
             <div>
               <h3 className="text-sm font-semibold text-gray-500 mb-2">Historique</h3>

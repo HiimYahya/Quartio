@@ -8,7 +8,6 @@ import api from '../services/api'
 
 const COLORS = ['#6366f1', '#34d399', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16']
 
-// ─── GeoJSON string -> positions Leaflet ──────────────────────────────────────
 const parseGeo = (g) => {
   if (!g) return null
   try {
@@ -17,11 +16,9 @@ const parseGeo = (g) => {
   } catch { return null }
 }
 
-// ─── Couleur en fonction du score relatif (0 -> bleu pâle, max -> rouge intense) ──
 const heatColor = (score, maxScore) => {
   if (maxScore <= 0) return '#94a3b8'
   const ratio = Math.min(score / maxScore, 1)
-  // interpolation entre bleu (#60a5fa) et rouge (#dc2626)
   const from = [96, 165, 250]
   const to   = [220, 38, 38]
   const rgb  = from.map((c, i) => Math.round(c + (to[i] - c) * ratio))
@@ -31,7 +28,7 @@ const heatColor = (score, maxScore) => {
 export default function StatistiquesPage() {
   const [data, setData]     = useState(null)
   const [loading, setLoading] = useState(true)
-  const [period, setPeriod]   = useState('weekly') // 'weekly' only for now
+  const [period, setPeriod]   = useState('weekly')
   const [heatmap, setHeatmap] = useState([])
 
   useEffect(() => {
@@ -53,7 +50,6 @@ export default function StatistiquesPage() {
 
   const { kpis, weekly, ranking, top_categories, incidents_by_status } = data
 
-  // Labels lisibles pour les semaines
   const weeklyLabeled = weekly.map((w, i) => ({
     ...w,
     label: i === weekly.length - 1 ? 'Cette sem.' : i === weekly.length - 2 ? 'Sem. -1' : w.label,
@@ -102,7 +98,6 @@ export default function StatistiquesPage() {
         </button>
       </div>
 
-      {/* KPIs rapides */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Utilisateurs totaux',   value: kpis.total_utilisateurs,   color: 'text-indigo-600' },
@@ -117,7 +112,6 @@ export default function StatistiquesPage() {
         ))}
       </div>
 
-      {/* Graphique activité hebdomadaire */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
         <h3 className="font-semibold text-slate-700 mb-4">Activité sur 8 semaines</h3>
         <ResponsiveContainer width="100%" height={280}>
@@ -134,7 +128,6 @@ export default function StatistiquesPage() {
         </ResponsiveContainer>
       </div>
 
-      {/* Points échangés */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
         <h3 className="font-semibold text-slate-700 mb-4">Points échangés par semaine</h3>
         <ResponsiveContainer width="100%" height={200}>
@@ -151,7 +144,6 @@ export default function StatistiquesPage() {
         </ResponsiveContainer>
       </div>
 
-      {/* Carte de chaleur des activités par quartier */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
         <h3 className="font-semibold text-slate-700 mb-1">Activité par quartier (30 derniers jours)</h3>
         <p className="text-xs text-slate-400 mb-4">
@@ -197,7 +189,6 @@ export default function StatistiquesPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top catégories */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
           <h3 className="font-semibold text-slate-700 mb-4">Top catégories d'annonces</h3>
           {top_categories.length === 0 ? (
@@ -226,7 +217,6 @@ export default function StatistiquesPage() {
           )}
         </div>
 
-        {/* Répartition incidents */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
           <h3 className="font-semibold text-slate-700 mb-4">Répartition incidents par statut</h3>
           {incidents_by_status.length === 0 ? (
@@ -256,7 +246,6 @@ export default function StatistiquesPage() {
         </div>
       </div>
 
-      {/* Classement utilisateurs */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
         <h3 className="font-semibold text-slate-700 mb-4">Classement utilisateurs par points</h3>
         <div className="overflow-x-auto">

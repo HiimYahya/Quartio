@@ -46,7 +46,6 @@ API de gestion de quartier connecté.
         },
       },
       schemas: {
-        // ── Pagination ──────────────────────────────────────────────────────
         PaginatedResponse: {
           type: 'object',
           properties: {
@@ -57,14 +56,12 @@ API de gestion de quartier connecté.
             total_pages: { type: 'integer', example: 3 },
           },
         },
-        // ── Erreur standard ─────────────────────────────────────────────────
         Error: {
           type: 'object',
           properties: {
             error: { type: 'string', example: 'Message d\'erreur' },
           },
         },
-        // ── Auth ────────────────────────────────────────────────────────────
         LoginResponse: {
           type: 'object',
           properties: {
@@ -74,7 +71,6 @@ API de gestion de quartier connecté.
             utilisateur: { $ref: '#/components/schemas/UtilisateurPublic' },
           },
         },
-        // ── Utilisateur ─────────────────────────────────────────────────────
         UtilisateurPublic: {
           type: 'object',
           properties: {
@@ -110,7 +106,6 @@ API de gestion de quartier connecté.
             langue:    { type: 'string', enum: ['fr', 'en'] },
           },
         },
-        // ── Quartier ────────────────────────────────────────────────────────
         Quartier: {
           type: 'object',
           properties: {
@@ -128,7 +123,6 @@ API de gestion de quartier connecté.
             geometrie: { type: 'string', nullable: true, description: 'GeoJSON Feature stringifié' },
           },
         },
-        // ── Annonce (MongoDB) ────────────────────────────────────────────────
         Annonce: {
           type: 'object',
           properties: {
@@ -157,7 +151,6 @@ API de gestion de quartier connecté.
             id_quartier: { type: 'integer', description: 'Optionnel : déduit du quartier de l\'auteur si absent' },
           },
         },
-        // ── Événement (MongoDB) ──────────────────────────────────────────────
         Evenement: {
           type: 'object',
           properties: {
@@ -185,7 +178,6 @@ API de gestion de quartier connecté.
             id_quartier:  { type: 'integer', description: 'Optionnel : déduit du quartier de l\'organisateur si absent' },
           },
         },
-        // ── Vote ────────────────────────────────────────────────────────────
         Vote: {
           type: 'object',
           properties: {
@@ -238,7 +230,6 @@ API de gestion de quartier connecté.
             },
           },
         },
-        // ── Contrat ─────────────────────────────────────────────────────────
         Contrat: {
           type: 'object',
           properties: {
@@ -260,7 +251,6 @@ API de gestion de quartier connecté.
             date_signature:   { type: 'string', format: 'date-time', nullable: true },
           },
         },
-        // ── Conversation (MongoDB) ───────────────────────────────────────────
         Conversation: {
           type: 'object',
           properties: {
@@ -269,7 +259,6 @@ API de gestion de quartier connecté.
             createdAt:    { type: 'string', format: 'date-time' },
           },
         },
-        // ── Message (MongoDB) ────────────────────────────────────────────────
         Message: {
           type: 'object',
           properties: {
@@ -282,7 +271,6 @@ API de gestion de quartier connecté.
             created_at:   { type: 'string', format: 'date-time' },
           },
         },
-        // ── Incident (MongoDB) ───────────────────────────────────────────────
         Incident: {
           type: 'object',
           properties: {
@@ -295,7 +283,6 @@ API de gestion de quartier connecté.
             created_at:  { type: 'string', format: 'date-time' },
           },
         },
-        // ── Transaction ──────────────────────────────────────────────────────
         Transaction: {
           type: 'object',
           properties: {
@@ -305,7 +292,6 @@ API de gestion de quartier connecté.
             date:           { type: 'string', format: 'date-time' },
           },
         },
-        // ── Notification ─────────────────────────────────────────────────────
         Notification: {
           type: 'object',
           properties: {

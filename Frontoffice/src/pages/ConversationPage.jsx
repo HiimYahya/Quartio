@@ -20,13 +20,12 @@ export default function ConversationPage() {
   const [sending,   setSending]   = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
-  const [typing,    setTyping]    = useState(false)   // quelqu'un tape de l'autre côté
+  const [typing,    setTyping]    = useState(false)
   const [signaledIds, setSignaledIds] = useState(new Set())
   const bottomRef  = useRef(null)
   const typingTimer = useRef(null)
   const fileInputRef = useRef(null)
 
-  // ─── Chargement initial ────────────────────────────────────────────────────
   const loadMessages = useCallback(async (silent = false) => {
     try {
       const [msgRes, convRes] = await Promise.allSettled([
@@ -40,8 +39,6 @@ export default function ConversationPage() {
     if (!silent) setLoading(false)
   }, [id])
 
-  // Ajoute un message en évitant les doublons (l'expéditeur reçoit aussi son
-  // propre message via Socket.io après l'avoir déjà ajouté depuis la réponse POST).
   const addMessage = useCallback((m) => {
     if (!m) return
     setMessages((prev) => {
@@ -58,12 +55,10 @@ export default function ConversationPage() {
 
     const socket = getSocket()
     if (socket) {
-      // Nouveau message reçu en temps réel
       socket.on('message:new', (data) => {
         if (data.conversationId === id) addMessage(data.message)
       })
 
-      // Indicateur de frappe
       socket.on('typing:start', (data) => {
         if (data.conversationId === id) setTyping(true)
       })
@@ -83,7 +78,6 @@ export default function ConversationPage() {
     }
   }, [id])
 
-  // ─── Envoi de message ──────────────────────────────────────────────────────
   const sendMessage = async (e) => {
     e.preventDefault()
     if (!text.trim()) return
@@ -95,13 +89,11 @@ export default function ConversationPage() {
         type: 'texte',
       })
       setText('')
-      // Ajout local (dédupliqué avec l'écho Socket.io par _id)
       addMessage(data)
     } catch {}
     setSending(false)
   }
 
-  // ─── Envoi d'image ─────────────────────────────────────────────────────────
   const handleImageChange = async (e) => {
     const file = e.target.files?.[0]
     e.target.value = ''
@@ -121,7 +113,6 @@ export default function ConversationPage() {
     setUploading(false)
   }
 
-  // ─── Signalement d'un message ──────────────────────────────────────────────
   const signalerMessage = async (msgId) => {
     try {
       await api.post(`/messages/${msgId}/signaler`, {
@@ -130,7 +121,6 @@ export default function ConversationPage() {
       })
       setSignaledIds((prev) => new Set(prev).add(msgId))
     } catch {
-      // signalement échoué, on laisse l'utilisateur réessayer
     }
   }
 
@@ -139,10 +129,9 @@ export default function ConversationPage() {
     try {
       await api.delete(`/messages/${msgId}`)
       setMessages((prev) => prev.filter((m) => (m._id ?? m.id) !== msgId))
-    } catch { /* ignore */ }
+    } catch {  }
   }
 
-  // ─── Indicateur de frappe ─────────────────────────────────────────────────
   const handleTextChange = (e) => {
     setText(e.target.value)
     emitTypingStart(id)
@@ -150,9 +139,6 @@ export default function ConversationPage() {
     typingTimer.current = setTimeout(() => emitTypingStop(id), 1500)
   }
 
-  // ─── Helpers ─────────────────────────────────────────────────────────────
-  // id_utilisateur_pg est le champ présent sur tous les messages (DB, réponse POST,
-  // écho socket) ; auteur_id n'existe que sur le payload socket -> on le garde en repli.
   const isOwn = (msg) =>
     (msg.id_utilisateur_pg ?? msg.auteur_id ?? msg.expediteur_id ?? msg.id_auteur) === (user?.id ?? user?.id_utilisateur)
 
@@ -166,7 +152,6 @@ export default function ConversationPage() {
   return (
     <div className="max-w-2xl flex flex-col h-[calc(100vh-140px)]">
 
-      {/* Header conversation */}
       <div className="flex items-center gap-3 mb-3">
         <button onClick={() => navigate(-1)} className="text-sm text-[#2d7a5f] hover:underline shrink-0 flex items-center gap-1">
           <ArrowLeft className="w-4 h-4" />
@@ -197,7 +182,6 @@ export default function ConversationPage() {
         )}
       </div>
 
-      {/* Zone de messages */}
       <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {loading ? (
@@ -219,7 +203,6 @@ export default function ConversationPage() {
             ))
           )}
 
-          {/* Indicateur de frappe */}
           {typing && (
             <div className="flex justify-start">
               <div className="bg-gray-100 text-gray-500 px-4 py-2.5 rounded-2xl rounded-bl-sm text-sm flex items-center gap-1.5">
@@ -235,12 +218,10 @@ export default function ConversationPage() {
           <div ref={bottomRef} />
         </div>
 
-        {/* Erreur upload */}
         {uploadError && (
           <div className="px-3 pt-2 text-xs text-red-500">{uploadError}</div>
         )}
 
-        {/* Input */}
         <form onSubmit={sendMessage} className="border-t border-gray-100 p-3 flex gap-2">
           <input
             ref={fileInputRef}

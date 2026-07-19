@@ -120,7 +120,6 @@ export default function ContratsPage() {
         </div>
       )}
 
-      {/* Modal suppression */}
       {confirm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">

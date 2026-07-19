@@ -7,7 +7,6 @@ class QlParser extends CstParser {
 
     const $ = this;
 
-    // ── Règle racine ──────────────────────────────────────────────────────────
     $.RULE('query', () => {
       $.OR([
         { ALT: () => $.SUBRULE($.findQuery) },
@@ -18,7 +17,6 @@ class QlParser extends CstParser {
       ]);
     });
 
-    // ── FIND <collection> [WHERE <conditions>] [ORDER BY <field> ASC|DESC] [LIMIT <n>] ──
     $.RULE('findQuery', () => {
       $.CONSUME(T.Find);
       $.CONSUME(T.Identifier, { LABEL: 'collection' });
@@ -27,21 +25,18 @@ class QlParser extends CstParser {
       $.OPTION3(() => $.SUBRULE($.limitClause));
     });
 
-    // ── COUNT <collection> [WHERE <conditions>] ───────────────────────────────
     $.RULE('countQuery', () => {
       $.CONSUME(T.Count);
       $.CONSUME(T.Identifier, { LABEL: 'collection' });
       $.OPTION(() => $.SUBRULE($.whereClause));
     });
 
-    // ── INSERT <collection> { <jsonObject> } ─────────────────────────────────
     $.RULE('insertQuery', () => {
       $.CONSUME(T.Insert);
       $.CONSUME(T.Identifier, { LABEL: 'collection' });
       $.SUBRULE($.jsonObject, { LABEL: 'document' });
     });
 
-    // ── UPDATE <collection> WHERE <conditions> SET { <jsonObject> } ──────────
     $.RULE('updateQuery', () => {
       $.CONSUME(T.Update);
       $.CONSUME(T.Identifier, { LABEL: 'collection' });
@@ -50,14 +45,12 @@ class QlParser extends CstParser {
       $.SUBRULE($.jsonObject, { LABEL: 'updates' });
     });
 
-    // ── DELETE <collection> WHERE <conditions> ────────────────────────────────
     $.RULE('deleteQuery', () => {
       $.CONSUME(T.Delete);
       $.CONSUME(T.Identifier, { LABEL: 'collection' });
       $.SUBRULE($.whereClause);
     });
 
-    // ── WHERE <condition> [AND|OR <condition>]* ───────────────────────────────
     $.RULE('whereClause', () => {
       $.CONSUME(T.Where);
       $.SUBRULE($.condition);
@@ -70,7 +63,6 @@ class QlParser extends CstParser {
       });
     });
 
-    // ── <condition> : field op value | field CONTAINS value | field IN (v,v,...) ──
     $.RULE('condition', () => {
       $.CONSUME(T.Identifier, { LABEL: 'field' });
       $.OR([
@@ -123,7 +115,6 @@ class QlParser extends CstParser {
       ]);
     });
 
-    // ── ORDER BY <field> [ASC|DESC] ───────────────────────────────────────────
     $.RULE('orderByClause', () => {
       $.CONSUME(T.OrderBy);
       $.CONSUME(T.Identifier, { LABEL: 'field' });
@@ -135,13 +126,11 @@ class QlParser extends CstParser {
       });
     });
 
-    // ── LIMIT <n> ─────────────────────────────────────────────────────────────
     $.RULE('limitClause', () => {
       $.CONSUME(T.Limit);
       $.CONSUME(T.NumberLiteral, { LABEL: 'n' });
     });
 
-    // ── Objet JSON simplifié { "key": value, ... } ────────────────────────────
     $.RULE('jsonObject', () => {
       $.CONSUME(T.LCurly);
       $.OPTION(() => {

@@ -6,7 +6,6 @@ const { getPagination, paginate } = require('../utils/pagination');
 const { createNotification }      = require('../utils/notify');
 const { getUserQuartierIds, isPrivileged } = require('../utils/quartiers');
 
-// GET /api/evenements?page=1&limit=20&statut=planifie&date_debut_from=...&date_debut_to=...
 exports.getAll = async (req, res, next) => {
   try {
     const { page, limit, skip } = getPagination(req.query);
@@ -20,7 +19,6 @@ exports.getAll = async (req, res, next) => {
       if (date_debut_to)   filter.date_debut.$lte = new Date(date_debut_to);
     }
 
-    // Un habitant ne voit que les événements de son (ses) quartier(s).
     if (!isPrivileged(req.user)) {
       const qids = await getUserQuartierIds(req.user.id);
       if (qids.length === 0) return res.json(paginate([], 0, page, limit));
@@ -36,7 +34,6 @@ exports.getAll = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/evenements/:id
 exports.getById = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
@@ -46,13 +43,10 @@ exports.getById = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/evenements  (auth)
 exports.create = async (req, res, next) => {
   try {
     const { titre, description, type, date_debut, date_fin, lieu, capacite_max, id_quartier } = req.body;
 
-    // Le quartier de l'événement = celui de l'organisateur (les habitants ne créent
-    // que dans leur quartier). L'admin/modérateur peut cibler n'importe quel quartier.
     const wanted = id_quartier ? parseInt(id_quartier) : null;
     let quartierId;
     if (isPrivileged(req.user)) {
@@ -88,7 +82,6 @@ exports.create = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// PUT /api/evenements/:id  (organisateur ou admin)
 exports.update = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
@@ -104,7 +97,6 @@ exports.update = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// DELETE /api/evenements/:id  (admin)
 exports.remove = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
@@ -124,7 +116,6 @@ exports.remove = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/evenements/:id/participer  -> Neo4j [:PARTICIPE]
 exports.participer = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
@@ -133,7 +124,6 @@ exports.participer = async (req, res, next) => {
     const evenement = await Evenement.findById(mid);
     if (!evenement) return res.status(404).json({ error: 'Événement non trouvé' });
 
-    // Un habitant ne peut participer qu'aux événements de son quartier.
     if (!isPrivileged(req.user)) {
       const qids = await getUserQuartierIds(req.user.id);
       if (!evenement.id_quartier || !qids.includes(evenement.id_quartier)) {
@@ -171,7 +161,6 @@ exports.participer = async (req, res, next) => {
       await session.close();
     }
 
-    // Notifier l'organisateur
     createNotification(
       evenement.id_utilisateur_pg,
       'evenement',
@@ -185,7 +174,6 @@ exports.participer = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// DELETE /api/evenements/:id/participer
 exports.seDesinscrire = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
@@ -202,7 +190,6 @@ exports.seDesinscrire = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/evenements/:id/participants  -> Neo4j -> PostgreSQL
 exports.getParticipants = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
@@ -238,16 +225,14 @@ exports.getParticipants = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/evenements/:id/swipe - enregistre l'intérêt dans Neo4j
 exports.swipe = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
-    const { direction } = req.body; // 'right' | 'left'
+    const { direction } = req.body;
     if (!['right', 'left'].includes(direction)) {
       return res.status(400).json({ error: 'direction doit être "right" ou "left"' });
     }
 
-    // Restreint au quartier de l'habitant.
     if (!isPrivileged(req.user)) {
       const evenement = await Evenement.findById(req.params.id);
       if (!evenement) return res.status(404).json({ error: 'Événement non trouvé' });
@@ -275,7 +260,6 @@ exports.swipe = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/evenements/suggestions - recommandations Neo4j basées sur les intérêts communs
 exports.suggestions = async (req, res, next) => {
   try {
     const uid     = req.user.id;

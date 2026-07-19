@@ -27,7 +27,6 @@ export default function SignalementsPage() {
       await api.put(`/incidents/${sig._id ?? sig.id}`, { statut: 'resolu' })
       removeFromList(sig._id ?? sig.id)
     } catch {
-      // l'action échoue silencieusement, l'admin peut réessayer
     }
     setActionId(null)
     setConfirm(null)
@@ -41,7 +40,6 @@ export default function SignalementsPage() {
       await api.put(`/incidents/${sig._id ?? sig.id}`, { statut: 'resolu' })
       removeFromList(sig._id ?? sig.id)
     } catch {
-      // l'action échoue silencieusement, l'admin peut réessayer
     }
     setActionId(null)
   }
@@ -52,7 +50,6 @@ export default function SignalementsPage() {
       await api.put(`/incidents/${sig._id ?? sig.id}`, { statut: 'ferme' })
       removeFromList(sig._id ?? sig.id)
     } catch {
-      // l'action échoue silencieusement, l'admin peut réessayer
     }
     setActionId(null)
   }
@@ -123,7 +120,6 @@ export default function SignalementsPage() {
         </div>
       )}
 
-      {/* Modal confirmation suppression */}
       {confirm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">

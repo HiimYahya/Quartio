@@ -1,6 +1,5 @@
 import { Component } from 'react'
 
-// Capture les erreurs de rendu pour éviter un écran blanc et proposer une reprise.
 export default class ErrorBoundary extends Component {
   constructor(props) {
     super(props)
@@ -12,7 +11,6 @@ export default class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    // eslint-disable-next-line no-console
     console.error('[ErrorBoundary]', error, info)
   }
 

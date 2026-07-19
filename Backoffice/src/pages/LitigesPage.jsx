@@ -5,7 +5,7 @@ import api from '../services/api'
 export default function LitigesPage() {
   const [items,   setItems]   = useState([])
   const [loading, setLoading] = useState(true)
-  const [modal,   setModal]   = useState(null)   // { contrat, action: 'rembourser' | 'clore' }
+  const [modal,   setModal]   = useState(null)
   const [note,    setNote]    = useState('')
   const [busy,    setBusy]    = useState(false)
 
@@ -92,7 +92,6 @@ export default function LitigesPage() {
         </div>
       )}
 
-      {/* Modal de résolution */}
       {modal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">

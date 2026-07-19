@@ -1,7 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import useAuthStore from '../../store/authStore'
 
-// roles: undefined = tous, sinon tableau de rôles autorisés
 const ALL_LINKS = [
   { to: '/dashboard',    label: 'Dashboard' },
   { to: '/statistiques', label: 'Statistiques', roles: ['admin'] },

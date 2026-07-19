@@ -35,14 +35,12 @@ function base64ToArrayBuffer(base64) {
   return bytes.buffer
 }
 
-// Coordonnées (x, y) du coin bas-gauche de la zone de signature selon la
-// position choisie et la taille de la page / de l'image de signature.
 function signaturePosition(position, pageWidth, pageHeight, sigDims, offset) {
   switch (position) {
     case 'bottom-left': return { x: 40, y: 40 + offset }
     case 'top-right':   return { x: pageWidth - sigDims.width - 40, y: pageHeight - sigDims.height - 40 }
     case 'top-left':    return { x: 40, y: pageHeight - sigDims.height - 40 }
-    default:            return { x: pageWidth - sigDims.width - 40, y: 40 + offset } // bottom-right
+    default:            return { x: pageWidth - sigDims.width - 40, y: 40 + offset }
   }
 }
 
@@ -62,33 +60,30 @@ export default function ContratDetailPage() {
 
   const [contrat,    setContrat]    = useState(null)
   const [loading,    setLoading]    = useState(true)
-  const [pdfFile,    setPdfFile]    = useState(null)   // File objet
-  const [pdfUrl,     setPdfUrl]     = useState(null)   // URL.createObjectURL
-  const [pdfBytes,   setPdfBytes]   = useState(null)   // ArrayBuffer
+  const [pdfFile,    setPdfFile]    = useState(null)
+  const [pdfUrl,     setPdfUrl]     = useState(null)
+  const [pdfBytes,   setPdfBytes]   = useState(null)
   const [pdfPageCount, setPdfPageCount] = useState(1)
   const [sigEmpty,   setSigEmpty]   = useState(true)
   const [signing,    setSigning]    = useState(false)
   const [signed,     setSigned]     = useState(false)
   const [error,      setError]      = useState(null)
-  const [step,       setStep]       = useState(1)      // 1: infos  2: pdf  3: signature
-  const [document_,  setDocument_]  = useState(null)   // document archivé (MongoDB)
+  const [step,       setStep]       = useState(1)
+  const [document_,  setDocument_]  = useState(null)
   const [showMfaModal, setShowMfaModal] = useState(false)
   const [mfaCode,    setMfaCode]    = useState('')
 
-  // Annulation / litige
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError,   setActionError]   = useState(null)
   const [showLitige,    setShowLitige]    = useState(false)
   const [litigeMotif,   setLitigeMotif]   = useState('')
 
-  // Emplacement de la signature dans le PDF (GAP2)
-  const [sigPage,     setSigPage]     = useState(null) // null = dernière page
+  const [sigPage,     setSigPage]     = useState(null)
   const [sigPosition, setSigPosition] = useState('bottom-right')
   const [addInitials, setAddInitials] = useState(false)
 
   const hasPdf = !!(pdfFile || document_?.pdf_base64)
 
-  // Détermine le nombre de pages du PDF disponible (uploadé ou déjà archivé)
   useEffect(() => {
     const bytes = pdfBytes ?? (document_?.pdf_base64 ? base64ToArrayBuffer(document_.pdf_base64) : null)
     const countPromise = bytes ? PDFDocument.load(bytes).then((doc) => doc.getPageCount()) : Promise.resolve(1)
@@ -132,7 +127,6 @@ export default function ContratDetailPage() {
     api.get(`/contrats/${id}`)
       .then(({ data }) => {
         setContrat(data)
-        // Déjà signé par l'utilisateur courant ?
         const isVendeur  = data.id_vendeur  === user?.id
         const isAcheteur = data.id_acheteur === user?.id
         if ((isVendeur && data.signe_vendeur) || (isAcheteur && data.signe_acheteur) || data.statut === 'termine') {
@@ -144,7 +138,6 @@ export default function ContratDetailPage() {
     loadDocument()
   }, [id, user?.id])
 
-  // ─── Upload PDF ─────────────────────────────────────────────────────────────
   const handlePdfUpload = (e) => {
     const file = e.target.files?.[0]
     if (!file || file.type !== 'application/pdf') return
@@ -156,7 +149,6 @@ export default function ContratDetailPage() {
     setStep(3)
   }
 
-  // ─── Signer ─────────────────────────────────────────────────────────────────
   const handleSign = async (codeOverride) => {
     if (sigRef.current?.isEmpty()) {
       setError('Veuillez apposer votre signature.')
@@ -167,7 +159,6 @@ export default function ContratDetailPage() {
       return
     }
 
-    // MFA requis avant signature
     if (user?.mfa_actif && !codeOverride) {
       setShowMfaModal(true)
       return
@@ -180,7 +171,6 @@ export default function ContratDetailPage() {
       const sigDataUrl = sigRef.current.getCanvas().toDataURL('image/png')
       const initialsDataUrl = addInitials ? initialsRef.current.getCanvas().toDataURL('image/png') : null
 
-      // Si un PDF est disponible (uploadé, ou déjà signé par l'autre partie) -> on y embed la signature
       let pdfBase64 = null
       const sourceBytes = pdfBytes ?? (document_?.pdf_base64 ? base64ToArrayBuffer(document_.pdf_base64) : null)
       if (sourceBytes) {
@@ -193,7 +183,6 @@ export default function ContratDetailPage() {
         downloadPdf(signedBytes)
       }
 
-      // Appel backend pour enregistrer la signature (et archiver le PDF + hash dans MongoDB)
       await api.put(`/contrats/${id}/signer`, {
         signature_dataurl: sigDataUrl,
         pdf_base64: pdfBase64,
@@ -203,7 +192,6 @@ export default function ContratDetailPage() {
       setSigned(true)
       setShowMfaModal(false)
       setMfaCode('')
-      // Recharge depuis l'API pour avoir l'état exact (signe_vendeur, signe_acheteur, statut)
       const { data: fresh } = await api.get(`/contrats/${id}`)
       setContrat(fresh)
       loadDocument()
@@ -219,26 +207,21 @@ export default function ContratDetailPage() {
     handleSign(mfaCode)
   }
 
-  // ─── Embed signature (+ initiales) dans le PDF, retourne les octets du PDF signé ──
   const embedSignatureToPdf = async (pdfArrayBuffer, sigDataUrl, opts = {}) => {
     const pdfDoc = await PDFDocument.load(pdfArrayBuffer)
     const pages  = pdfDoc.getPages()
 
-    // Page cible pour la signature complète (par défaut : dernière page)
     const pageIndex  = Math.min(Math.max((opts.page ?? pages.length) - 1, 0), pages.length - 1)
     const targetPage = pages[pageIndex]
     const { width, height } = targetPage.getSize()
 
-    // Convertir la signature PNG en image pdf-lib
     const sigBytes = await fetch(sigDataUrl).then((r) => r.arrayBuffer())
     const sigImage = await pdfDoc.embedPng(sigBytes)
     const sigDims  = sigImage.scale(0.4)
 
-    // Décale la zone si l'autre partie a déjà signé au même endroit
     const offset = document_?.signatures?.length > 0 ? sigDims.height + 35 : 0
     const { x: sigX, y: sigY } = signaturePosition(opts.position, width, height, sigDims, offset)
 
-    // Ligne de signature
     targetPage.drawLine({
       start: { x: sigX - 10, y: sigY - 5 },
       end:   { x: sigX + sigDims.width + 10, y: sigY - 5 },
@@ -246,10 +229,8 @@ export default function ContratDetailPage() {
       color: rgb(0.6, 0.6, 0.6),
     })
 
-    // Image de la signature
     targetPage.drawImage(sigImage, { x: sigX, y: sigY, width: sigDims.width, height: sigDims.height })
 
-    // Texte d'identification
     const now = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
     targetPage.drawText(`Signé par : ${user?.prenom ?? ''} ${user?.nom ?? ''}  -  ${now}`, {
       x: sigX - 10,
@@ -258,7 +239,6 @@ export default function ContratDetailPage() {
       color: rgb(0.4, 0.4, 0.4),
     })
 
-    // Paraphe (initiales) en bas au centre de chaque page
     if (opts.initialsDataUrl) {
       const initialsBytes = await fetch(opts.initialsDataUrl).then((r) => r.arrayBuffer())
       const initialsImage = await pdfDoc.embedPng(initialsBytes)
@@ -306,21 +286,17 @@ export default function ContratDetailPage() {
                       && !dejaSigné
                       && contrat.statut !== 'termine'
                       && contrat.statut !== 'annule'
-  // Annulable tant que l'autre partie n'a pas signé
   const autreASigné = isVendeur ? contrat.signe_acheteur : contrat.signe_vendeur
   const canCancel   = isPartie && ['en_attente', 'signe'].includes(contrat.statut) && !autreASigné
-  // Litige possible uniquement sur un contrat terminé
   const canLitige   = isPartie && contrat.statut === 'termine'
 
   return (
     <div className="max-w-2xl space-y-4">
 
-      {/* Retour */}
       <button onClick={() => navigate(-1)} className="text-sm text-[#2d7a5f] hover:underline inline-flex items-center gap-1.5">
         <ArrowLeft className="w-4 h-4" /> Retour aux contrats
       </button>
 
-      {/* En-tête contrat */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
@@ -375,7 +351,6 @@ export default function ContratDetailPage() {
           </div>
         )}
 
-        {/* Actions : annulation / litige */}
         {(canCancel || canLitige) && (
           <div className="mt-4 pt-4 border-t border-gray-100">
             {actionError && (
@@ -432,7 +407,6 @@ export default function ContratDetailPage() {
         )}
       </div>
 
-      {/* Document signé archivé (MongoDB) */}
       {document_?.pdf_base64 && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-3">
           <h3 className="font-semibold text-gray-800 text-sm uppercase tracking-wide text-gray-500">
@@ -453,14 +427,12 @@ export default function ContratDetailPage() {
         </div>
       )}
 
-      {/* Participants et état des signatures */}
       {(contrat.id_vendeur || contrat.id_acheteur) && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
           <h3 className="font-semibold text-gray-800 mb-3 text-sm uppercase tracking-wide text-gray-500">
             Signatures ({(contrat.signe_vendeur ? 1 : 0) + (contrat.signe_acheteur ? 1 : 0)} / 2)
           </h3>
           <div className="space-y-2">
-            {/* Vendeur */}
             {contrat.id_vendeur && (
               <div className={`flex items-center justify-between px-4 py-3 rounded-xl border ${
                 contrat.signe_vendeur ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
@@ -485,7 +457,6 @@ export default function ContratDetailPage() {
               </div>
             )}
 
-            {/* Acheteur */}
             {contrat.id_acheteur && (
               <div className={`flex items-center justify-between px-4 py-3 rounded-xl border ${
                 contrat.signe_acheteur ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
@@ -515,7 +486,6 @@ export default function ContratDetailPage() {
         </div>
       )}
 
-      {/* Étapes */}
       {canSign && (
         <div className="flex items-center gap-2">
           {[
@@ -547,7 +517,6 @@ export default function ContratDetailPage() {
         </div>
       )}
 
-      {/* Étape 1 - Informations */}
       {step === 1 && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
           <h3 className="font-semibold text-gray-800">Informations du contrat</h3>
@@ -572,7 +541,6 @@ export default function ContratDetailPage() {
         </div>
       )}
 
-      {/* Étape 2 - PDF */}
       {step === 2 && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
           <h3 className="font-semibold text-gray-800">Document PDF (optionnel)</h3>
@@ -625,7 +593,6 @@ export default function ContratDetailPage() {
         </div>
       )}
 
-      {/* Étape 3 - Signature */}
       {step === 3 && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
           <h3 className="font-semibold text-gray-800">Apposez votre signature</h3>
@@ -639,7 +606,6 @@ export default function ContratDetailPage() {
             </div>
           )}
 
-          {/* Emplacement de la signature dans le PDF */}
           {hasPdf && (
             <div className="space-y-3 bg-gray-50 rounded-xl p-4 border border-gray-200">
               <h4 className="text-sm font-semibold text-gray-700">Emplacement de la signature dans le document</h4>
@@ -709,7 +675,6 @@ export default function ContratDetailPage() {
             </div>
           )}
 
-          {/* Canvas de signature */}
           <div className="relative border-2 border-gray-200 rounded-xl overflow-hidden bg-gray-50">
             <SignatureCanvas
               ref={sigRef}
@@ -758,7 +723,6 @@ export default function ContratDetailPage() {
         </div>
       )}
 
-      {/* Aperçu PDF */}
       {pdfUrl && step === 2 && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
@@ -774,7 +738,6 @@ export default function ContratDetailPage() {
         </div>
       )}
 
-      {/* Modale MFA - code TOTP requis avant signature */}
       {showMfaModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4">

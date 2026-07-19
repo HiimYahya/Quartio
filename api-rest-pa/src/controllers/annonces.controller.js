@@ -5,7 +5,6 @@ const validateMongoId = require('../utils/validateMongoId');
 const { getPagination, paginate } = require('../utils/pagination');
 const { getUserQuartierIds, isPrivileged } = require('../utils/quartiers');
 
-// GET /api/annonces?page=1&limit=20&statut=active&categorie=...&type=...&search=...&payant=true|false
 exports.getAll = async (req, res, next) => {
   try {
     const { page, limit, skip } = getPagination(req.query);
@@ -16,13 +15,11 @@ exports.getAll = async (req, res, next) => {
     if (categorie) filter.categorie = new RegExp(categorie, 'i');
     if (type)      filter.type      = new RegExp(type, 'i');
     if (payant === 'true' || payant === 'false') filter.est_payant = payant === 'true';
-    // Recherche plein texte simple sur le titre et la description
     if (search && search.trim()) {
       const rx = new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
       filter.$or = [{ titre: rx }, { description: rx }];
     }
 
-    // Un habitant ne voit que les annonces de son (ses) quartier(s).
     if (!isPrivileged(req.user)) {
       const qids = await getUserQuartierIds(req.user.id);
       if (qids.length === 0) return res.json(paginate([], 0, page, limit));
@@ -38,7 +35,6 @@ exports.getAll = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/annonces/:id
 exports.getById = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
@@ -48,12 +44,10 @@ exports.getById = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/annonces  (auth)
 exports.create = async (req, res, next) => {
   try {
     const { titre, description, type, est_payant, cout_points, categorie, type_concerne, id_quartier } = req.body;
 
-    // L'annonce est rattachée au quartier de son auteur (l'admin peut cibler un autre quartier).
     const wanted = id_quartier ? parseInt(id_quartier) : null;
     let quartierId;
     if (isPrivileged(req.user)) {
@@ -88,7 +82,6 @@ exports.create = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// PUT /api/annonces/:id  (auteur ou admin)
 exports.update = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
@@ -104,7 +97,6 @@ exports.update = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// DELETE /api/annonces/:id  (auteur ou admin)
 exports.remove = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
@@ -128,8 +120,6 @@ exports.remove = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/annonces/:id/contrat  -> crée un contrat depuis une annonce payante
-// L'utilisateur connecté devient l'acheteur, l'auteur de l'annonce le vendeur.
 exports.creerContrat = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
@@ -139,7 +129,6 @@ exports.creerContrat = async (req, res, next) => {
     if (annonce.statut !== 'active')
       return res.status(409).json({ error: 'Cette annonce n\'est plus disponible' });
 
-    // Un habitant ne peut accepter qu'une annonce de son quartier.
     if (!isPrivileged(req.user)) {
       const qids = await getUserQuartierIds(req.user.id);
       if (!annonce.id_quartier || !qids.includes(annonce.id_quartier)) {
@@ -153,7 +142,6 @@ exports.creerContrat = async (req, res, next) => {
     if (acheteurId === vendeurId)
       return res.status(409).json({ error: 'Vous ne pouvez pas accepter votre propre annonce' });
 
-    // Vérifier que l'acheteur a assez de points si l'annonce est payante
     const cout = annonce.est_payant ? (annonce.cout_points ?? 0) : 0;
     if (cout > 0) {
       const { rows } = await pool.query(
@@ -163,7 +151,6 @@ exports.creerContrat = async (req, res, next) => {
         return res.status(409).json({ error: `Points insuffisants (solde : ${rows[0].points_solde} pts, requis : ${cout} pts)` });
     }
 
-    // Vérifier qu'un contrat n'existe pas déjà entre cet acheteur et cette annonce
     const existing = await pool.query(
       'SELECT id_contrat FROM contrat WHERE id_annonce_mongo = $1 AND id_acheteur = $2',
       [req.params.id, acheteurId]
@@ -171,7 +158,6 @@ exports.creerContrat = async (req, res, next) => {
     if (existing.rows.length > 0)
       return res.status(409).json({ error: 'Vous avez déjà un contrat en cours pour cette annonce', id_contrat: existing.rows[0].id_contrat });
 
-    // Créer le contrat
     const { rows } = await pool.query(
       `INSERT INTO contrat (points_echanges, id_vendeur, id_acheteur, id_annonce_mongo)
        VALUES ($1, $2, $3, $4) RETURNING *`,
@@ -179,7 +165,6 @@ exports.creerContrat = async (req, res, next) => {
     );
     const contrat = rows[0];
 
-    // Relations Neo4j : les deux participants sont liés au contrat
     const session = driver.session();
     try {
       await session.run(
@@ -196,7 +181,6 @@ exports.creerContrat = async (req, res, next) => {
       await session.close();
     }
 
-    // Notifier le vendeur
     const { createNotification } = require('../utils/notify');
     createNotification(
       vendeurId, 'contrat',
@@ -209,7 +193,6 @@ exports.creerContrat = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/annonces/:id/contrat  -> Neo4j [:GENERE] -> PostgreSQL
 exports.getContrat = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;

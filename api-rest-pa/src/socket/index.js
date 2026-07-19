@@ -1,7 +1,6 @@
 const { Server } = require('socket.io');
 const jwt        = require('jsonwebtoken');
 
-// Map userId (PG int) -> Set de socketIds
 const onlineUsers = new Map();
 
 let io = null;
@@ -14,7 +13,6 @@ function initSocket(httpServer) {
     },
   });
 
-  // ── Middleware d'authentification JWT ──────────────────────────────────────
   io.use((socket, next) => {
     const token = socket.handshake.auth?.token;
     if (!token) return next(new Error('Token manquant'));
@@ -28,21 +26,16 @@ function initSocket(httpServer) {
     }
   });
 
-  // ── Connexion ──────────────────────────────────────────────────────────────
   io.on('connection', (socket) => {
     const uid = socket.userId;
 
-    // Enregistre la présence
     if (!onlineUsers.has(uid)) onlineUsers.set(uid, new Set());
     onlineUsers.get(uid).add(socket.id);
 
-    // Envoie le snapshot de présence au nouvel arrivant
     socket.emit('presence:snapshot', [...onlineUsers.keys()]);
 
-    // Annonce aux autres que cet utilisateur est en ligne
     socket.broadcast.emit('user:online', { userId: uid });
 
-    // ── Rooms de conversation ────────────────────────────────────────────────
     socket.on('join:conversation', ({ conversationId }) => {
       if (conversationId) socket.join(`conv:${conversationId}`);
     });
@@ -51,7 +44,6 @@ function initSocket(httpServer) {
       if (conversationId) socket.leave(`conv:${conversationId}`);
     });
 
-    // ── Typing indicators ────────────────────────────────────────────────────
     socket.on('typing:start', ({ conversationId }) => {
       socket.to(`conv:${conversationId}`).emit('typing:start', { conversationId, userId: uid });
     });
@@ -60,7 +52,6 @@ function initSocket(httpServer) {
       socket.to(`conv:${conversationId}`).emit('typing:stop', { conversationId, userId: uid });
     });
 
-    // ── Déconnexion ──────────────────────────────────────────────────────────
     socket.on('disconnect', () => {
       const sockets = onlineUsers.get(uid);
       if (sockets) {
@@ -76,7 +67,6 @@ function initSocket(httpServer) {
   return io;
 }
 
-// Émet un nouveau message dans la room de la conversation
 function emitNewMessage(conversationId, message) {
   if (!io) return;
   io.to(`conv:${conversationId}`).emit('message:new', {
@@ -85,10 +75,8 @@ function emitNewMessage(conversationId, message) {
   });
 }
 
-// Émet une notification générale (badge sidebar, etc.)
 function emitNotification(userId, notification) {
   if (!io) return;
-  // Émet à tous les sockets de cet utilisateur
   const sockets = onlineUsers.get(userId);
   if (sockets) {
     sockets.forEach((sid) => {
@@ -99,24 +87,19 @@ function emitNotification(userId, notification) {
 
 function getIo() { return io; }
 
-// Émet une alerte à tous les utilisateurs en ligne (ou à une liste d'userIds ciblés)
-// type : 'incident' | 'contrat' | 'vote' | 'evenement'
 function emitAlert(type, payload, targetUserIds = null) {
   if (!io) return;
   const event = `alert:${type}`;
   if (targetUserIds) {
-    // Alerte ciblée (ex: contrat en attente de signature d'un utilisateur précis)
     targetUserIds.forEach((uid) => {
       const sockets = onlineUsers.get(uid);
       if (sockets) sockets.forEach((sid) => io.to(sid).emit(event, payload));
     });
   } else {
-    // Alerte broadcast à tous les connectés
     io.emit(event, payload);
   }
 }
 
-// Signale qu'un vote a reçu une nouvelle réponse (résultats à rafraîchir en direct)
 function emitVoteUpdate(voteId) {
   if (!io) return;
   io.emit('vote:update', { id_vote: voteId });

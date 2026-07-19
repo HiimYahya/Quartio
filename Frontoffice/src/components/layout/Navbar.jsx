@@ -31,20 +31,17 @@ export default function Navbar() {
   return (
     <header className="shrink-0 bg-white border-b border-gray-100">
       <div className="max-w-6xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between gap-4">
-        {/* Marque */}
         <Link to="/dashboard" className="flex items-center gap-2 shrink-0">
           <div className="w-9 h-9 bg-[#1a4a3a] rounded-xl flex items-center justify-center text-[#34d399] font-bold">Q</div>
           <span className="font-bold text-[#1a4a3a] text-lg leading-none hidden sm:block">Quartio</span>
         </Link>
 
-        {/* Liens (desktop) */}
         <nav className="hidden md:flex items-center gap-1 flex-1">
           {NAV_LINKS.map(({ to, key, fallback }) => (
             <NavLink key={to} to={to} className={linkClass}>{t(key, fallback)}</NavLink>
           ))}
         </nav>
 
-        {/* Côté droit */}
         <div className="flex items-center gap-2 sm:gap-3">
           {user?.points_solde != null && (
             <Link to="/profil" title="Mon solde de points"
@@ -72,7 +69,6 @@ export default function Navbar() {
             className="hidden md:flex items-center justify-center w-9 h-9 rounded-lg text-gray-400 hover:text-red-500 hover:bg-gray-100 transition-colors">
             <LogOut className="w-4 h-4" />
           </button>
-          {/* Burger (mobile) */}
           <button onClick={() => setOpen((v) => !v)}
             className="md:hidden flex items-center justify-center w-9 h-9 rounded-lg text-gray-600 hover:bg-gray-100">
             {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -80,7 +76,6 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Menu mobile déroulant */}
       {open && (
         <nav className="md:hidden border-t border-gray-100 px-4 py-2 space-y-1">
           {NAV_LINKS.map(({ to, key, fallback }) => (

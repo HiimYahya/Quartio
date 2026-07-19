@@ -18,7 +18,6 @@ export const connectSocket = (token) => {
   })
 
   socket.on('connect_error', (err) => {
-    // Socket.io pas encore implémenté côté backend - fail silencieux
     console.warn('[Socket] Connexion impossible:', err.message)
   })
 
@@ -32,16 +31,3 @@ export const disconnectSocket = () => {
   }
 }
 
-// ─── Événements standardisés ────────────────────────────────────────────────
-// Backend devra émettre :
-//   'user:online'   { userId }
-//   'user:offline'  { userId }
-//   'message:new'   { conversationId, message: { id, contenu, auteur_id, created_at } }
-//   'typing:start'  { conversationId, userId }
-//   'typing:stop'   { conversationId, userId }
-//
-// Backend devra écouter :
-//   'join:conversation'  { conversationId }
-//   'leave:conversation' { conversationId }
-//   'typing:start'       { conversationId }
-//   'typing:stop'        { conversationId }

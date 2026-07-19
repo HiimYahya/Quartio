@@ -10,7 +10,7 @@ export default function CookieBanner() {
   })
 
   const accept = () => {
-    try { localStorage.setItem(KEY, new Date().toISOString()) } catch { /* ignore */ }
+    try { localStorage.setItem(KEY, new Date().toISOString()) } catch {  }
     setVisible(false)
   }
 

@@ -1,6 +1,5 @@
 const { driver } = require('../config/neo4j');
 
-// Retourne les pg_id des quartiers où l'utilisateur HABITE (Neo4j).
 async function getUserQuartierIds(uid) {
   const session = driver.session();
   try {
@@ -17,7 +16,6 @@ async function getUserQuartierIds(uid) {
   }
 }
 
-// Un admin / modérateur voit tout ; un habitant est restreint à son quartier.
 const isPrivileged = (user) => user?.role === 'admin' || user?.role === 'moderateur';
 
 module.exports = { getUserQuartierIds, isPrivileged };

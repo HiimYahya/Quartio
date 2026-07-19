@@ -14,15 +14,13 @@ const createSchema = Joi.object({
   date_debut:   Joi.date().allow(null),
   date_fin:     Joi.date().allow(null),
   est_anonyme:  Joi.boolean().default(false),
-  // oui_non : options "Oui"/"Non" générées côté serveur → non requises.
-  // Autres types : au moins 2 options fournies par le client.
   options: Joi.when('type_vote', {
     is:        'oui_non',
     then:      Joi.array().items(optionSchema).default([]),
     otherwise: Joi.array().items(optionSchema).min(2).required(),
   }),
   id_themes:   Joi.array().items(Joi.number().integer()).default([]),
-  id_quartier: Joi.number().integer().allow(null), // dérivé du quartier de l'auteur si absent
+  id_quartier: Joi.number().integer().allow(null),
 });
 
 const updateSchema = Joi.object({
