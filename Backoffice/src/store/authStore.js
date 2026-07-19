@@ -21,6 +21,7 @@ const useAuthStore = create((set) => ({
         return false
       }
       localStorage.setItem('admin_token', data.access_token)
+      if (data.refresh_token) localStorage.setItem('admin_refresh_token', data.refresh_token)
       set({ token: data.access_token, admin: data.utilisateur, loading: false })
       return true
     } catch (err) {
@@ -39,6 +40,7 @@ const useAuthStore = create((set) => ({
         return false
       }
       localStorage.setItem('admin_token', data.access_token)
+      if (data.refresh_token) localStorage.setItem('admin_refresh_token', data.refresh_token)
       set({ token: data.access_token, admin: data.utilisateur, mfaToken: null, loading: false })
       return true
     } catch (err) {
@@ -52,19 +54,23 @@ const useAuthStore = create((set) => ({
       const { data } = await api.get('/auth/me')
       if (!['admin', 'moderateur'].includes(data.role)) {
         localStorage.removeItem('admin_token')
+        localStorage.removeItem('admin_refresh_token')
         set({ admin: null, token: null })
         return
       }
       set({ admin: { ...data, id: data.id ?? data.id_utilisateur } })
     } catch {
       localStorage.removeItem('admin_token')
+      localStorage.removeItem('admin_refresh_token')
       set({ admin: null, token: null })
     }
   },
 
   logout: () => {
-    api.post('/auth/logout').catch(() => {})
+    const refresh_token = localStorage.getItem('admin_refresh_token')
+    api.post('/auth/logout', { refresh_token }).catch(() => {})
     localStorage.removeItem('admin_token')
+    localStorage.removeItem('admin_refresh_token')
     set({ admin: null, token: null })
   },
 

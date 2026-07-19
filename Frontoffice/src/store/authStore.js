@@ -17,6 +17,7 @@ const useAuthStore = create((set) => ({
         return { mfaRequired: true };
       }
       localStorage.setItem('token', data.access_token);
+      if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token);
       set({ token: data.access_token, user: data.utilisateur, loading: false });
       return true;
     } catch (err) {
@@ -36,6 +37,7 @@ const useAuthStore = create((set) => ({
     try {
       const { data } = await api.post('/auth/mfa/verify', { mfa_token: mfaToken, code });
       localStorage.setItem('token', data.access_token);
+      if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token);
       set({ token: data.access_token, user: data.utilisateur, mfaToken: null, loading: false });
       return true;
     } catch (err) {
@@ -64,12 +66,15 @@ const useAuthStore = create((set) => ({
     } catch {
       set({ user: null, token: null });
       localStorage.removeItem('token');
+      localStorage.removeItem('refresh_token');
     }
   },
 
   logout: () => {
-    api.post('/auth/logout').catch(() => {});
+    const refresh_token = localStorage.getItem('refresh_token');
+    api.post('/auth/logout', { refresh_token }).catch(() => {});
     localStorage.removeItem('token');
+    localStorage.removeItem('refresh_token');
     set({ user: null, token: null });
   },
 
