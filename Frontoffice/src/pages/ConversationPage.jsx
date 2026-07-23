@@ -11,7 +11,7 @@ export default function ConversationPage() {
   const { id }     = useParams()
   const navigate   = useNavigate()
   const user       = useAuthStore((s) => s.user)
-  const { joinConversation, leaveConversation, emitTypingStart, emitTypingStop, isOnline } = useSocketStore()
+  const { joinConversation, leaveConversation, emitTypingStart, emitTypingStop, isOnline, refreshUnread } = useSocketStore()
 
   const [messages,  setMessages]  = useState([])
   const [loading,   setLoading]   = useState(true)
@@ -25,6 +25,14 @@ export default function ConversationPage() {
   const bottomRef  = useRef(null)
   const typingTimer = useRef(null)
   const fileInputRef = useRef(null)
+  const textareaRef = useRef(null)
+
+  const resizeTextarea = () => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`
+  }
 
   const loadMessages = useCallback(async (silent = false) => {
     try {
@@ -34,6 +42,7 @@ export default function ConversationPage() {
       ])
       if (msgRes.value) setMessages(msgRes.value.data?.data ?? msgRes.value.data?.messages ?? [])
       if (convRes.value) setConv(convRes.value.data)
+      refreshUnread()
       if (!silent) setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
     } catch { navigate('/messages') }
     if (!silent) setLoading(false)
@@ -90,6 +99,7 @@ export default function ConversationPage() {
       })
       setText('')
       addMessage(data)
+      setTimeout(resizeTextarea, 0)
     } catch {}
     setSending(false)
   }
@@ -134,6 +144,7 @@ export default function ConversationPage() {
 
   const handleTextChange = (e) => {
     setText(e.target.value)
+    resizeTextarea()
     emitTypingStart(id)
     clearTimeout(typingTimer.current)
     typingTimer.current = setTimeout(() => emitTypingStop(id), 1500)
@@ -222,7 +233,7 @@ export default function ConversationPage() {
           <div className="px-3 pt-2 text-xs text-red-500">{uploadError}</div>
         )}
 
-        <form onSubmit={sendMessage} className="border-t border-gray-100 p-3 flex gap-2">
+        <form onSubmit={sendMessage} className="border-t border-gray-100 p-3 flex items-end gap-2">
           <input
             ref={fileInputRef}
             type="file"
@@ -239,11 +250,19 @@ export default function ConversationPage() {
           >
             {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4 text-gray-500" />}
           </button>
-          <input
+          <textarea
+            ref={textareaRef}
             value={text}
             onChange={handleTextChange}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                sendMessage(e)
+              }
+            }}
+            rows={1}
             placeholder="Votre message..."
-            className="flex-1 border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]"
+            className="flex-1 min-w-0 border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399] resize-none"
           />
           <button
             type="submit"
@@ -284,7 +303,7 @@ function MessageBubble({ msg, own, signaled, onSignaler, onDelete }) {
           <Trash2 className="w-3.5 h-3.5" />
         </button>
       )}
-      <div className={`max-w-xs lg:max-w-sm px-4 py-2.5 rounded-2xl text-sm ${
+      <div className={`max-w-xs lg:max-w-sm min-w-0 break-words px-4 py-2.5 rounded-2xl text-sm ${
         own
           ? 'bg-[#1a4a3a] text-white rounded-br-sm'
           : 'bg-gray-100 text-gray-800 rounded-bl-sm'
@@ -298,7 +317,7 @@ function MessageBubble({ msg, own, signaled, onSignaler, onDelete }) {
             />
           </a>
         ) : (
-          <p>{msg.contenu}</p>
+          <p className="whitespace-pre-wrap">{msg.contenu}</p>
         )}
         {time && (
           <p className={`text-xs mt-1 ${own ? 'text-white/50' : 'text-gray-400'}`}>
