@@ -7,6 +7,7 @@ const { driver } = require('../config/neo4j');
 const { resolveQuartier } = require('../utils/geo');
 const Incident = require('../models/mongo/incident.model');
 const { PASSWORD_PATTERN, PASSWORD_MESSAGE } = require('../validators/auth.validator');
+const logger = require('../config/logger');
 
 const REFRESH_EXPIRES_DAYS = 7;
 const WELCOME_POINTS = 100;
@@ -16,20 +17,30 @@ const generateRefreshToken = () => crypto.randomBytes(64).toString('hex');
 const generateOtp = () => String(Math.floor(100000 + Math.random() * 900000));
 
 const creditWelcomeAndVerify = async (userId) => {
-  await pool.query('BEGIN');
-  await pool.query(
-    'UPDATE utilisateur SET email_verifie = TRUE, points_solde = points_solde + $2 WHERE id_utilisateur = $1',
-    [userId, WELCOME_POINTS]
-  );
-  const tx = await pool.query(
-    `INSERT INTO transaction_points (montant, motif) VALUES ($1, $2) RETURNING id_transaction`,
-    [WELCOME_POINTS, 'Points de bienvenue']
-  );
-  await pool.query(
-    'UPDATE email_verification SET utilise = TRUE WHERE id_utilisateur = $1',
-    [userId]
-  );
-  await pool.query('COMMIT');
+  // Client dédié : un BEGIN via pool.query() ne reste pas forcément sur la même connexion
+  const client = await pool.connect();
+  let tx;
+  try {
+    await client.query('BEGIN');
+    await client.query(
+      'UPDATE utilisateur SET email_verifie = TRUE, points_solde = points_solde + $2 WHERE id_utilisateur = $1',
+      [userId, WELCOME_POINTS]
+    );
+    tx = await client.query(
+      `INSERT INTO transaction_points (montant, motif) VALUES ($1, $2) RETURNING id_transaction`,
+      [WELCOME_POINTS, 'Points de bienvenue']
+    );
+    await client.query(
+      'UPDATE email_verification SET utilise = TRUE WHERE id_utilisateur = $1',
+      [userId]
+    );
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
 
   const session = driver.session();
   try {
@@ -39,6 +50,10 @@ const creditWelcomeAndVerify = async (userId) => {
        MERGE (t)-[:EST_POUR]->(u)`,
       { tid: tx.rows[0].id_transaction, uid: userId }
     );
+  } catch (e) {
+    logger.error('Echec écriture Neo4j pour les points de bienvenue', {
+      userId, txId: tx.rows[0].id_transaction, err: e.message,
+    });
   } finally {
     await session.close();
   }

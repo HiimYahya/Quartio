@@ -7,6 +7,7 @@ const { createNotification } = require('../utils/notify');
 const { emitAlert }          = require('../socket/index');
 const ContratDocument        = require('../models/mongo/contratdocument.model');
 const appEvents               = require('../config/events');
+const logger                 = require('../config/logger');
 
 exports.getMes = async (req, res, next) => {
   try {
@@ -59,9 +60,18 @@ exports.create = async (req, res, next) => {
   try {
     const { points_echanges, id_annonce_mongo } = req.body;
 
+    // Le montant vient de l'annonce quand elle est fournie, jamais du body
+    let points = Math.max(0, parseInt(points_echanges, 10) || 0);
+    if (id_annonce_mongo) {
+      const Annonce = require('../models/mongo/annonce.model');
+      const annonce = await Annonce.findById(id_annonce_mongo).lean().catch(() => null);
+      if (!annonce) return res.status(404).json({ error: 'Annonce non trouvée' });
+      points = annonce.est_payant ? (annonce.cout_points ?? 0) : 0;
+    }
+
     const result = await pool.query(
       `INSERT INTO contrat (points_echanges) VALUES ($1) RETURNING *`,
-      [points_echanges ?? 0]
+      [points]
     );
     const contrat = result.rows[0];
 
@@ -135,10 +145,61 @@ exports.signer = async (req, res, next) => {
     if (c[colSigne])
       return res.status(409).json({ error: 'Vous avez déjà signé ce contrat' });
 
-    await pool.query(
-      `UPDATE contrat SET ${colSigne} = TRUE, statut = 'signe' WHERE id_contrat = $1`,
-      [contratId]
-    );
+    // Signature et transfert de points dans la même transaction : tout passe ou tout est annulé
+    const client = await pool.connect();
+    let updated, txDebit = null, txCredit = null;
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        `UPDATE contrat SET ${colSigne} = TRUE, statut = 'signe' WHERE id_contrat = $1`,
+        [contratId]
+      );
+      const { rows: refreshed } = await client.query(
+        'SELECT * FROM contrat WHERE id_contrat = $1', [contratId]
+      );
+      updated = refreshed[0];
+
+      if (updated.signe_vendeur && updated.signe_acheteur) {
+        if (points > 0) {
+          // 0 ligne touchée = l'acheteur n'a plus assez de points depuis sa signature
+          const debit = await client.query(
+            `UPDATE utilisateur SET points_solde = points_solde - $1
+             WHERE id_utilisateur = $2 AND points_solde >= $1`,
+            [points, c.id_acheteur]
+          );
+          if (debit.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return res.status(409).json({
+              error: `Finalisation impossible : le solde de l'acheteur ne couvre plus les ${points} points du contrat`,
+            });
+          }
+          const txD = await client.query(
+            `INSERT INTO transaction_points (montant, motif) VALUES ($1, $2) RETURNING *`,
+            [-points, `Paiement service - contrat #${contratId}`]
+          );
+          await client.query(
+            'UPDATE utilisateur SET points_solde = points_solde + $1 WHERE id_utilisateur = $2',
+            [points, c.id_vendeur]
+          );
+          const txC = await client.query(
+            `INSERT INTO transaction_points (montant, motif) VALUES ($1, $2) RETURNING *`,
+            [points, `Encaissement service - contrat #${contratId}`]
+          );
+          txDebit  = txD.rows[0];
+          txCredit = txC.rows[0];
+        }
+        await client.query(
+          `UPDATE contrat SET statut = 'termine', date_signature = NOW() WHERE id_contrat = $1`,
+          [contratId]
+        );
+      }
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw e;
+    } finally {
+      client.release();
+    }
 
     {
       const session = driver.session();
@@ -178,33 +239,10 @@ exports.signer = async (req, res, next) => {
       ).catch(() => {});
     }
 
-    const { rows: refreshed } = await pool.query(
-      'SELECT * FROM contrat WHERE id_contrat = $1', [contratId]
-    );
-    const updated = refreshed[0];
-
     if (updated.signe_vendeur && updated.signe_acheteur) {
-      if (points > 0) {
-        await pool.query(
-          'UPDATE utilisateur SET points_solde = points_solde - $1 WHERE id_utilisateur = $2',
-          [points, c.id_acheteur]
-        );
-        const txDebit = await pool.query(
-          `INSERT INTO transaction_points (montant, motif) VALUES ($1, $2) RETURNING *`,
-          [-points, `Paiement service - contrat #${contratId}`]
-        );
-
-        await pool.query(
-          'UPDATE utilisateur SET points_solde = points_solde + $1 WHERE id_utilisateur = $2',
-          [points, c.id_vendeur]
-        );
-        const txCredit = await pool.query(
-          `INSERT INTO transaction_points (montant, motif) VALUES ($1, $2) RETURNING *`,
-          [points, `Encaissement service - contrat #${contratId}`]
-        );
-
-        const session = driver.session();
-        try {
+      const session = driver.session();
+      try {
+        if (txDebit && txCredit) {
           await session.run(
             `MERGE (c:Contrat {pg_id: $cid})
              MERGE (acheteur:Utilisateur {pg_id: $aid})
@@ -216,16 +254,11 @@ exports.signer = async (req, res, next) => {
             {
               cid:  contratId,
               aid:  c.id_acheteur, vid: c.id_vendeur,
-              tdid: txDebit.rows[0].id_transaction,
-              tcid: txCredit.rows[0].id_transaction,
+              tdid: txDebit.id_transaction,
+              tcid: txCredit.id_transaction,
             }
           );
-        } finally {
-          await session.close();
-        }
-      } else {
-        const session = driver.session();
-        try {
+        } else {
           await session.run(
             `MERGE (c:Contrat {pg_id: $cid})
              MERGE (acheteur:Utilisateur {pg_id: $aid})
@@ -233,15 +266,18 @@ exports.signer = async (req, res, next) => {
              MERGE (vendeur)-[:A_AIDE]->(acheteur)`,
             { cid: contratId, aid: c.id_acheteur, vid: c.id_vendeur }
           );
-        } finally {
-          await session.close();
         }
+      } catch (e) {
+        // Sans ce lien Neo4j, les transactions n'apparaissent dans aucun historique : on trace pour réparer
+        logger.error('Echec écriture Neo4j à la finalisation du contrat', {
+          contratId,
+          txDebit: txDebit?.id_transaction,
+          txCredit: txCredit?.id_transaction,
+          err: e.message,
+        });
+      } finally {
+        await session.close();
       }
-
-      await pool.query(
-        `UPDATE contrat SET statut = 'termine', date_signature = NOW() WHERE id_contrat = $1`,
-        [contratId]
-      );
 
       if (c.id_annonce_mongo) {
         const Annonce = require('../models/mongo/annonce.model');
@@ -314,11 +350,25 @@ exports.getDocument = async (req, res, next) => {
 exports.updateStatut = async (req, res, next) => {
   try {
     const { statut } = req.body;
+
+    // 'termine' et 'litige' sont posés par la double signature et le flux litige :
+    // les poser à la main fausserait les soldes de points
+    if (statut === 'termine' || statut === 'litige') {
+      return res.status(409).json({ error: `Le statut "${statut}" ne peut pas être défini manuellement` });
+    }
+
+    const { rows } = await pool.query('SELECT statut FROM contrat WHERE id_contrat = $1', [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Contrat non trouvé' });
+    if (rows[0].statut === 'termine' || rows[0].statut === 'litige') {
+      return res.status(409).json({
+        error: `Un contrat ${rows[0].statut} ne peut pas être modifié manuellement (les points ont été transférés — passez par la résolution de litige)`,
+      });
+    }
+
     const result = await pool.query(
       'UPDATE contrat SET statut=$1 WHERE id_contrat=$2 RETURNING *',
       [statut, req.params.id]
     );
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Contrat non trouvé' });
     res.json(result.rows[0]);
   } catch (err) { next(err); }
 };
@@ -442,17 +492,36 @@ exports.resoudreLitige = async (req, res, next) => {
     const points = c.points_echanges || 0;
 
     if (action === 'rembourser') {
-      if (points > 0 && c.id_acheteur && c.id_vendeur) {
-        await pool.query('UPDATE utilisateur SET points_solde = points_solde + $1 WHERE id_utilisateur = $2', [points, c.id_acheteur]);
-        const txRefund = await pool.query(
-          'INSERT INTO transaction_points (montant, motif) VALUES ($1, $2) RETURNING *',
-          [points, `Remboursement litige - contrat #${contratId}`]
-        );
-        await pool.query('UPDATE utilisateur SET points_solde = points_solde - $1 WHERE id_utilisateur = $2', [points, c.id_vendeur]);
-        const txReprise = await pool.query(
-          'INSERT INTO transaction_points (montant, motif) VALUES ($1, $2) RETURNING *',
-          [-points, `Reprise litige - contrat #${contratId}`]
-        );
+      // Remboursement tout-ou-rien ; la reprise s'applique même si le vendeur
+      // passe en négatif (décision d'arbitrage)
+      let txRefund = null, txReprise = null;
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        if (points > 0 && c.id_acheteur && c.id_vendeur) {
+          await client.query('UPDATE utilisateur SET points_solde = points_solde + $1 WHERE id_utilisateur = $2', [points, c.id_acheteur]);
+          const txR = await client.query(
+            'INSERT INTO transaction_points (montant, motif) VALUES ($1, $2) RETURNING *',
+            [points, `Remboursement litige - contrat #${contratId}`]
+          );
+          await client.query('UPDATE utilisateur SET points_solde = points_solde - $1 WHERE id_utilisateur = $2', [points, c.id_vendeur]);
+          const txP = await client.query(
+            'INSERT INTO transaction_points (montant, motif) VALUES ($1, $2) RETURNING *',
+            [-points, `Reprise litige - contrat #${contratId}`]
+          );
+          txRefund  = txR.rows[0];
+          txReprise = txP.rows[0];
+        }
+        await client.query("UPDATE contrat SET statut = 'annule' WHERE id_contrat = $1", [contratId]);
+        await client.query('COMMIT');
+      } catch (e) {
+        await client.query('ROLLBACK').catch(() => {});
+        throw e;
+      } finally {
+        client.release();
+      }
+
+      if (txRefund && txReprise) {
         const session = driver.session();
         try {
           await session.run(
@@ -463,13 +532,19 @@ exports.resoudreLitige = async (req, res, next) => {
              MERGE (tp:Transaction {pg_id: $tpid}) MERGE (tp)-[:EST_POUR]->(vendeur)
              MERGE (c)-[:LIE_A]->(tr) MERGE (c)-[:LIE_A]->(tp)`,
             { cid: contratId, aid: c.id_acheteur, vid: c.id_vendeur,
-              trid: txRefund.rows[0].id_transaction, tpid: txReprise.rows[0].id_transaction }
+              trid: txRefund.id_transaction, tpid: txReprise.id_transaction }
           );
+        } catch (e) {
+          logger.error('Echec écriture Neo4j au remboursement du litige', {
+            contratId,
+            txRefund: txRefund.id_transaction,
+            txReprise: txReprise.id_transaction,
+            err: e.message,
+          });
         } finally {
           await session.close();
         }
       }
-      await pool.query("UPDATE contrat SET statut = 'annule' WHERE id_contrat = $1", [contratId]);
     } else {
       await pool.query("UPDATE contrat SET statut = 'termine' WHERE id_contrat = $1", [contratId]);
     }

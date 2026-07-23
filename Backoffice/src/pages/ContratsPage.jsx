@@ -29,7 +29,9 @@ export default function ContratsPage() {
     try {
       await api.put(`/contrats/${id}/statut`, { statut })
       setItems((v) => v.map((x) => x.id_contrat === id ? { ...x, statut } : x))
-    } catch {}
+    } catch (err) {
+      alert(err.response?.data?.error ?? 'Changement de statut impossible')
+    }
   }
 
   const handleDelete = async (id) => {
@@ -92,10 +94,13 @@ export default function ContratsPage() {
                     {c.date_signature ? new Date(c.date_signature).toLocaleDateString('fr-FR') : '-'}
                   </td>
                   <td className="px-4 py-3">
+                    {/* 'termine' et 'litige' sont posés par le système ; le backend les refuse à la main */}
                     <select value={c.statut ?? 'en_attente'} onChange={(e) => handleStatut(c.id_contrat, e.target.value)}
-                      className={`text-xs font-medium px-2.5 py-1.5 rounded-lg border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 ${STATUT_COLORS[c.statut] ?? 'bg-slate-100'}`}>
+                      disabled={c.statut === 'termine' || c.statut === 'litige'}
+                      title={c.statut === 'termine' || c.statut === 'litige' ? 'Statut géré par le système (signatures / résolution de litige)' : undefined}
+                      className={`text-xs font-medium px-2.5 py-1.5 rounded-lg border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:cursor-not-allowed ${STATUT_COLORS[c.statut] ?? 'bg-slate-100'}`}>
                       {Object.entries(STATUT_LABELS).map(([v, l]) => (
-                        <option key={v} value={v}>{l}</option>
+                        <option key={v} value={v} disabled={v === 'termine' || v === 'litige'}>{l}</option>
                       ))}
                     </select>
                   </td>
