@@ -52,7 +52,8 @@ CREATE TABLE IF NOT EXISTS contrat (
   signe_vendeur    BOOLEAN DEFAULT FALSE,
   signe_acheteur   BOOLEAN DEFAULT FALSE,
   motif_litige     TEXT,
-  date_litige      TIMESTAMP
+  date_litige      TIMESTAMP,
+  litige_ouvert_par INTEGER REFERENCES utilisateur(id_utilisateur) ON DELETE SET NULL
 );
 
 -- ── TRANSACTION_POINTS ──────────────────────────────────────

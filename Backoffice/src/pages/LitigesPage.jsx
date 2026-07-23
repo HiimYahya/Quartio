@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Scale, AlertTriangle } from 'lucide-react'
+import { Scale, AlertTriangle, MessageSquare } from 'lucide-react'
 import api from '../services/api'
+import ContactUserModal from '../components/ui/ContactUserModal'
 
 export default function LitigesPage() {
   const [items,   setItems]   = useState([])
@@ -8,6 +9,7 @@ export default function LitigesPage() {
   const [modal,   setModal]   = useState(null)
   const [note,    setNote]    = useState('')
   const [busy,    setBusy]    = useState(false)
+  const [contact, setContact] = useState(null)
 
   const load = () => {
     setLoading(true)
@@ -55,7 +57,7 @@ export default function LitigesPage() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
-                {['Contrat', 'Vendeur', 'Acheteur', 'Points', 'Ouvert le', 'Motif', 'Actions'].map((h) => (
+                {['Contrat', 'Vendeur', 'Acheteur', 'Points', 'Ouvert par', 'Motif', 'Actions'].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -67,8 +69,20 @@ export default function LitigesPage() {
                   <td className="px-4 py-3 text-slate-600">{partie(c, 'vendeur')}</td>
                   <td className="px-4 py-3 text-slate-600">{partie(c, 'acheteur')}</td>
                   <td className="px-4 py-3 text-slate-500">{c.points_echanges > 0 ? `${c.points_echanges} pts` : 'Gratuit'}</td>
-                  <td className="px-4 py-3 text-slate-400 text-xs">
-                    {c.date_litige ? new Date(c.date_litige).toLocaleDateString('fr-FR') : '-'}
+                  <td className="px-4 py-3 text-xs">
+                    <span className="text-slate-600 font-medium">
+                      {[c.ouvreur_prenom, c.ouvreur_nom].filter(Boolean).join(' ') || '-'}
+                    </span>
+                    <div className="text-slate-400">
+                      {c.date_litige ? `le ${new Date(c.date_litige).toLocaleDateString('fr-FR')}` : ''}
+                    </div>
+                    {c.litige_ouvert_par && (
+                      <button
+                        onClick={() => setContact({ id: c.litige_ouvert_par, prenom: c.ouvreur_prenom, nom: c.ouvreur_nom })}
+                        className="mt-1 font-medium text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1">
+                        <MessageSquare className="w-3 h-3" /> Contacter
+                      </button>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-slate-600 max-w-xs">
                     <span className="line-clamp-3">{c.motif_litige || '-'}</span>
@@ -131,6 +145,8 @@ export default function LitigesPage() {
           </div>
         </div>
       )}
+
+      {contact && <ContactUserModal user={contact} onClose={() => setContact(null)} />}
     </div>
   )
 }

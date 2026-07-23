@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
-import { Flag } from 'lucide-react'
+import { Flag, MessageSquare } from 'lucide-react'
 import api from '../services/api'
+import ContactUserModal from '../components/ui/ContactUserModal'
 
 export default function SignalementsPage() {
   const [signalements, setSignalements] = useState([])
   const [loading,      setLoading]      = useState(true)
   const [actionId,     setActionId]     = useState(null)
   const [confirm,      setConfirm]      = useState(null)
+  const [contact,      setContact]      = useState(null)
 
   const load = () => {
     api.get('/incidents', { params: { signalements: true, limit: 100 } })
@@ -96,8 +98,16 @@ export default function SignalementsPage() {
                       <p className="text-xs text-slate-400 mt-1">Motif : {sig.description}</p>
                     )}
                     <p className="text-xs text-slate-400 mt-1">
-                      Signalé le {new Date(sig.date_signalement ?? sig.createdAt).toLocaleString('fr-FR')}
+                      Signalé par <span className="font-medium text-slate-500">
+                        {sig.auteur ? `${sig.auteur.prenom} ${sig.auteur.nom}` : 'inconnu'}
+                      </span> le {new Date(sig.date_signalement ?? sig.createdAt).toLocaleString('fr-FR')}
                     </p>
+                    {sig.auteur && (
+                      <button onClick={() => setContact(sig.auteur)}
+                        className="mt-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1">
+                        <MessageSquare className="w-3.5 h-3.5" /> Contacter le signaleur
+                      </button>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <button onClick={() => setConfirm(sig)} disabled={busy}
@@ -140,6 +150,8 @@ export default function SignalementsPage() {
           </div>
         </div>
       )}
+
+      {contact && <ContactUserModal user={contact} onClose={() => setContact(null)} />}
     </div>
   )
 }

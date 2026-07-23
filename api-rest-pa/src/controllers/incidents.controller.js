@@ -2,7 +2,6 @@ const pool            = require('../config/db');
 const Incident        = require('../models/mongo/incident.model');
 const validateMongoId = require('../utils/validateMongoId');
 const { getPagination, paginate } = require('../utils/pagination');
-const { emitAlert }   = require('../socket/index');
 const appEvents       = require('../config/events');
 
 exports.getAll = async (req, res, next) => {
@@ -28,8 +27,11 @@ exports.getAll = async (req, res, next) => {
       Incident.countDocuments(filter),
     ]);
 
-    if (signalements === 'true' && data.length) {
-      const userIds = [...new Set(data.map((i) => i.id_message?.id_utilisateur_pg).filter((v) => v != null))];
+    if (data.length) {
+      // auteur = créateur du ticket (ou signaleur) ; message_auteur = auteur du message signalé
+      const userIds = [...new Set(data.flatMap((i) =>
+        [i.id_utilisateur_pg, i.id_message?.id_utilisateur_pg]
+      ).filter((v) => v != null))];
       let users = [];
       if (userIds.length) {
         const pgRes = await pool.query(
@@ -39,7 +41,10 @@ exports.getAll = async (req, res, next) => {
         users = pgRes.rows;
       }
       data.forEach((inc) => {
-        inc.message_auteur = users.find((u) => u.id === inc.id_message?.id_utilisateur_pg) || null;
+        inc.auteur = users.find((u) => u.id === inc.id_utilisateur_pg) || null;
+        if (signalements === 'true') {
+          inc.message_auteur = users.find((u) => u.id === inc.id_message?.id_utilisateur_pg) || null;
+        }
       });
     }
 
@@ -64,15 +69,6 @@ exports.create = async (req, res, next) => {
       priorite: priorite || 'normale',
       id_utilisateur_pg: req.user.id,
     });
-
-    if (['haute', 'critique'].includes(incident.priorite)) {
-      emitAlert('incident', {
-        id:       incident._id.toString(),
-        titre:    incident.titre,
-        priorite: incident.priorite,
-        statut:   incident.statut,
-      });
-    }
 
     appEvents.emit('incident.cree', {
       incidentId: incident._id.toString(), priorite: incident.priorite,

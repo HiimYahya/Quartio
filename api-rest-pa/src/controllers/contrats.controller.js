@@ -443,8 +443,8 @@ exports.ouvrirLitige = async (req, res, next) => {
     }
 
     const { rows: upd } = await pool.query(
-      "UPDATE contrat SET statut = 'litige', motif_litige = $2, date_litige = NOW() WHERE id_contrat = $1 RETURNING *",
-      [contratId, motif]
+      "UPDATE contrat SET statut = 'litige', motif_litige = $2, date_litige = NOW(), litige_ouvert_par = $3 WHERE id_contrat = $1 RETURNING *",
+      [contratId, motif, uid]
     );
 
     const autreId = uid === c.id_vendeur ? c.id_acheteur : c.id_vendeur;
@@ -466,10 +466,12 @@ exports.getLitiges = async (req, res, next) => {
     const result = await pool.query(
       `SELECT c.*,
               v.nom AS vendeur_nom, v.prenom AS vendeur_prenom,
-              a.nom AS acheteur_nom, a.prenom AS acheteur_prenom
+              a.nom AS acheteur_nom, a.prenom AS acheteur_prenom,
+              o.nom AS ouvreur_nom, o.prenom AS ouvreur_prenom
        FROM contrat c
        LEFT JOIN utilisateur v ON v.id_utilisateur = c.id_vendeur
        LEFT JOIN utilisateur a ON a.id_utilisateur = c.id_acheteur
+       LEFT JOIN utilisateur o ON o.id_utilisateur = c.litige_ouvert_par
        WHERE c.statut = 'litige'
        ORDER BY c.date_litige DESC NULLS LAST LIMIT $1 OFFSET $2`,
       [limit, skip]

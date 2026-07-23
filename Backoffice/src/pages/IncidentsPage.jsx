@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { AlertTriangle, Pencil, Trash2 } from 'lucide-react'
+import { AlertTriangle, MessageSquare, Pencil, Trash2 } from 'lucide-react'
 import api from '../services/api'
+import ContactUserModal from '../components/ui/ContactUserModal'
 import { CATEGORIE_REGEX, CATEGORIE_AIDE, TEXTE_REGEX } from '../utils/formats'
 
 // Mêmes règles que le validator backend, pour une erreur immédiate
@@ -35,6 +36,7 @@ export default function IncidentsPage() {
   const [editForm,   setEditForm]   = useState(EMPTY_FORM)
   const [editSaving, setEditSaving] = useState(false)
   const [editError,  setEditError]  = useState(null)
+  const [contact,    setContact]    = useState(null)
 
   const [moderateurs, setModerateurs] = useState([])
 
@@ -180,8 +182,19 @@ export default function IncidentsPage() {
                     </div>
                     {inc.description && <p className="text-sm text-slate-500 line-clamp-2">{inc.description}</p>}
                     <p className="text-xs text-slate-400 mt-1">
-                      {inc.created_at ? new Date(inc.created_at).toLocaleDateString('fr-FR') : '-'}
+                      Ouvert par <span className="font-medium text-slate-500">
+                        {inc.auteur ? `${inc.auteur.prenom} ${inc.auteur.nom}` : 'inconnu'}
+                      </span>
+                      {' '}le {(inc.createdAt ?? inc.date_signalement)
+                        ? new Date(inc.createdAt ?? inc.date_signalement).toLocaleString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                        : '-'}
                     </p>
+                    {inc.auteur && (
+                      <button onClick={() => setContact(inc.auteur)}
+                        className="mt-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1">
+                        <MessageSquare className="w-3.5 h-3.5" /> Contacter
+                      </button>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <select value={inc.id_moderateur ?? ''} onChange={(e) => handleAssign(id, e.target.value)}
@@ -332,6 +345,8 @@ export default function IncidentsPage() {
           </div>
         </div>
       )}
+
+      {contact && <ContactUserModal user={contact} onClose={() => setContact(null)} />}
     </div>
   )
 }
