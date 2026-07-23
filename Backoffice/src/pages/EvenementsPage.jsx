@@ -1,6 +1,16 @@
 import { useEffect, useState } from 'react'
 import { CalendarDays, Pencil } from 'lucide-react'
 import api from '../services/api'
+import { LIEU_REGEX, LIEU_AIDE, TEXTE_REGEX, datetimeLocalMin } from '../utils/formats'
+
+// Mêmes règles que le validator backend, pour une erreur immédiate
+const validerFormEvenement = (f) => {
+  if (!TEXTE_REGEX.test(f.titre)) return 'Titre invalide : doit contenir au moins une lettre ou un chiffre'
+  if (f.date_debut && f.date_debut < datetimeLocalMin()) return "La date de début ne peut pas être antérieure à maintenant"
+  if (f.date_fin && f.date_debut && f.date_fin < f.date_debut) return 'La date de fin ne peut pas être antérieure à la date de début'
+  if (f.lieu && !LIEU_REGEX.test(f.lieu)) return `Lieu invalide : ${LIEU_AIDE.toLowerCase()}`
+  return null
+}
 
 const STATUT_COLORS = {
   planifie: 'bg-blue-100 text-blue-700', en_cours: 'bg-green-100 text-green-700',
@@ -60,8 +70,10 @@ export default function EvenementsPage() {
 
   const handleCreate = async (e) => {
     e.preventDefault()
-    setSaving(true)
     setFormError(null)
+    const invalide = validerFormEvenement(form)
+    if (invalide) return setFormError(invalide)
+    setSaving(true)
     try {
       const payload = {
         titre:        form.titre,
@@ -78,7 +90,7 @@ export default function EvenementsPage() {
       setShowCreate(false)
       setForm(EMPTY_FORM)
     } catch (err) {
-      setFormError(err.response?.data?.error ?? 'Erreur lors de la création')
+      setFormError(err.response?.data?.details?.[0] ?? err.response?.data?.error ?? 'Erreur lors de la création')
     } finally {
       setSaving(false)
     }
@@ -102,8 +114,10 @@ export default function EvenementsPage() {
 
   const handleEditSubmit = async (e) => {
     e.preventDefault()
-    setEditSaving(true)
     setEditError(null)
+    const invalide = validerFormEvenement(editForm)
+    if (invalide) return setEditError(invalide)
+    setEditSaving(true)
     try {
       const payload = {
         titre:        editForm.titre,
@@ -118,7 +132,7 @@ export default function EvenementsPage() {
       setItems((v) => v.map((x) => (x.id ?? x._id) === editTarget.id ? { ...x, ...payload } : x))
       setEditTarget(null)
     } catch (err) {
-      setEditError(err.response?.data?.error ?? 'Erreur lors de la modification')
+      setEditError(err.response?.data?.details?.[0] ?? err.response?.data?.error ?? 'Erreur lors de la modification')
     } finally {
       setEditSaving(false)
     }
@@ -199,7 +213,7 @@ export default function EvenementsPage() {
             <form onSubmit={handleEditSubmit} className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Titre *</label>
-                <input required value={editForm.titre} onChange={(e) => setEditForm((f) => ({ ...f, titre: e.target.value }))}
+                <input required minLength={2} maxLength={200} value={editForm.titre} onChange={(e) => setEditForm((f) => ({ ...f, titre: e.target.value }))}
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
               <div>
@@ -210,19 +224,19 @@ export default function EvenementsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Date début *</label>
-                  <input required type="datetime-local" value={editForm.date_debut} onChange={(e) => setEditForm((f) => ({ ...f, date_debut: e.target.value }))}
+                  <input required type="datetime-local" value={editForm.date_debut} min={datetimeLocalMin()} onChange={(e) => setEditForm((f) => ({ ...f, date_debut: e.target.value }))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Date fin</label>
-                  <input type="datetime-local" value={editForm.date_fin} onChange={(e) => setEditForm((f) => ({ ...f, date_fin: e.target.value }))}
+                  <input type="datetime-local" value={editForm.date_fin} min={editForm.date_debut || datetimeLocalMin()} onChange={(e) => setEditForm((f) => ({ ...f, date_fin: e.target.value }))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Lieu</label>
-                  <input value={editForm.lieu} onChange={(e) => setEditForm((f) => ({ ...f, lieu: e.target.value }))}
+                  <input value={editForm.lieu} maxLength={200} title={LIEU_AIDE} onChange={(e) => setEditForm((f) => ({ ...f, lieu: e.target.value }))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
                 <div>
@@ -255,7 +269,7 @@ export default function EvenementsPage() {
             <form onSubmit={handleCreate} className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Titre *</label>
-                <input required value={form.titre} onChange={(e) => setForm((f) => ({ ...f, titre: e.target.value }))}
+                <input required minLength={2} maxLength={200} value={form.titre} onChange={(e) => setForm((f) => ({ ...f, titre: e.target.value }))}
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
               <div>
@@ -266,19 +280,19 @@ export default function EvenementsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Date début *</label>
-                  <input required type="datetime-local" value={form.date_debut} onChange={(e) => setForm((f) => ({ ...f, date_debut: e.target.value }))}
+                  <input required type="datetime-local" value={form.date_debut} min={datetimeLocalMin()} onChange={(e) => setForm((f) => ({ ...f, date_debut: e.target.value }))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Date fin</label>
-                  <input type="datetime-local" value={form.date_fin} onChange={(e) => setForm((f) => ({ ...f, date_fin: e.target.value }))}
+                  <input type="datetime-local" value={form.date_fin} min={form.date_debut || datetimeLocalMin()} onChange={(e) => setForm((f) => ({ ...f, date_fin: e.target.value }))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Lieu</label>
-                  <input value={form.lieu} onChange={(e) => setForm((f) => ({ ...f, lieu: e.target.value }))}
+                  <input value={form.lieu} maxLength={200} title={LIEU_AIDE} onChange={(e) => setForm((f) => ({ ...f, lieu: e.target.value }))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
                 <div>

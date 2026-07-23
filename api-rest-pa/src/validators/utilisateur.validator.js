@@ -1,10 +1,20 @@
 const Joi = require('joi');
 const { passwordSchema } = require('./auth.validator');
+const {
+  NOM_PATTERN, NOM_MESSAGE,
+  TELEPHONE_PATTERN, TELEPHONE_MESSAGE,
+} = require('./formats');
+
+const nomSchema = Joi.string().min(2).max(100).pattern(NOM_PATTERN)
+  .messages({ 'string.pattern.base': NOM_MESSAGE });
+
+const telephoneSchema = Joi.string().max(20).pattern(TELEPHONE_PATTERN)
+  .messages({ 'string.pattern.base': TELEPHONE_MESSAGE });
 
 const updateSchema = Joi.object({
-  nom:       Joi.string().min(2).max(100),
-  prenom:    Joi.string().min(2).max(100),
-  telephone: Joi.string().max(20).allow('', null),
+  nom:       nomSchema,
+  prenom:    nomSchema,
+  telephone: telephoneSchema.allow('', null),
   langue:    Joi.string().valid('fr', 'en'),
   role:      Joi.string().valid('user', 'admin', 'moderateur'),
 }).min(1);
@@ -25,7 +35,7 @@ const changeEmailSchema = Joi.object({
 });
 
 const changeTelephoneSchema = Joi.object({
-  telephone: Joi.string().max(20).allow('', null).required(),
+  telephone: telephoneSchema.allow('', null).required(),
   mfa_code:  Joi.string().length(6).optional(),
 });
 

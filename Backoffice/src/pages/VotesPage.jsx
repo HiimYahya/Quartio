@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Vote, Pencil } from 'lucide-react'
 import api from '../services/api'
+import { datetimeLocalMin } from '../utils/formats'
 
 const STATUT_COLORS = {
   ouvert:  'bg-green-100 text-green-700',
@@ -49,14 +50,22 @@ export default function VotesPage() {
 
   const handleCreate = async (e) => {
     e.preventDefault()
-    setSaving(true)
     setFormError(null)
     const validOptions = form.options.filter((o) => o.libelle.trim())
     if (validOptions.length < 2) {
-      setFormError('Au moins 2 options sont requises.')
-      setSaving(false)
-      return
+      return setFormError('Au moins 2 options sont requises.')
     }
+    if (!/[\p{L}0-9]/u.test(form.titre)) {
+      return setFormError('Titre invalide : doit contenir au moins une lettre ou un chiffre')
+    }
+    const maintenant = datetimeLocalMin()
+    if (form.date_debut && form.date_debut < maintenant) {
+      return setFormError("La date de début ne peut pas être antérieure à maintenant")
+    }
+    if (form.date_fin && form.date_fin < (form.date_debut || maintenant)) {
+      return setFormError('La date de fin ne peut pas être antérieure à la date de début (ni à maintenant)')
+    }
+    setSaving(true)
     try {
       const payload = {
         titre:       form.titre,
@@ -72,7 +81,7 @@ export default function VotesPage() {
       setShowCreate(false)
       setForm(EMPTY_FORM)
     } catch (err) {
-      setFormError(err.response?.data?.error ?? 'Erreur lors de la création')
+      setFormError(err.response?.data?.details?.[0] ?? err.response?.data?.error ?? 'Erreur lors de la création')
     } finally {
       setSaving(false)
     }
@@ -214,7 +223,7 @@ export default function VotesPage() {
             <form onSubmit={handleCreate} className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Titre *</label>
-                <input required value={form.titre} onChange={(e) => setForm((f) => ({ ...f, titre: e.target.value }))}
+                <input required minLength={2} maxLength={200} value={form.titre} onChange={(e) => setForm((f) => ({ ...f, titre: e.target.value }))}
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
               <div>
@@ -225,12 +234,12 @@ export default function VotesPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Date début</label>
-                  <input type="datetime-local" value={form.date_debut} onChange={(e) => setForm((f) => ({ ...f, date_debut: e.target.value }))}
+                  <input type="datetime-local" value={form.date_debut} min={datetimeLocalMin()} onChange={(e) => setForm((f) => ({ ...f, date_debut: e.target.value }))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Date fin</label>
-                  <input type="datetime-local" value={form.date_fin} onChange={(e) => setForm((f) => ({ ...f, date_fin: e.target.value }))}
+                  <input type="datetime-local" value={form.date_fin} min={form.date_debut || datetimeLocalMin()} onChange={(e) => setForm((f) => ({ ...f, date_fin: e.target.value }))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
               </div>

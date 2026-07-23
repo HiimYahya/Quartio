@@ -4,6 +4,7 @@ import { CalendarDays } from 'lucide-react'
 import api from '../services/api'
 import useAuthStore from '../store/authStore'
 import SwipeView from '../components/ui/SwipeView'
+import { LIEU_REGEX, LIEU_AIDE, TEXTE_REGEX, TEXTE_AIDE, datetimeLocalMin } from '../utils/formats'
 
 export default function EvenementsPage() {
   const [evenements, setEvenements] = useState([])
@@ -51,6 +52,18 @@ export default function EvenementsPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
+    if (!TEXTE_REGEX.test(form.titre)) {
+      return setError(`Titre invalide : ${TEXTE_AIDE.toLowerCase()}`)
+    }
+    if (form.date_debut < datetimeLocalMin()) {
+      return setError("La date de début ne peut pas être antérieure à maintenant")
+    }
+    if (form.date_fin && form.date_fin < form.date_debut) {
+      return setError('La date de fin ne peut pas être antérieure à la date de début')
+    }
+    if (form.lieu && !LIEU_REGEX.test(form.lieu)) {
+      return setError(`Lieu invalide : ${LIEU_AIDE.toLowerCase()}`)
+    }
     setSubmitting(true)
     try {
       const payload = {
@@ -128,6 +141,8 @@ export default function EvenementsPage() {
               value={form.titre}
               onChange={(e) => setForm((f) => ({ ...f, titre: e.target.value }))}
               required
+              minLength={2}
+              maxLength={200}
               placeholder="Ex: Barbecue de quartier..."
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]"
             />
@@ -149,6 +164,7 @@ export default function EvenementsPage() {
               <input
                 type="datetime-local"
                 value={form.date_debut}
+                min={datetimeLocalMin()}
                 onChange={(e) => setForm((f) => ({ ...f, date_debut: e.target.value }))}
                 required
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]"
@@ -159,6 +175,7 @@ export default function EvenementsPage() {
               <input
                 type="datetime-local"
                 value={form.date_fin}
+                min={form.date_debut || datetimeLocalMin()}
                 onChange={(e) => setForm((f) => ({ ...f, date_fin: e.target.value }))}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]"
               />
@@ -172,6 +189,8 @@ export default function EvenementsPage() {
                 value={form.lieu}
                 onChange={(e) => setForm((f) => ({ ...f, lieu: e.target.value }))}
                 placeholder="Place du marché..."
+                maxLength={200}
+                title={LIEU_AIDE}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]"
               />
             </div>

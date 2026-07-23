@@ -4,6 +4,7 @@ import { Megaphone, Search } from 'lucide-react'
 import api from '../services/api'
 import useAuthStore from '../store/authStore'
 import { toast } from '../store/toastStore'
+import { CATEGORIE_REGEX, CATEGORIE_AIDE, TEXTE_REGEX, TEXTE_AIDE } from '../utils/formats'
 
 const TYPE_LABELS = { offre: 'Offre', demande: 'Demande' }
 const TYPE_COLORS = { offre: 'bg-green-100 text-green-700', demande: 'bg-blue-100 text-blue-700' }
@@ -55,6 +56,12 @@ export default function AnnoncesPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
+    if (!TEXTE_REGEX.test(form.titre)) {
+      return setError(`Titre invalide : ${TEXTE_AIDE.toLowerCase()}`)
+    }
+    if (form.categorie && !CATEGORIE_REGEX.test(form.categorie)) {
+      return setError(`Catégorie invalide : ${CATEGORIE_AIDE.toLowerCase()}`)
+    }
     setSubmitting(true)
     try {
       const payload = {
@@ -138,6 +145,8 @@ export default function AnnoncesPage() {
               value={form.titre}
               onChange={(e) => setForm((f) => ({ ...f, titre: e.target.value }))}
               required
+              minLength={2}
+              maxLength={200}
               placeholder="Ex: Cours de guitare, Garde de chat..."
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]"
             />
@@ -172,6 +181,8 @@ export default function AnnoncesPage() {
                 value={form.categorie}
                 onChange={(e) => setForm((f) => ({ ...f, categorie: e.target.value }))}
                 placeholder="Ex: Bricolage, Jardinage..."
+                maxLength={100}
+                title={CATEGORIE_AIDE}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]"
               />
             </div>

@@ -87,6 +87,9 @@ export default function VotesPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
+    if (!/[\p{L}0-9]/u.test(form.titre)) {
+      return setError('Titre invalide : doit contenir au moins une lettre ou un chiffre')
+    }
     setSubmitting(true)
     try {
       const payload = {
@@ -147,7 +150,7 @@ export default function VotesPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Titre *</label>
             <input value={form.titre} onChange={(e) => setForm((f) => ({ ...f, titre: e.target.value }))}
-              required placeholder="Ex: Faut-il installer de nouveaux bancs ?"
+              required minLength={2} maxLength={200} placeholder="Ex: Faut-il installer de nouveaux bancs ?"
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]" />
           </div>
 

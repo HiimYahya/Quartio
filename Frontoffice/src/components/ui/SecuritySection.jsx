@@ -165,6 +165,9 @@ function ChangeTelephoneForm({ user }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null); setSuccess(null)
+    if (telephone && !/^\+?[0-9][0-9 ()./-]{5,18}$/.test(telephone)) {
+      return setError('Numéro de téléphone invalide (chiffres, espaces, + . - ( ) acceptés)')
+    }
     setLoading(true)
     try {
       await api.put(`/utilisateurs/${user.id}/telephone`, {
@@ -187,7 +190,7 @@ function ChangeTelephoneForm({ user }) {
       <div className="relative">
         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input type="tel" value={telephone ?? ''} onChange={(e) => setTelephone(e.target.value)}
-          placeholder="Numéro de téléphone"
+          placeholder="Numéro de téléphone" maxLength={20}
           className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#34d399]" />
       </div>
       {user?.mfa_actif && <MfaCodeField value={mfaCode} onChange={setMfaCode} />}

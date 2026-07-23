@@ -219,6 +219,9 @@ export default function QuartiersPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.nom.trim()) return
+    if (!/^[\p{L}0-9][\p{L}0-9 _&'-]*$/u.test(form.nom.trim())) {
+      return setError('Nom invalide : lettres, chiffres, espaces et & \' - uniquement')
+    }
     if (form.geometrie) {
       const conflicts = detectOverlap(form.geometrie, quartiers, editTarget?.id_quartier)
       if (conflicts.length > 0) {
@@ -275,7 +278,7 @@ export default function QuartiersPage() {
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Nom *</label>
-                <input required value={form.nom}
+                <input required minLength={2} maxLength={100} value={form.nom}
                   onChange={(e) => setForm((f) => ({ ...f, nom: e.target.value }))}
                   placeholder="Ex: Centre-Ville"
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />

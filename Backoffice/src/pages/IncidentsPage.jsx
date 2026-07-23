@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react'
 import { AlertTriangle, Pencil, Trash2 } from 'lucide-react'
 import api from '../services/api'
+import { CATEGORIE_REGEX, CATEGORIE_AIDE, TEXTE_REGEX } from '../utils/formats'
+
+// Mêmes règles que le validator backend, pour une erreur immédiate
+const validerFormIncident = (f) => {
+  if (!TEXTE_REGEX.test(f.titre)) return 'Titre invalide : doit contenir au moins une lettre ou un chiffre'
+  if (f.type && !CATEGORIE_REGEX.test(f.type)) return `Type invalide : ${CATEGORIE_AIDE.toLowerCase()}`
+  return null
+}
 
 const STATUT_LABELS  = { ouvert: 'Ouvert', en_cours: 'En cours', resolu: 'Résolu', ferme: 'Fermé' }
 const STATUT_COLORS  = {
@@ -69,8 +77,10 @@ export default function IncidentsPage() {
 
   const handleCreate = async (e) => {
     e.preventDefault()
-    setSaving(true)
     setFormError(null)
+    const invalide = validerFormIncident(form)
+    if (invalide) return setFormError(invalide)
+    setSaving(true)
     try {
       const payload = {
         titre:       form.titre,
@@ -83,7 +93,7 @@ export default function IncidentsPage() {
       setShowCreate(false)
       setForm(EMPTY_FORM)
     } catch (err) {
-      setFormError(err.response?.data?.error ?? 'Erreur lors de la création')
+      setFormError(err.response?.data?.details?.[0] ?? err.response?.data?.error ?? 'Erreur lors de la création')
     } finally {
       setSaving(false)
     }
@@ -103,8 +113,10 @@ export default function IncidentsPage() {
 
   const handleEditSubmit = async (e) => {
     e.preventDefault()
-    setEditSaving(true)
     setEditError(null)
+    const invalide = validerFormIncident(editForm)
+    if (invalide) return setEditError(invalide)
+    setEditSaving(true)
     try {
       const payload = {
         titre:       editForm.titre,
@@ -116,7 +128,7 @@ export default function IncidentsPage() {
       setIncidents((inc) => inc.map((i) => (i.id ?? i._id) === editTarget.id ? { ...i, ...payload } : i))
       setEditTarget(null)
     } catch (err) {
-      setEditError(err.response?.data?.error ?? 'Erreur lors de la modification')
+      setEditError(err.response?.data?.details?.[0] ?? err.response?.data?.error ?? 'Erreur lors de la modification')
     } finally {
       setEditSaving(false)
     }
@@ -223,7 +235,7 @@ export default function IncidentsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Type</label>
-                  <input value={editForm.type} onChange={(e) => setEditForm((f) => ({ ...f, type: e.target.value }))}
+                  <input value={editForm.type} maxLength={50} title={CATEGORIE_AIDE} onChange={(e) => setEditForm((f) => ({ ...f, type: e.target.value }))}
                     placeholder="voirie, éclairage..."
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
@@ -272,7 +284,7 @@ export default function IncidentsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Type</label>
-                  <input value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
+                  <input value={form.type} maxLength={50} title={CATEGORIE_AIDE} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
                     placeholder="voirie, éclairage..."
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>

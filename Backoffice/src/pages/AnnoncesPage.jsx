@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Megaphone, Pencil } from 'lucide-react'
 import api from '../services/api'
+import { CATEGORIE_REGEX, CATEGORIE_AIDE, TEXTE_REGEX } from '../utils/formats'
+
+// Mêmes règles que le validator backend, pour une erreur immédiate
+const validerFormAnnonce = (f) => {
+  if (!TEXTE_REGEX.test(f.titre)) return 'Titre invalide : doit contenir au moins une lettre ou un chiffre'
+  if (f.categorie && !CATEGORIE_REGEX.test(f.categorie)) return `Catégorie invalide : ${CATEGORIE_AIDE.toLowerCase()}`
+  return null
+}
 
 const STATUT_COLORS = {
   active:   'bg-green-100 text-green-700',
@@ -54,8 +62,10 @@ export default function AnnoncesPage() {
 
   const handleCreate = async (e) => {
     e.preventDefault()
-    setSaving(true)
     setFormError(null)
+    const invalide = validerFormAnnonce(form)
+    if (invalide) return setFormError(invalide)
+    setSaving(true)
     try {
       const payload = {
         titre:       form.titre,
@@ -71,7 +81,7 @@ export default function AnnoncesPage() {
       setShowCreate(false)
       setForm(EMPTY_FORM)
     } catch (err) {
-      setFormError(err.response?.data?.error ?? 'Erreur lors de la création')
+      setFormError(err.response?.data?.details?.[0] ?? err.response?.data?.error ?? 'Erreur lors de la création')
     } finally {
       setSaving(false)
     }
@@ -94,8 +104,10 @@ export default function AnnoncesPage() {
 
   const handleEditSubmit = async (e) => {
     e.preventDefault()
-    setEditSaving(true)
     setEditError(null)
+    const invalide = validerFormAnnonce(editForm)
+    if (invalide) return setEditError(invalide)
+    setEditSaving(true)
     try {
       const payload = {
         titre:       editForm.titre,
@@ -109,7 +121,7 @@ export default function AnnoncesPage() {
       setItems((v) => v.map((x) => (x.id ?? x._id) === editTarget.id ? { ...x, ...payload } : x))
       setEditTarget(null)
     } catch (err) {
-      setEditError(err.response?.data?.error ?? 'Erreur lors de la modification')
+      setEditError(err.response?.data?.details?.[0] ?? err.response?.data?.error ?? 'Erreur lors de la modification')
     } finally {
       setEditSaving(false)
     }
@@ -224,7 +236,7 @@ export default function AnnoncesPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Catégorie</label>
-                  <input value={editForm.categorie} onChange={(e) => setEditForm((f) => ({ ...f, categorie: e.target.value }))}
+                  <input value={editForm.categorie} maxLength={100} title={CATEGORIE_AIDE} onChange={(e) => setEditForm((f) => ({ ...f, categorie: e.target.value }))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
               </div>
@@ -284,7 +296,7 @@ export default function AnnoncesPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Catégorie</label>
-                  <input value={form.categorie} onChange={(e) => setForm((f) => ({ ...f, categorie: e.target.value }))}
+                  <input value={form.categorie} maxLength={100} title={CATEGORIE_AIDE} onChange={(e) => setForm((f) => ({ ...f, categorie: e.target.value }))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
               </div>

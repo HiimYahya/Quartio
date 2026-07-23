@@ -25,6 +25,10 @@ export default function RegisterPage() {
     if (!cgu) {
       return setError('Vous devez accepter les conditions générales d\'utilisation.')
     }
+    const nomRegex = /^[\p{L}][\p{L}' -]*$/u
+    if (!nomRegex.test(form.prenom) || !nomRegex.test(form.nom)) {
+      return setError('Le nom et le prénom ne peuvent contenir que des lettres, espaces, apostrophes et tirets.')
+    }
     if (!isPasswordValid(form.mot_de_passe)) {
       return setError(PASSWORD_RULES_MESSAGE)
     }
