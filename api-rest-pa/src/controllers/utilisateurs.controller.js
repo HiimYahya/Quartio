@@ -260,6 +260,12 @@ exports.addQuartier = async (req, res, next) => {
 
     const session = driver.session();
     try {
+      // Un habitant n'appartient qu'à un quartier : changer = remplacer,
+      // sinon il garde la visibilité sur son ancien quartier
+      await session.run(
+        'MATCH (u:Utilisateur {pg_id: $uid})-[r:HABITE]->() DELETE r',
+        { uid: userId }
+      );
       await session.run(
         `MERGE (u:Utilisateur {pg_id: $uid})
          MERGE (q:Quartier {pg_id: $qid})
@@ -422,6 +428,11 @@ exports.detectQuartier = async (req, res, next) => {
 
     const session = driver.session();
     try {
+      // Un habitant n'appartient qu'à un quartier : la détection remplace l'ancien
+      await session.run(
+        'MATCH (u:Utilisateur {pg_id: $uid})-[r:HABITE]->() DELETE r',
+        { uid: userId }
+      );
       await session.run(
         `MERGE (u:Utilisateur {pg_id: $uid})
          MERGE (q:Quartier    {pg_id: $qid})
