@@ -14,7 +14,7 @@ const useSocketStore = create((set, get) => ({
     socket.on('connect',    () => set({ connected: true  }))
     socket.on('disconnect', () => set({ connected: false }))
 
-    socket.on('notification:new', () => set((s) => ({ unreadNotifs: s.unreadNotifs + 1 })))
+    socket.on('notification:new', () => get().refreshUnread())
     get().refreshUnread()
 
     socket.on('user:online', ({ userId }) => {

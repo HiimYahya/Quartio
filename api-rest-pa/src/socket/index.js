@@ -85,6 +85,19 @@ function emitNotification(userId, notification) {
   }
 }
 
+// Utilisateurs ayant actuellement la conversation ouverte (présents dans la room socket)
+function getUsersInConversation(conversationId) {
+  const users = new Set();
+  if (!io) return users;
+  const room = io.sockets.adapter.rooms.get(`conv:${conversationId}`);
+  if (!room) return users;
+  for (const sid of room) {
+    const s = io.sockets.sockets.get(sid);
+    if (s?.userId) users.add(s.userId);
+  }
+  return users;
+}
+
 function getIo() { return io; }
 
 function emitAlert(type, payload, targetUserIds = null) {
@@ -105,4 +118,4 @@ function emitVoteUpdate(voteId) {
   io.emit('vote:update', { id_vote: voteId });
 }
 
-module.exports = { initSocket, emitNewMessage, emitNotification, emitAlert, emitVoteUpdate, getIo };
+module.exports = { initSocket, emitNewMessage, emitNotification, emitAlert, emitVoteUpdate, getUsersInConversation, getIo };

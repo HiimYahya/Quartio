@@ -5,7 +5,41 @@ const Conversation    = require('../models/mongo/conversation.model');
 const Message         = require('../models/mongo/message.model');
 const validateMongoId = require('../utils/validateMongoId');
 const { getPagination, paginate } = require('../utils/pagination');
-const { emitNewMessage } = require('../socket/index');
+const { emitNewMessage, emitNotification, getUsersInConversation } = require('../socket/index');
+const { createNotification } = require('../utils/notify');
+const logger = require('../config/logger');
+
+// Notifie les participants d'un nouveau message (sauf l'expéditeur et ceux qui ont
+// la conversation ouverte). Une seule notification non lue par conversation :
+// si elle existe déjà, on la met à jour au lieu d'en empiler une nouvelle.
+async function notifierNouveauMessage(conv, senderId, apercu) {
+  try {
+    const convId = conv._id.toString();
+    const { rows } = await pool.query(
+      'SELECT prenom, nom FROM utilisateur WHERE id_utilisateur = $1', [senderId]
+    );
+    const expediteur = rows[0] ? `${rows[0].prenom} ${rows[0].nom}`.trim() : 'Un voisin';
+    const titre = `Nouveau message de ${expediteur}`;
+
+    const dejaDansLaConv = getUsersInConversation(convId);
+    const destinataires = conv.participants_pg.filter(
+      (uid) => uid !== senderId && !dejaDansLaConv.has(uid)
+    );
+
+    for (const uid of destinataires) {
+      const { rows: maj } = await pool.query(
+        `UPDATE notification SET titre = $1, contenu = $2, date_creation = NOW()
+         WHERE id_utilisateur = $3 AND type = 'message' AND id_ressource = $4 AND est_lue = FALSE
+         RETURNING *`,
+        [titre, apercu, uid, convId]
+      );
+      const notif = maj[0] ?? await createNotification(uid, 'message', titre, apercu, convId, 'message');
+      if (notif) emitNotification(uid, notif);
+    }
+  } catch (err) {
+    logger.error('Erreur notification nouveau message', { err: err.message });
+  }
+}
 
 exports.getMes = async (req, res, next) => {
   try {
@@ -148,6 +182,13 @@ exports.getMessages = async (req, res, next) => {
       { $push: { lu_par: uid } }
     );
 
+    // Ouvrir la conversation marque aussi comme lues les notifications associées
+    pool.query(
+      `UPDATE notification SET est_lue = TRUE
+       WHERE id_utilisateur = $1 AND type = 'message' AND id_ressource = $2 AND est_lue = FALSE`,
+      [uid, req.params.id]
+    ).catch(() => {});
+
     const filter = { id_conversation: conv._id, est_supprime: false };
     const [data, total] = await Promise.all([
       Message.find(filter).sort({ createdAt: 1 }).skip(skip).limit(limit).lean(),
@@ -197,6 +238,9 @@ exports.envoyerMessage = async (req, res, next) => {
       auteur_id: req.user.id,
     });
 
+    const apercu = (contenu || '').length > 80 ? `${contenu.slice(0, 80)}…` : contenu;
+    notifierNouveauMessage(conv, req.user.id, apercu);
+
     res.status(201).json(message);
   } catch (err) { next(err); }
 };
@@ -243,6 +287,8 @@ exports.envoyerMessageMedia = async (req, res, next) => {
       ...msgPayload,
       auteur_id: req.user.id,
     });
+
+    notifierNouveauMessage(conv, req.user.id, 'Vous a envoyé une photo');
 
     res.status(201).json(message);
   } catch (err) { next(err); }
