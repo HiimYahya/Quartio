@@ -218,7 +218,13 @@ exports.voter = async (req, res, next) => {
 
     const vote = await pool.query('SELECT * FROM vote WHERE id_vote = $1', [voteId]);
     if (vote.rows.length === 0) return res.status(404).json({ error: 'Vote non trouvé' });
-    if (vote.rows[0].statut !== 'ouvert') {
+    const v = vote.rows[0];
+    // date_fin dépassée = vote fermé, même si personne n'a rechargé la liste
+    if (v.statut === 'ouvert' && v.date_fin && new Date(v.date_fin) < new Date()) {
+      await pool.query("UPDATE vote SET statut = 'ferme' WHERE id_vote = $1", [voteId]);
+      return res.status(409).json({ error: 'Ce vote est fermé' });
+    }
+    if (v.statut !== 'ouvert') {
       return res.status(409).json({ error: 'Ce vote est fermé' });
     }
 
