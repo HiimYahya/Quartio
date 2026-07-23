@@ -33,7 +33,6 @@ const useSocketStore = create((set, get) => ({
     const handleAlert = (type) => (payload) => {
       set((s) => ({ alerts: [{ type, ...payload, at: Date.now() }, ...s.alerts].slice(0, 10) }))
     }
-    socket.on('alert:incident', handleAlert('incident'))
     socket.on('alert:contrat',  handleAlert('contrat'))
     socket.on('alert:vote',     handleAlert('vote'))
     socket.on('alert:evenement',handleAlert('evenement'))

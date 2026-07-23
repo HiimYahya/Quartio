@@ -29,7 +29,7 @@ export default function DashboardPage() {
       <div className="bg-gradient-to-br from-[#1a4a3a] to-[#2d7a5f] rounded-3xl p-6 md:p-8 text-white flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <p className="text-white/70 text-sm">{t('dashboard.subtitle')}</p>
-          <h2 className="text-2xl md:text-3xl font-bold mt-0.5">{t('dashboard.greeting', { name: user?.prenom ?? 'voisin' })} 👋</h2>
+          <h2 className="text-2xl md:text-3xl font-bold mt-0.5">{t('dashboard.greeting', { name: user?.prenom ?? 'voisin' })}</h2>
         </div>
         <div className="flex items-center gap-2 bg-white/10 rounded-2xl px-5 py-3 w-fit">
           <Coins className="w-6 h-6 text-[#34d399]" />

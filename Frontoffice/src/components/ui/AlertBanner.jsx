@@ -2,7 +2,6 @@ import { AlertTriangle, FileText, Vote, CalendarDays, X } from 'lucide-react'
 import useSocketStore from '../../store/socketStore'
 
 const ALERT_STYLES = {
-  incident: { bg: 'bg-red-500',    label: 'Incident urgent',     icon: AlertTriangle },
   contrat:  { bg: 'bg-amber-500',  label: 'Signature requise',   icon: FileText },
   vote:     { bg: 'bg-indigo-500', label: 'Nouveau vote',        icon: Vote },
   evenement:{ bg: 'bg-green-600',  label: 'Nouvel événement',    icon: CalendarDays },

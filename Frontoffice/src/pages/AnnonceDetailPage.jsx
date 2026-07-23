@@ -128,7 +128,7 @@ export default function AnnonceDetailPage() {
           <div className="text-sm text-gray-500">
             Publié par{' '}
             <span className="font-medium text-gray-700">
-              {annonce.prenom ?? 'Un voisin'}
+              {annonce.auteur ? `${annonce.auteur.prenom} ${annonce.auteur.nom}` : 'Un voisin'}
             </span>
           </div>
           {estPayant ? (

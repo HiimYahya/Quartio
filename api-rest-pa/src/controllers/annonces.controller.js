@@ -38,8 +38,17 @@ exports.getAll = async (req, res, next) => {
 exports.getById = async (req, res, next) => {
   try {
     if (!validateMongoId(req.params.id, res)) return;
-    const annonce = await Annonce.findById(req.params.id);
+    const annonce = await Annonce.findById(req.params.id).lean();
     if (!annonce) return res.status(404).json({ error: 'Annonce non trouvée' });
+
+    if (annonce.id_utilisateur_pg) {
+      const { rows } = await pool.query(
+        'SELECT id_utilisateur AS id, nom, prenom FROM utilisateur WHERE id_utilisateur = $1',
+        [annonce.id_utilisateur_pg]
+      );
+      annonce.auteur = rows[0] ?? null;
+    }
+
     res.json(annonce);
   } catch (err) { next(err); }
 };
