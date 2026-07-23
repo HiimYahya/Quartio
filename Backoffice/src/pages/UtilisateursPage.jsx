@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Users, Pencil, Coins, Ban, Download } from 'lucide-react'
 import api from '../services/api'
+import { NOM_REGEX, NOM_AIDE, TELEPHONE_REGEX, TELEPHONE_AIDE } from '../utils/formats'
 
 const isSuspended = (u) => u.suspendu_jusqu_au && new Date(u.suspendu_jusqu_au) > new Date()
 
@@ -32,11 +33,23 @@ export default function UtilisateursPage() {
   const [suspJours,    setSuspJours]    = useState(7)
   const [actionBusy,   setActionBusy]   = useState(false)
 
-  const load = () => {
-    api.get('/utilisateurs')
-      .then(({ data }) => setUsers(data.data ?? data.utilisateurs ?? []))
-      .catch(() => setUsers([]))
-      .finally(() => setLoading(false))
+  const load = async () => {
+    // L'API pagine à 20 par défaut : on ramène toutes les pages
+    try {
+      const all = []
+      let page = 1
+      let pages = 1
+      do {
+        const { data } = await api.get(`/utilisateurs?limit=100&page=${page}`)
+        all.push(...(data.data ?? data.utilisateurs ?? []))
+        pages = data.pagination?.pages ?? 1
+        page += 1
+      } while (page <= pages)
+      setUsers(all)
+    } catch {
+      setUsers([])
+    }
+    setLoading(false)
   }
 
   useEffect(() => { load() }, [])
@@ -58,8 +71,11 @@ export default function UtilisateursPage() {
 
   const handleCreate = async (e) => {
     e.preventDefault()
-    setSaving(true)
     setFormError(null)
+    if (!NOM_REGEX.test(form.prenom) || !NOM_REGEX.test(form.nom)) {
+      return setFormError(`Nom/prénom invalide : ${NOM_AIDE.toLowerCase()}`)
+    }
+    setSaving(true)
     try {
       const { data } = await api.post('/auth/register', {
         nom: form.nom, prenom: form.prenom, email: form.email,
@@ -74,7 +90,7 @@ export default function UtilisateursPage() {
       setShowCreate(false)
       setForm(EMPTY_FORM)
     } catch (err) {
-      setFormError(err.response?.data?.error ?? 'Erreur lors de la création')
+      setFormError(err.response?.data?.details?.[0] ?? err.response?.data?.error ?? 'Erreur lors de la création')
     } finally {
       setSaving(false)
     }
@@ -88,14 +104,20 @@ export default function UtilisateursPage() {
 
   const handleEditSubmit = async (e) => {
     e.preventDefault()
-    setEditSaving(true)
     setEditError(null)
+    if (!NOM_REGEX.test(editForm.prenom) || !NOM_REGEX.test(editForm.nom)) {
+      return setEditError(`Nom/prénom invalide : ${NOM_AIDE.toLowerCase()}`)
+    }
+    if (editForm.telephone && !TELEPHONE_REGEX.test(editForm.telephone)) {
+      return setEditError(`Téléphone invalide : ${TELEPHONE_AIDE.toLowerCase()}`)
+    }
+    setEditSaving(true)
     try {
       const { data } = await api.put(`/utilisateurs/${editTarget.id_utilisateur}`, editForm)
       setUsers((u) => u.map((x) => x.id_utilisateur === editTarget.id_utilisateur ? { ...x, ...data } : x))
       setEditTarget(null)
     } catch (err) {
-      setEditError(err.response?.data?.error ?? 'Erreur lors de la modification')
+      setEditError(err.response?.data?.details?.[0] ?? err.response?.data?.error ?? 'Erreur lors de la modification')
     } finally {
       setEditSaving(false)
     }
@@ -249,18 +271,19 @@ export default function UtilisateursPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Prénom *</label>
-                  <input required value={editForm.prenom} onChange={(e) => setEditForm((f) => ({ ...f, prenom: e.target.value }))}
+                  <input required minLength={2} maxLength={100} title={NOM_AIDE} value={editForm.prenom} onChange={(e) => setEditForm((f) => ({ ...f, prenom: e.target.value }))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Nom *</label>
-                  <input required value={editForm.nom} onChange={(e) => setEditForm((f) => ({ ...f, nom: e.target.value }))}
+                  <input required minLength={2} maxLength={100} title={NOM_AIDE} value={editForm.nom} onChange={(e) => setEditForm((f) => ({ ...f, nom: e.target.value }))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Téléphone</label>
-                <input value={editForm.telephone} onChange={(e) => setEditForm((f) => ({ ...f, telephone: e.target.value }))}
+                <input type="tel" maxLength={20} title={TELEPHONE_AIDE} placeholder="Ex: 06 12 34 56 78"
+                  value={editForm.telephone} onChange={(e) => setEditForm((f) => ({ ...f, telephone: e.target.value }))}
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
               <div>
@@ -295,12 +318,12 @@ export default function UtilisateursPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Prénom *</label>
-                  <input required value={form.prenom} onChange={(e) => setForm((f) => ({ ...f, prenom: e.target.value }))}
+                  <input required minLength={2} maxLength={100} title={NOM_AIDE} value={form.prenom} onChange={(e) => setForm((f) => ({ ...f, prenom: e.target.value }))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Nom *</label>
-                  <input required value={form.nom} onChange={(e) => setForm((f) => ({ ...f, nom: e.target.value }))}
+                  <input required minLength={2} maxLength={100} title={NOM_AIDE} value={form.nom} onChange={(e) => setForm((f) => ({ ...f, nom: e.target.value }))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
               </div>
