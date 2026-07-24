@@ -8,15 +8,21 @@ const { emitAlert }          = require('../socket/index');
 const ContratDocument        = require('../models/mongo/contratdocument.model');
 const appEvents               = require('../config/events');
 const logger                 = require('../config/logger');
+const { isPrivileged }       = require('../utils/quartiers');
 
 exports.getMes = async (req, res, next) => {
   try {
     const { page, limit, skip } = getPagination(req.query);
     const uid = req.user.id;
 
+    // ?tous=true (admin/modérateur) : tous les contrats de la plateforme,
+    // sinon uniquement ceux où l'appelant est partie
+    const all    = isPrivileged(req.user) && req.query.tous === 'true';
+    const where  = all ? '' : 'WHERE c.id_vendeur = $1 OR c.id_acheteur = $1';
+    const params = all ? [] : [uid];
+
     const countRes = await pool.query(
-      'SELECT COUNT(*) FROM contrat WHERE id_vendeur = $1 OR id_acheteur = $1',
-      [uid]
+      `SELECT COUNT(*) FROM contrat c ${where}`, params
     );
     const result = await pool.query(
       `SELECT c.*,
@@ -25,9 +31,9 @@ exports.getMes = async (req, res, next) => {
        FROM contrat c
        LEFT JOIN utilisateur v ON v.id_utilisateur = c.id_vendeur
        LEFT JOIN utilisateur a ON a.id_utilisateur = c.id_acheteur
-       WHERE c.id_vendeur = $1 OR c.id_acheteur = $1
-       ORDER BY c.date_creation DESC LIMIT $2 OFFSET $3`,
-      [uid, limit, skip]
+       ${where}
+       ORDER BY c.date_creation DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      [...params, limit, skip]
     );
     res.json(paginate(result.rows, parseInt(countRes.rows[0].count), page, limit));
   } catch (err) { next(err); }

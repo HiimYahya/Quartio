@@ -16,11 +16,24 @@ export default function ContratsPage() {
   const [loading, setLoading] = useState(true)
   const [confirm, setConfirm] = useState(null)
 
-  const load = () => {
-    api.get('/contrats')
-      .then(({ data }) => setItems(data.data ?? data.contrats ?? []))
-      .catch(() => setItems([]))
-      .finally(() => setLoading(false))
+  const load = async () => {
+    // ?tous=true : tous les contrats de la plateforme (l'API pagine à 20 par
+    // défaut et ne renvoie sinon que les contrats de l'admin lui-même)
+    try {
+      const all = []
+      let page = 1
+      let pages = 1
+      do {
+        const { data } = await api.get(`/contrats?tous=true&limit=100&page=${page}`)
+        all.push(...(data.data ?? data.contrats ?? []))
+        pages = data.pagination?.pages ?? 1
+        page += 1
+      } while (page <= pages)
+      setItems(all)
+    } catch {
+      setItems([])
+    }
+    setLoading(false)
   }
 
   useEffect(() => { load() }, [])
@@ -77,7 +90,7 @@ export default function ContratsPage() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
-                {['Contrat', 'Points', 'Création', 'Signature', 'Statut', 'Actions'].map((h) => (
+                {['Contrat', 'Vendeur', 'Acheteur', 'Points', 'Création', 'Signature', 'Statut', 'Actions'].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -86,6 +99,12 @@ export default function ContratsPage() {
               {items.map((c) => (
                 <tr key={c.id_contrat} className="hover:bg-slate-50 transition">
                   <td className="px-4 py-3 font-medium text-slate-800">#{c.id_contrat}</td>
+                  <td className="px-4 py-3 text-slate-600">
+                    {[c.vendeur_prenom, c.vendeur_nom].filter(Boolean).join(' ') || (c.id_vendeur ? `#${c.id_vendeur}` : '-')}
+                  </td>
+                  <td className="px-4 py-3 text-slate-600">
+                    {[c.acheteur_prenom, c.acheteur_nom].filter(Boolean).join(' ') || (c.id_acheteur ? `#${c.id_acheteur}` : '-')}
+                  </td>
                   <td className="px-4 py-3 text-slate-500">{c.points_echanges > 0 ? `${c.points_echanges} pts` : 'Gratuit'}</td>
                   <td className="px-4 py-3 text-slate-400 text-xs">
                     {c.date_creation ? new Date(c.date_creation).toLocaleDateString('fr-FR') : '-'}
