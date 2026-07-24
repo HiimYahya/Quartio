@@ -50,7 +50,11 @@ exports.create = async (req, res, next) => {
     const wanted = id_quartier ? parseInt(id_quartier) : null;
     let quartierId;
     if (isPrivileged(req.user)) {
-      quartierId = wanted;
+      // Même garde que pour les votes : un événement sans quartier serait invisible
+      quartierId = wanted ?? (await getUserQuartierIds(req.user.id))[0] ?? null;
+      if (!quartierId) {
+        return res.status(400).json({ error: "Précisez le quartier de l'événement (id_quartier)." });
+      }
     } else {
       const qids = await getUserQuartierIds(req.user.id);
       if (qids.length === 0) {

@@ -2,7 +2,7 @@ const pool       = require('../config/db');
 const { driver } = require('../config/neo4j');
 const { getPagination, paginate } = require('../utils/pagination');
 const { emitAlert, emitVoteUpdate } = require('../socket/index');
-const { getUserQuartierIds, isPrivileged } = require('../utils/quartiers');
+const { getUserQuartierIds, getQuartierHabitantIds, isPrivileged } = require('../utils/quartiers');
 
 exports.getAll = async (req, res, next) => {
   try {
@@ -99,7 +99,12 @@ exports.create = async (req, res, next) => {
     const wanted = id_quartier ? parseInt(id_quartier) : null;
     let quartierId;
     if (isPrivileged(req.user)) {
-      quartierId = wanted;
+      // Sans quartier ciblé, on retombe sur celui de l'admin : un vote sans
+      // quartier serait invisible pour tous les habitants
+      quartierId = wanted ?? (await getUserQuartierIds(req.user.id))[0] ?? null;
+      if (!quartierId) {
+        return res.status(400).json({ error: 'Précisez le quartier du vote (id_quartier).' });
+      }
     } else {
       const qids = await getUserQuartierIds(req.user.id);
       if (qids.length === 0) {
@@ -149,11 +154,16 @@ exports.create = async (req, res, next) => {
       await session.close();
     }
 
-    emitAlert('vote', {
-      id_vote: vote.id_vote,
-      titre:   vote.titre,
-      type_vote: vote.type_vote,
-    });
+    // Alerte limitée aux habitants du quartier concerné (les autres ne
+    // verraient pas le vote de toute façon)
+    try {
+      const habitants = await getQuartierHabitantIds(quartierId);
+      emitAlert('vote', {
+        id_vote: vote.id_vote,
+        titre:   vote.titre,
+        type_vote: vote.type_vote,
+      }, habitants);
+    } catch { /* l'alerte est un confort, pas une donnée */ }
 
     res.status(201).json({ ...vote, options: insertedOptions });
   } catch (err) { next(err); }

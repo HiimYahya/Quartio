@@ -9,10 +9,11 @@ const STATUT_COLORS = {
   archive: 'bg-purple-100 text-purple-600',
 }
 
-const EMPTY_FORM = { titre: '', description: '', type: '', date_debut: '', date_fin: '', est_anonyme: false, options: [{ libelle: '' }, { libelle: '' }] }
+const EMPTY_FORM = { titre: '', description: '', type: '', date_debut: '', date_fin: '', est_anonyme: false, id_quartier: '', options: [{ libelle: '' }, { libelle: '' }] }
 
 export default function VotesPage() {
   const [votes,      setVotes]      = useState([])
+  const [quartiers,  setQuartiers]  = useState([])
   const [loading,    setLoading]    = useState(true)
   const [confirm,    setConfirm]    = useState(null)
   const [showCreate, setShowCreate] = useState(false)
@@ -31,7 +32,10 @@ export default function VotesPage() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    api.get('/quartiers?limit=100').then(({ data }) => setQuartiers(data.data ?? [])).catch(() => {})
+  }, [])
 
   const handleStatut = async (id, statut) => {
     try {
@@ -74,6 +78,7 @@ export default function VotesPage() {
         date_debut:  form.date_debut || null,
         date_fin:    form.date_fin || null,
         est_anonyme: form.est_anonyme,
+        id_quartier: Number(form.id_quartier),
         options:     validOptions.map((o, i) => ({ libelle: o.libelle, ordre: i })),
       }
       const { data } = await api.post('/votes', payload)
@@ -242,6 +247,15 @@ export default function VotesPage() {
                   <input type="datetime-local" value={form.date_fin} min={form.date_debut || datetimeLocalMin()} onChange={(e) => setForm((f) => ({ ...f, date_fin: e.target.value }))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Quartier *</label>
+                <select required value={form.id_quartier} onChange={(e) => setForm((f) => ({ ...f, id_quartier: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <option value="">Sélectionner...</option>
+                  {quartiers.map((q) => <option key={q.id_quartier} value={q.id_quartier}>{q.nom}</option>)}
+                </select>
+                <p className="text-xs text-slate-400 mt-1">Seuls les habitants de ce quartier verront le vote.</p>
               </div>
               <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
                 <input type="checkbox" checked={form.est_anonyme} onChange={(e) => setForm((f) => ({ ...f, est_anonyme: e.target.checked }))}
